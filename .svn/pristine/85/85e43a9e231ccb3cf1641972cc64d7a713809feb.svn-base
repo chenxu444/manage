@@ -1,0 +1,310 @@
+<template>
+    <view class="page">
+        <view class="position bg_common font_color_white" @click="openMap"><view class="iconfont icon-addr"></view>{{nowAddress}}</view>
+        <view class="search-wrap bg_common uni-flex ">
+            <!-- #ifdef H5 -->
+            <view
+                class="goBack iconfont icon-left font_color_white"
+                @click="goBack"
+            ></view>
+            <!-- #endif -->
+            <view class="s-input">
+                <input type="text" placeholder="请输入门店名称" v-model="queryWord" @confirm="initList('refresh')" />
+                <icon class="searchIcon" type="search" size="18" />
+            </view>
+        </view>
+        <view class="storesList">
+            <uni-pulldown-refresh
+                ref="uniPulldownRefresh"
+                id="pullContent"
+                :top="168"
+                :absolute="168"
+                @refresh="onPulldownReresh"
+            >
+                <view>
+                    <view class="storeItem uni-flex bg_white" :key="index" v-for="(sl, index) in storesList" @click="goDetails(sl)">
+                        <image :src="sl.logo" :lazy-load="true" mode="aspectFit" class="storeImg" />
+                        <view class="storeCont uni-flex-1">
+                            <view class="storeName wrap-2">{{sl.storeName}}</view>
+                            <view class="storeTime">服务时间：{{sl.buzTimes && sl.buzTimes.length > 0 ? sl.buzTimes[0] : '--'}}</view>
+                            <view class="storeTel">客服：{{sl.customTel ? sl.customTel : '--'}}</view>
+                            <view class="storeAddr wrap-2">地址：{{sl.address ? sl.address : '--'}}</view>
+                        </view>
+                    </view>
+                </view>
+                <uni-load-more :status="status" :content-text="contentText" />
+            </uni-pulldown-refresh>
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+            longitude: '',
+            latitude: '',
+            nowAddress: '',
+            storesList: [],
+            sortFeild: 'storescore',
+			descOrder: true,
+			storeName: '',
+			pageSize: 15,
+			pageNo: 1,
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——"
+            },
+        }
+    },
+    onLoad(option) {
+        this.latitude = option.latitude;
+        this.longitude = option.longitude;
+        this.resetLocation();
+    },
+    onReachBottom() {
+        if(this.status != 'noMore' && this.status != 'loading'){
+            //上滑加载
+            this.initList("add");
+        }
+    },
+    methods: {
+        resetLocation(){
+            // 重新定位
+            this.catchPosition().then((res) => {
+                this.longitude = res.longitude;
+                this.latitude = res.latitude;
+                this.initList("add");
+                let obj = {
+                    location: res.latitude + ',' + res.longitude,
+                    key: this.QQmapKey,
+                    output: 'json',
+                };
+                uni.request({
+                    url: this.apis_map_qq_url,
+                    data: obj,
+                    requestMethod: 'get',
+                    dataType: 'jsonp',
+                    success: item => {
+                        let data = item.data;
+                        if(typeof data == "string"){
+                            if (data.substring(0, 1) == '{' && data.substring(data.length - 1, data.length) == '}') {
+                                data = JSON.parse(data);
+                            }
+                        }
+                        this.nowAddress = data.result.formatted_addresses.recommend;
+                    }
+                })
+            }).catch(() => {
+                this.initList("add");
+            })
+        },
+        openMap(){
+            // 打开地图快速选地址
+            uni.chooseLocation({
+                success: res => {
+                    this.nowAddress = res.address;
+                    this.latitude = res.latitude;
+                    this.longitude = res.longitude;
+                    this.$nextTick(() => {
+                        this.initList('refresh');
+                    })
+                }
+            });
+        },
+        initList(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+            obj.pageSize = this.pageSize;
+            obj.pageNo = this.pageNo;
+            obj.sortFeild = this.sortFeild;
+            obj.descOrder = this.descOrder;
+            obj.consignorId = this.getStor('_defaultConsignorId_');
+            obj.deliverMode = 1;
+            if(this.queryWord != undefined && this.queryWord != null && this.queryWord != ''){
+                obj.queryWord = this.queryWord;
+            }
+            if(this.latitude != undefined && this.latitude != null && this.latitude != '' && this.longitude != undefined && this.longitude != null && this.longitude != ''){
+                obj.latitude = this.latitude;
+                obj.longitude = this.longitude;
+            }
+
+            this.ebigRequest("/store/list", obj, true).then((res) => {
+                if(type == 'refresh'){
+                    this.storesList = [];
+                }
+                if(res.length == 0){
+                    this.status = "noMore";
+                }else{
+                    if(res.length < this.pageSize){
+                        this.status = "noMore";
+                    }else{
+                        this.status = "more";
+                    }
+                    this.storesList = [...this.storesList, ...res];
+                }
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.storesList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.storesList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            });
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.initList("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.initList("refresh");
+        },
+        // 跳转首页
+        goDetails(item){
+            this.goUrl('index', '', 'storeId=' + item.storeId + '&consignorId=' + item.consignorId + '&url=' + encodeURIComponent(this.baseUrl + (item.storePageId ? item.storePageId + '.html' : 'miniIndex.html')));
+        },
+        goBack() {
+            history.go(-1);
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+
+    /* 定位 start */
+    .position {
+        position: fixed;
+        top: 0;
+        z-index: 999;
+        padding: 0 30rpx;
+        width: 100%;
+        height: 64rpx;
+        text-align: center;
+        line-height: 64rpx;
+        box-sizing: border-box;
+        .iconfont {
+            display: inline-block;
+        }
+    }
+    /* 定位 end */
+    /* 搜索 start */
+    .search-wrap {
+        position: fixed;
+        top: 64rpx;
+        z-index: 999;
+        padding: 20rpx 30rpx;
+        width: 100%;
+        border-bottom: 1px solid rgba(228, 228, 228, 1);
+        box-sizing: border-box;
+
+        .goBack {
+            padding-right: 20rpx;
+            width: 52rpx;
+            height: 68rpx;
+            text-align: center;
+            line-height: 68rpx;
+        }
+
+        .s-input {
+            position: relative;
+            padding-left: 68rpx;
+            width: 100%;
+            height: 68rpx;
+            background: #ECECEC;
+            border-radius: 80rpx;
+            box-sizing: border-box;
+
+            input {
+                width: 100%;
+                height: 100%;
+                line-height: 68rpx;
+                font-size: 30rpx;
+                color: #949494;
+            }
+            .searchIcon {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                width: 68rpx;
+                font-size: 36rpx;
+                text-align: center;
+                line-height: 68rpx;
+                color: #BBB2B2;
+                /* #ifdef MP-WEIXIN */
+                line-height: 80rpx;
+                /* #endif */
+            }
+        }
+    }
+    /* 搜索 end */
+
+    /* 门店列表 start */
+    .storesList {
+        /* #ifdef MP-WEIXIN */
+        padding: 174rpx 0 0;
+        /* #endif */
+        /* #ifdef H5 */
+        padding: 262rpx 0 0;
+        /* #endif */
+
+        .storeItem {
+            padding: 30rpx;
+            border-bottom: 1px solid #EEEEEE;
+
+            .storeImg {
+                margin-right: 30rpx;
+                width: 200rpx;
+                height: 200rpx;
+            }
+            .storeCont {
+                .storeName {
+                    max-height: 68rpx;
+                    font-size: 28rpx;
+                    font-weight: 700;
+                    line-height: 34rpx;
+                    color: #333333;
+                }
+                .storeTime, .storeTel, .storeAddr {
+                    line-height: 40rpx;
+                    color: #888888;
+                }
+            }
+        }
+    }
+    /* 门店列表 end */
+}
+
+</style>

@@ -1,0 +1,504 @@
+<template>
+    <view id="page" style="width: 100%;">
+        <view class="main-wrap">
+            <!-- search -- start -->
+            <view class="search-wrap bg_white">
+                <view class="mod-input border_common">
+                    <input class="input" v-model="keyword" type="text" @confirm="searchGoods" placeholder="请输入商品信息等关键字">
+                    <span class="iconfont icon-search" @click="searchGoods"></span>
+                </view>
+            </view>
+            <!-- search -- end -->
+            <!-- tab -- start -->
+            <view class="tab-wrap uni-flex font_color_white bg_white">
+                <view class="tab-item uni-flex-1 border_common tc" :class="activeNav == 'normal' ? 'on font_color_common' : 'font_color_666'" @tap="tabClick('normal');">综合</view>
+                <view class="tab-item uni-flex-1 border_common tc" :class="activeNav == 'commission' ? 'on font_color_common' : 'font_color_666'" @tap="tabClick('commission');">佣金</view>
+                <view class="tab-item uni-flex-1 border_common tc" :class="activeNav == 'distributionDate' ? 'on font_color_common' : 'font_color_666'" @tap="tabClick('distributionDate');">最新</view>
+                <view class="tab-item uni-flex-1 border_common tc" :class="activeNav == 'salNum' ? 'on font_color_common' : 'font_color_666'" @tap="tabClick('salNum');">销量</view>
+                <view class="tab-item uni-flex-1 border_common tc" :class="activeNav == 'price' ? 'on font_color_common' : 'font_color_666'" @tap="tabClick('price');">价格</view>
+            </view>
+            <!-- tab -- end -->
+            <!-- content -- start -->
+            <view class="content-wrap">
+                <uni-pulldown-refresh
+                    ref="uniPulldownRefresh"
+                    id="pullContent"
+                    :top="185"
+                    :absolute="185"
+                    @refresh="onPulldownReresh"
+                >
+                    <view class="goods-list" v-if="list.length > 0">
+                        <view class="goods-item uni-flex" v-for="goods in list" :key="goods.skuSalNo" @click="openDetail(goods)">
+                            <view class="goods-img">
+                                <image class="img" lazy-load="true" mode="aspectFit" :src="goods.imagePath ? goods.imagePath : '../../static/image/default/no_img.jpg'"></image>
+                            </view>
+                            <view class="goods-info uni-flex-1">
+                                <view class="goods-name wrap-2 font_color_333">
+                                    {{ goods.brandName ? goods.brandName : '' }}
+                                    {{ goods.goodsName ? goods.goodsName : '' }}
+                                    {{ goods.specification ? goods.specification : '' }}
+                                </view>
+                                <view class="goods-key wrap font_color_666" v-if="goods.goodsKey" >{{ goods.goodsKey }}</view>
+                                <view class="goods-key wrap font_color_666" v-if="goods.goodsKey" >{{ goods.storeDTO.storeName }}</view>
+                                <view class="price-wrap uni-flex">
+                                    <view class="goods-price uni-flex-1">
+                                        <view class="price-1"><span class="price-type">零售价：￥</span>{{ goods.sellPrice ? toFixedFunc(goods.sellPrice.sellPrice ? goods.sellPrice.sellPrice : 0) : '0.00' }}</view>
+                                        <span class="price-2 font_color_999">￥{{ goods.sellPrice ? toFixedFunc(goods.sellPrice.marketPrice ? goods.sellPrice.marketPrice : 0) : '0.00' }}</span>
+                                    </view>
+                                    <!-- #ifdef MP-WEIXIN -->
+                                    <view class="can-get-price tr uni-flex-1">
+                                        <span class="price-3"><span class="price-type">￥</span>{{ goods.commission ? toFixedFunc(goods.commission) : '0.00' }}</span>
+                                        <span class="price-3-des font_color_999">佣金</span>
+                                    </view>
+                                    <!-- #endif -->
+                                </view>
+                                <!-- #ifdef MP-WEIXIN -->
+                                <view class="btn-wrap">
+                                    <view class="btn-share bg_common font_color_white" @click.stop="shareClick(goods)">分享</view>
+                                    <view class="btn-share bg_common font_color_white" @click.stop="collectGoods(goods)">收藏</view>
+                                </view>
+                                <!-- #endif -->
+                                <!-- #ifdef H5 -->
+                                <view class="can-get-price">
+                                    <span class="price-3-des font_color_999">佣金：</span>
+                                    <span class="price-3"><span class="price-type">￥</span>{{ goods.commission ? toFixedFunc(goods.commission) : '0.00' }}</span>
+                                </view>
+                                <!-- #endif -->
+                            </view>
+                        </view>
+                    </view>
+                    <uni-load-more :status="status" :content-text="contentText" />
+                </uni-pulldown-refresh>
+            </view>
+            <!-- content -- end -->
+        </view>
+        <!-- 分享商品弹窗 -- start -->
+        <uni-popup ref="popup" :animation="true">
+            <view class="dia-wrap bg_white">
+                <view class="tit tc">温馨提示</view>
+                <view class="dia-des tc">确定分享该商品？</view>
+                <view class="btn-wrap tc uni-flex">
+                    <view class="btn-cancel uni-flex-1" @click="cancelShare">取消</view>
+                    <view class="btn-sure bg_common font_color_white uni-flex-1">
+                        确定
+                        <button class="share-btn" open-type="share"></button>
+                    </view>
+                </view>
+            </view>
+        </uni-popup>
+        <!-- 分享商品弹窗 -- end -->
+    </view>
+</template>
+
+<script>
+export default {
+    components:{
+        
+    },
+    data() {
+        return {
+            activeNav: 'normal', //normal：综合 commission：佣金 distributionDate：时间 salNum：销量 price：价格
+            keyword: '', //搜索关键字
+            pageNo: 1,
+            pageSize: 10,
+            list: [],
+            
+            shareGoods: {},
+            shareUrl: '/pages/detail/detail', //分享链接
+            nowShareUrl: '/distribution/pages/list/list',
+            distributorId: '',
+
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——"
+            },
+        }
+    },
+    onLoad(option) {
+        this.distributorId = option.shareDistributorId
+            ? option.shareDistributorId
+            : uni.getStorageSync("shareDistributorId") != null
+            ? uni.getStorageSync("shareDistributorId")
+            : "";
+            uni.setStorageSync("shareDistributorId", this.distributorId);
+
+        this.getList('add');
+        if (this.distributorId || uni.getStorageSync("_isDistributorId_") != null) {
+            this.nowShareUrl = this.nowShareUrl + (this.nowShareUrl ? '&' : '?') + "shareDistributorId=" + (uni.getStorageSync("_isDistributorId_") != null ? uni.getStorageSync("_isDistributorId_") : this.distributorId);
+        }
+    },
+    onShow() {
+        
+    },
+    onReachBottom() {
+        if(this.status != 'noMore' && this.status != 'loading'){
+            //上滑加载
+            this.getList("add");
+        }
+    },
+    onShareAppMessage(res) { //分享到微信好友
+        this.$refs.popup.close();
+        let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+        if (res.from === 'button') {// 来自页面内分享按钮
+            nowShareUrl = this.shareUrl;
+            nowShareLogo = this.shareGoods.imagePath;
+            nowShareTitle = this.shareGoods.brandName + ' ' + this.shareGoods.goodsName + ' ' + this.shareGoods.specification;
+            nowShareContent = this.shareGoods.storeDTO.storeName;
+        }else{
+            nowShareUrl = this.nowShareUrl;
+            nowShareLogo = uni.getStorageSync('_shareLogo_');
+            nowShareTitle = uni.getStorageSync('_shareTitle_');
+            nowShareContent = this.shareContent;
+        }
+        return {
+            title: nowShareTitle,
+            content: nowShareContent,
+            imageUrl: nowShareLogo,
+            path: nowShareUrl,
+            success: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+    methods: {
+        openDetail(goods){
+            // 跳转商品详情
+            this.goUrl('detail', '', 'skuSalNo=' + goods.skuSalNo + '&storeId=' + goods.storeDTO.storeId + '&consignorId=' + goods.consignorId);
+        },
+        cancelShare: function() { //取消分享
+            this.$refs.popup.close();
+        },
+        shareClick: function(goods) { //点击商品分享
+            this.shareGoods = JSON.parse(JSON.stringify(goods));
+            this.shareUrl = this.shareUrl + '?skuSalNo=' + goods.skuSalNo + '&storeId=' + goods.storeDTO.storeId + '&consignorId=' + goods.consignorId + (this.distributorId ? '&shareDistributorId=' + this.distributorId : '');
+            this.$refs.popup.open();
+        },
+        tabClick: function(type) { //分类切换
+            this.activeNav = type;
+            this.getList('refresh');
+            this.$nextTick(() => {
+                this.scrollTop = 0;
+            });
+        }, 
+        getList: function(type) { //获取推广商品列表数据
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+            let nowStoreId_ = uni.getStorageSync('_storeId_');
+            obj.sortFiled = this.activeNav; //normal：综合 commission：佣金 distributionDate：时间 salNum：销量 price：价格
+            obj.sortType = 'desc'; //asc desc
+            obj.queryWord = this.keyword; //搜索关键字
+            obj.pageNo = this.pageNo;
+            obj.pageSize = this.pageSize;
+            obj.storeId = nowStoreId_;
+            obj.strategyType = 'index';
+            this.ebigRequest("/distribution/getDistributionGoods", obj, true).then((res) => {
+                // console.log(data)
+                if(type == 'refresh'){
+                    uni.pageScrollTo({
+                        scrollTop: 0,
+                        duration: 100
+                    });
+                    this.list = [];
+                }
+                
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                this.list = [...this.list, ...res];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.list = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.list = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        searchGoods(){
+            this.getList("refresh");
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getList("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getList("refresh");
+        },
+        toFixedFunc: function(value) { //转为两位小数
+            return parseFloat(value).toFixed(2);
+        },
+        toPage: function(url, item) { //跳转分销内页面
+            this.goUrl(url, 'distribution', item);
+        },
+        collectGoods(item) {     // 收藏
+			var clobj = {};
+			clobj.skusalno = item.skuSalNo;
+			clobj.storeId = item.storeDTO.storeId;
+			clobj.collectFlag = true;
+            this.ebigRequest("/product/collect", clobj, true).then((data) => {
+                uni.showToast({
+                    title: "商品收藏成功!",
+                    icon: "none",
+                });
+            })
+		},
+    }
+}
+</script>
+
+<style lang="scss">
+page {
+    width: 100%;
+    background-color: #FFFFFF;
+}
+.main-wrap {
+    width: 100%;
+    position: relative;
+    // search
+    .search-wrap {
+        width: 100%;
+        height: 104rpx;
+        padding: 20rpx 40rpx;
+        box-sizing: border-box;
+        position: fixed;
+        /* #ifdef MP-WEIXIN */
+        top: 0;
+        /* #endif */
+        /* #ifdef H5 */
+        top: 88rpx;
+        /* #endif */
+        right: 0;
+        left: 0;
+        z-index: 3;
+        margin: auto;
+        .mod-input {
+            width: 100%;
+            height: 64rpx;
+            line-height: 60rpx;
+            border: 1rpx solid;
+            border-radius: 20rpx;
+            box-sizing: border-box;
+            position: relative;
+            .input {
+                width: 100%;
+                height: 100%;
+                line-height: 60rpx;
+                padding: 0 60rpx 0 16rpx;
+                box-sizing: border-box;
+                font-size: 26rpx;
+            }
+            .icon-search {
+                width: 80rpx;
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                margin: auto;
+                font-size: 36rpx;
+                text-align: center;
+            }
+        }
+    }
+    // tab
+    .tab-wrap {
+        width: 100%;
+        height: 88rpx;
+        line-height: 88rpx;
+        padding: 0 20rpx;
+        box-sizing: border-box;
+        box-shadow: 0 4rpx 10rpx #EDE7E7;
+        font-size: 28rpx;
+        position: fixed;
+        /* #ifdef MP-WEIXIN */
+        top: 104rpx;
+        /* #endif */
+        /* #ifdef H5 */
+        top: 192rpx;
+        /* #endif */
+        right: 0;
+        left: 0;
+        z-index: 3;
+        margin: auto;
+        .tab-item {
+            position: relative;
+        }
+        .tab-item.on {
+            border-bottom: 2rpx solid;
+            box-sizing: border-box;
+        }
+    }
+    // content
+    .content-wrap {
+        width: 100%;
+        box-sizing: border-box;
+        .goods-list {
+            .goods-item {
+                border-top: 2rpx solid #F2F2F2;
+                padding: 20rpx;
+                box-sizing: border-box;
+                .goods-img {
+                    width: 200rpx;
+                    padding: 10rpx;
+                    box-sizing: border-box;
+
+                    .img {
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+                .goods-info {
+                    padding: 0 0 0 20rpx;
+                    box-sizing: border-box;
+                    .goods-name {
+                        line-height: 36rpx;
+                        font-size: 30rpx;
+                    }
+                    .goods-key {
+                        line-height: 48rpx;
+                    }
+                    .price-wrap {
+                        .goods-price {
+                            .price-1 {
+                                margin-right: 10rpx;
+                                color: #E94544;
+                                font-size: 36rpx;
+                                font-weight: 700;
+                                .price-type {
+                                    font-size: 28rpx;
+                                    font-weight: 400;
+                                }
+                            }
+                            .price-2 {
+                                font-size: 28rpx;
+                                text-decoration: line-through;
+                            }
+                        }
+                    }
+                    .can-get-price {
+                        .price-3 {
+                            margin-right: 10rpx;
+                            color: #E94544;
+                            font-size: 36rpx;
+                            font-weight: 700;
+                            .price-type {
+                                font-size: 28rpx;
+                                font-weight: 400;
+                            }
+                        }
+                        .price-3-des {
+                            font-size: 28rpx;
+                        }
+                    }
+                    .btn-wrap {
+                        overflow: hidden;
+                        padding: 10rpx 0;
+                        text-align: right;
+                        box-sizing: border-box;
+                        .btn-share {
+                            display: inline-block;
+                            margin-left: 20rpx;
+                            width: 120rpx;
+                            height: 48rpx;
+                            line-height: 48rpx;
+                            border-radius: 10rpx;
+                            font-size: 28rpx;
+                            text-align: center;
+                            position: relative;
+                            .share-btn {
+                                width: 100%;
+                                height: 100%;
+                                position: absolute;
+                                top: 0;
+                                z-index: 1;
+                                opacity: 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .no-more {
+            width: 100%;
+            height: 200rpx;
+            line-height: 200rpx;
+            box-sizing: border-box;
+            text-align: center;
+            color: #999999;
+        }
+    }
+}
+.dia-wrap {
+    width: 560rpx;
+    box-sizing: border-box;
+    border-radius: 10rpx;
+
+    .tit {
+        line-height: 64rpx;
+    }
+    .dia-des {
+        line-height: 100rpx;
+        font-size: 32rpx;
+    }
+    .btn-wrap {
+        margin-top: 20rpx;
+        border-top: 2rpx solid #CCCCCC;
+        box-sizing: border-box;
+        .btn-cancel {
+            line-height: 64rpx;
+            line-height: 80rpx;
+            border-radius: 0 0 0 10rpx;
+        }
+        .btn-sure {
+            line-height: 80rpx;
+            border-radius: 0 0 10rpx 0;
+            position: relative;
+            .share-btn {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                top: 0;
+                z-index: 1;
+                opacity: 0;
+            }
+        }
+    }
+}
+
+</style>

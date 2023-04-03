@@ -1,0 +1,212 @@
+<template>
+  <view class="page">
+    <view class="uni-padding-wrap uni-flex uni-row search bg_common">
+      <!-- #ifdef H5 -->
+      <view
+        class="goBack iconfont icon-left font_color_white"
+        @click="goBack"
+      ></view>
+      <!-- #endif -->
+      <icon class="searchIcon" type="search" size="18" />
+      <input class="uni-input uni-flex-1 searchInput" v-model="queryWord" placeholder="搜索" @confirm="searchQword" />
+      <view class="searchBtn font_color_white" @click="searchQword">搜索</view>
+    </view>
+    <view class="searchHistory" v-show="hotWord != ''">
+      <view class="uni-flex uni-row sHistoryTit">
+        <text class="uni-flex-1">热门搜索</text>
+      </view>
+      <view class="sHistoryCont clearfix">
+        <view class="sHistoryItem" @click="searchKeyWord(st)" v-for="st in searchTags">{{st}}</view>
+      </view>
+    </view>
+    <view class="searchHistory">
+      <view class="uni-flex uni-row sHistoryTit">
+        <text class="uni-flex-1">搜索历史</text>
+        <text class="clearHistory" @click="clearHistory">清空</text>
+      </view>
+      <view class="sHistoryCont clearfix">
+        <view class="sHistoryItem" @click="searchKeyWord(hw)" v-for="hw in historyWord">{{hw}}</view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+let page = '';
+export default {
+  data() {
+    return {
+      page: '',
+      storeId: '',
+      searchTags: [],
+      queryWord: '',
+      hotWord: '',
+      historyWord: [],
+      historyWordKey: '',
+    };
+  },
+  onLoad(options) {
+    page = getCurrentPages();
+    this.queryWord = options.queryWord;
+    this.storeId = options.storeId;
+    let historyWord = this.getStor('_historyWord_');
+    let loginMobile = this.getStor("_loginMobile_");
+    let historyWordKey = '_historyWord_';
+    if(loginMobile != ''){
+      historyWordKey = historyWordKey + loginMobile + '_';
+      historyWord = this.getStor(historyWordKey);
+    }
+    this.historyWordKey = historyWordKey;
+    this.historyWord = historyWord != '' ? JSON.parse(this.decode64(historyWord)) : [];
+    if(this.storeId != ''){
+      this.initHotWord();
+    }
+  },
+  methods: {
+    initHotWord(){
+      // 热门搜索
+      let obj = {
+        storeId: this.storeId
+      };
+      this.ebigRequest("/store/details", obj, false).then((res) => {
+      if(res != null && res.searchTags != null && res.searchTags != ''){
+          this.searchTags = res.searchTags.split(',');
+        }
+      })
+    },
+    searchQword(){
+      if(this.queryWord != undefined && this.queryWord != null && this.queryWord != ''){
+        this.historyWord = this.historyWord.slice(0, 20);
+        if(this.historyWord.indexOf(this.queryWord) != -1){
+          this.historyWord.splice(this.historyWord.indexOf(this.queryWord), 1);
+        }
+        this.historyWord.unshift(this.queryWord);
+        this.setStor(this.historyWordKey, this.encode64(JSON.stringify(this.historyWord)));
+        if(page.length > 1 && page[page.length - 2].route == 'pages/list/list'){
+          // #ifdef H5
+          page[page.length - 2].productList = [];
+          page[page.length - 2].goodsTypeNo = null;
+          page[page.length - 2].queryWord = this.queryWord;
+          page[page.length - 2].initList('refresh');
+          // #endif
+          // #ifndef H5
+          page[page.length - 2].$vm.productList = [];
+          page[page.length - 2].$vm.goodsTypeNo = null;
+          page[page.length - 2].$vm.queryWord = this.queryWord;
+          page[page.length - 2].$vm.initList('refresh');
+          // #endif
+          uni.navigateBack({
+              delta: 1
+          });
+        }else{
+          this.goUrl('list', '', 'queryWord=' + encodeURIComponent(this.queryWord));
+        }
+      }
+    },
+    searchKeyWord(item){
+      if(item != undefined){
+        this.queryWord = item;
+        this.searchQword();
+      }
+    },
+    clearHistory(){
+      this.setStor(this.historyWordKey, '');
+      this.historyWord = [];
+    },
+    goBack() {
+      history.go(-1);
+    },
+  }
+};
+</script>
+
+<style>
+page {
+    width: 100%;
+    height: 100%;
+    background: #FFFFFF;
+}
+.search {
+    position: relative;
+    padding: 20rpx 0 20rpx 30rpx;
+    /* #ifdef H5 */
+    padding: 20rpx 0 20rpx 80rpx;
+    /* #endif */
+}
+
+.goBack {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80rpx;
+  height: 110rpx;
+  text-align: center;
+  line-height: 110rpx;
+}
+.searchIcon {
+    position: absolute;
+    font-size: 36rpx;
+    /* #ifndef MP-WEIXIN */
+    top: 20rpx;
+    left: 30rpx;
+    width: 68rpx;
+    height: 68rpx;
+    text-align: center;
+    line-height: 72rpx;
+    /* #endif */
+    /* #ifdef MP-WEIXIN */
+    top: 35rpx;
+    left: 46rpx;
+    /* #endif */
+    /* #ifdef H5 */
+    left: 87rpx;
+    line-height: 68rpx;
+    /* #endif */
+}
+.searchInput {
+    padding-left: 68rpx;
+    height: 68rpx;
+    line-height: 68rpx;
+    background: #ECECEC;
+    border-radius: 68rpx;
+    box-sizing: border-box;
+}
+.searchBtn {
+    width: 120rpx;
+    height: 68rpx;
+    text-align: center;
+    line-height: 68rpx;
+}
+.searchHistory {
+    margin-top: 16rpx;
+    padding-left: 30rpx;
+}
+.sHistoryTit {
+    line-height: 72rpx;
+}
+.clearHistory {
+    width: 120rpx;
+    text-align: center;
+    color: #888888;
+}
+.sHistoryCont {
+    padding-right: 30rpx;
+}
+.sHistoryCont .sHistoryItem {
+    float: left;
+    margin-right: 24rpx;
+    margin-bottom: 20rpx;
+    padding: 10rpx 28rpx;
+    min-width: 90rpx;
+    height: 60rpx;
+    font-size: 26rpx;
+    text-align: center;
+    line-height: 44rpx;
+    background: #F2F2F2;
+    border-radius: 60rpx;
+    box-sizing: border-box;
+}
+
+
+
+</style>

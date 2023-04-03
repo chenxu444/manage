@@ -1,0 +1,408 @@
+<template>
+    <view class="page" id="page">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="领券中心"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="wrap">
+            <!-- content -- start -->
+            <view class="content-wrap">
+                <view class="coupon-list" v-if="couponList.length > 0">
+                    <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="0" :absolute="0" @refresh="onPulldownReresh">
+                        <view class="coupon-item bg_white" :class="index == 0 ? 'first' : ''" v-for="(coup,index) in couponList">
+                            <view class="coupon-con-wrap uni-flex">
+                                <view class="couponCon-info uni-flex-1">
+                                    <image v-if="coup.couponContentType == 7" class="img" mode="aspectFit" :lazy-load="true" src="../../static/image/com/qiang.png"></image>
+                                    <view class="info-head font_color_666">
+                                        <span class="coupon-type font_color_white bg_common">{{ coupontypeFunc(coup.couponContentType) }}</span>
+                                        {{ coup.couponCfgName }}
+                                    </view>
+                                    <view class="info-time">活动截止日期：{{ coup.endDate }}</view>
+                                    <view class="info-other uni-flex">
+                                        <view class="couponCon-main uni-flex-1" >
+                                            <span class="main-type" v-if="coup.couponContentType == 1 || coup.couponContentType == 7">￥</span>
+                                            <span class="main-con">{{ couponTypeFilter(coup.couponContent, coup.couponContentType) }}</span>
+                                            <span class="main-unit">{{ couponContFilter(coup.couponContentType) }}</span>
+                                        </view>
+                                        <view class="other-more tr" @click="showMoreCoup(index)">
+                                            详细信息
+                                            <span class="iconfont" :class="coup.showMore ? 'icon-top' : 'icon-bottom'"></span>
+                                        </view>
+                                    </view>
+                                </view>
+                                <view class="couponCon-get-wrap" >
+                                    <view class="info-get">
+                                        <view class="iconfont icon-received font_color_common" v-if="coup.hasGot"></view>
+                                        <uni-circle :size="50" :percent="coup.usePercentage" v-else></uni-circle>
+                                    </view>
+                                    <view class="info-btn bg_common font_color_white" v-if="!coup.countDown && ((coup.hasGot && (coup.canAgainGet != 'false' || coup.canAgainGet != false)) || !coup.hasGot) && coup.usePercentage != 100" @click="getCoupon(coup.couponCfgId,index)">{{ coup.txt }}</view>
+                                </view>
+                            </view>
+                            <view class="coupon-des-wrap" v-show="coup.showMore">
+                                <view class="couponDes-rule">规则说明：{{ couponRuleFilter(coup.conditionMemo, coup.reachType) }}</view>
+                                <view class="couponDes-dtl" v-if="coup.couponCfgDesc != undefined && coup.couponCfgDesc != null && coup.couponCfgDesc != ''">详细信息：{{ coup.couponCfgDesc }}</view>
+                            </view>
+                        </view>
+                        <uni-load-more :status="status" :content-text="contentText" />
+                    </uni-pulldown-refresh>
+                </view>
+                <view class="noCoupon-list tc" v-else>
+                    <span class="iconfont icon-nocoupon" style="font-size: 160rpx;"></span>
+                    <view>暂无可领取优惠券~</view>
+                </view>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+            // 优惠券请求参数
+            pageNo: 1,
+            pageSize: 10,
+            storeId: '',
+
+            // 优惠券参数
+            couponList: [],
+            getAgainArr: [], //可再次领取优惠券数组
+
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad(option) {
+        this.storeId = option.storeId ? option.storeId : ''
+    },
+    onShow() {
+        this.getCouponData('refresh');
+    },
+    onReachBottom() {
+        if (this.status != "noMore" && this.status != "loading") {
+            //上滑加载
+            this.getCouponData("add");
+        }
+    },
+    methods: {
+        getCouponData: function(type) { //获取优惠券数据
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+			obj.pageNo = this.pageNo;
+			obj.pageSize = this.pageSize;
+			obj.storeId = this.storeId;
+			obj.consignorId = uni.getStorageSync('_shopConsignorId_') ? uni.getStorageSync('_shopConsignorId_') : this._consignorId_;
+            this.ebigRequest("/coupon/showUsableCouponCfgs", obj).then((data) => {
+                if(type == 'refresh'){
+                    this.couponList = [];
+                }
+                if(data.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                data.map((item, index) => { // 新增属性 控制领取后按钮属性及文字变化
+                    var txt = '立即领取';
+                    var isGot = false;
+                    var countDown = false;
+                    if (item.applyFlag == 1) {
+                        isGot = true;
+                        txt = '再次领取';
+                    }
+                    var startTime = item.startDate.replace(/-/g, '/'); // 兼容IOS处理
+                    if ((new Date()).getTime() - new Date(startTime).getTime() < 0) {
+                        countDown = true;
+                    }
+                    Object.assign(item, {
+                        usePercentage: item.usePercentage * 1,
+                        hasGot: isGot,
+                        txt: txt,
+                        countDown: countDown,
+                        showMore: false
+                    });
+                });
+                this.couponList = [...this.couponList,...data];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.couponList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.couponList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getCouponData("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getCouponData("refresh");
+        },
+        getCoupon: function (couponCfgId, index) { // 领取优惠券
+            var obj = {};
+            obj.couponcfgid = couponCfgId;
+            this.ebigRequest("/coupon/receiveCouponByCfgId", obj, true).then((data) => {
+                // console.log(data)
+                if(data){
+                    if (data.couponMoney == null || data.couponMoney == '') { // 若存在,则判定为随机立减券,并告知用户 随机立减的具体金额
+                        uni.showToast({
+                            title: "领取优惠券成功!",
+                            icon: "none",
+                        });
+                    } else {
+                        uni.showToast({
+                            title: '恭喜您,抢到' + data.couponMoney + '元代金券!',
+                            icon: "none",
+                        });
+                    }
+                    var isAgain = false;
+                    this.getAgainArr.map((item, index) => {
+                        if (couponCfgId == item) {
+                            isAgain = true;
+                            return;
+                        }
+                    })
+                    var txt = '已领取';
+                    var canAgainGet = data.canAgainGet;
+                    if (canAgainGet == 'true' || canAgainGet == true) {   // 可以重复领取
+                        if (!isAgain) {
+                            this.getAgainArr.push(couponCfgId);
+                        }
+                        txt = '再次领取';
+                    }
+                    this.couponList[index].canAgainGet = canAgainGet;
+                    this.couponList[index].hasGot = true;
+                    this.couponList[index].txt = txt;
+                    this.$forceUpdate();
+                }
+            }).catch(err => {
+                
+            })
+        },
+        couponTypeFilter: function (value, couponcontenttype) { //优惠券内容过滤 
+            if (couponcontenttype == 1 || couponcontenttype == 7) {
+                return value;
+            } else if (couponcontenttype == 2) {
+                return Math.round(value * 100) / 10;
+            } else if (couponcontenttype == 3) {
+                return '包邮';
+            } else if (couponcontenttype == 4 || couponcontenttype == 5) {
+                return value;
+            } else if (couponcontenttype == 6) {
+                return '兑换';
+            };
+        },
+        coupontypeFunc: function (value) { // 优惠券类型过滤
+            if (value == 1 || value == 7) {
+                return '代金券';
+            } else if (value == 2) {
+                return '折扣券';
+            } else if (value == 3) {
+                return '包邮券';
+            } else if (value == 4 || value == 5) {
+                return '积分券';
+            } else if (value == 6) {
+                return '兑换券';
+            };
+        },
+        couponContFilter: function (value) { // 优惠券单位过滤
+            if (value == 2) {
+                return '折';
+            } else if (value == 4) {
+                return '倍';
+            } else if (value == 5) {
+                return '积分';
+            };
+        },
+        couponRuleFilter: function (value, res) {   // 优惠券规则过滤
+            if (value) {
+                var rules = value.split(',');
+                if (rules.length > 1) {
+                    if (res == 1) { //res = reachtype 满足条件 1：任意满足   2:所有满足
+                        var html = '该券只需要'
+                        rules.map((item, index) => {
+                            if (index == 0) {
+                                html += item.substring(0, item.length - 2);
+                            } else {
+                                html += '，或' + item.substring(0, item.length - 2);
+                            }
+                        })
+                        html += '满足其中一项条件即可使用！';
+                        return html;
+                    } else {
+                        var html = '该券需要'
+                        rules.map((item, index) => {
+                            if (index == 0) {
+                                html += item.substring(0, item.length - 2);
+                            } else {
+                                html += '，且' + item.substring(0, item.length - 2);
+                            }
+                        })
+                        html += '同时满足方可使用！';
+                        return html;
+                    }
+                } else {
+                    return rules[0];
+                }
+            } else {
+                return '暂无规则内容';
+            }
+        },
+        showMoreCoup: function(index) { //查看优惠券详情
+            this.$set(this.couponList[index],'showMore',!this.couponList[index].showMore);
+        },
+        DateMinus: function (date1, date2) { //字符串日期相减得出天数
+            var sdate = new Date(date1);
+            var now = new Date(date2);
+            var days = now.getTime() - sdate.getTime();
+            var day = parseInt(days / (1000 * 60 * 60 * 24));
+            return day;
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.wrap {
+    width: 100%;
+    position: relative;
+    .content-wrap {
+        width: 100%;
+        box-sizing: border-box;
+        .coupon-list {
+            padding: 0 20rpx;
+            box-sizing: border-box;
+            .coupon-item {
+                margin-top: 20rpx;
+                position: relative;
+                overflow: hidden;
+                .coupon-con-wrap {
+                    padding: 16rpx 20rpx;
+                    box-sizing: border-box;
+                    .couponCon-info {
+                        padding-right: 20rpx;
+                        border-right: 1px dashed #CDCDCD;
+                        box-sizing: border-box;
+                        position: relative;
+                        .img {
+                            width: 64rpx;
+                            height: 64rpx;
+                            position: absolute;
+                            right: 0;
+                            top: 0;
+                        }
+                        .info-head {
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            .coupon-type {
+                                margin-right: 10rpx;
+                                padding: 8rpx 16rpx;
+                                box-sizing: border-box;
+                                font-size: 20rpx;
+                                border-radius: 10rpx;
+                                line-height: 44rpx;
+                            }
+                        }
+                        .info-time {
+                            line-height: 56rpx;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            font-size: 28rpx;
+                            color: #8F8F94;
+                        }
+                        .info-other {
+                            height: 72rpx;
+                            line-height: 72rpx;
+                            .couponCon-main {
+                                font-weight: 700;
+                                color: #F2292E;
+                                .main-type, .main-unit {
+                                    font-size: 28rpx;
+                                }
+                                .main-con {
+                                    font-size: 48rpx;
+                                }
+                            }
+                            .other-more {
+                                font-size: 26rpx;
+                                color: #999999;
+                            }
+                        }
+                    }
+                    .couponCon-get-wrap {
+                        padding: 0 30rpx 0 50rpx;
+                        box-sizing: border-box;
+                        .info-get {
+                            padding-bottom: 20rpx;
+                            box-sizing: border-box;
+                            .icon-received {
+                                width: 100rpx;
+                                height: 100rpx;
+                                font-size: 100rpx;
+                                line-height: 1;
+                                margin: 0 auto;
+                            }
+                        }
+                        .info-btn {
+                            padding: 4rpx 16rpx;
+                            border-radius: 10rpx;
+                            box-sizing: border-box;
+                            font-size: 24rpx;
+                            text-align: center;
+                        }
+                    }
+                }
+                .coupon-des-wrap {
+                    line-height: 40rpx;
+                    padding: 20rpx;
+                    border-top: 1px solid #F2F2F2;
+                    box-sizing: border-box;
+                    font-size: 24rpx;
+                }
+            }
+        }
+        .noCoupon-list {
+            line-height: 1.2;
+            padding-top: 100rpx;
+            box-sizing: border-box;
+        }
+    }
+}
+
+</style>

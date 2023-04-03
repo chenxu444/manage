@@ -1,0 +1,102 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            shareDistributorId: '',
+            nowShareUrl: '/distribution/pages/activeGoods/activeGoods',
+            storeId: '',
+            consignorId:'',
+            activitysaleId:'',
+            manInfo:{},
+        }
+    },
+    onLoad(option) {
+        let _token = this.getStor("_token");
+        this.activitysaleId = option.activitysaleId
+        this.shareDistributorId = option.shareDistributorId
+        if(this.shareDistributorId){
+
+        }
+        this.storeId =option.storeId || this.getStor('_defaultStoreId_');
+        this.consignorId = option.consignorId || this.getStor('_defaultConsignorId_');
+        this.pageUrl = this.baseUrl + 'activeGoods.html?shareDistributorId='+this.shareDistributorId+'&activitysaleId='+this.activitysaleId+'&consignorId='+this.consignorId+'&storeId='+this.storeId+(_token ? '&_token=' + _token : '');
+    },
+    methods:{
+        getManInfo: function () {
+        //获取分销员信息
+        let obj = {
+            consignorId: this.getStor("_defaultConsignorId_"),
+        };
+        this.doRequest("/distributorcenter/distributor", obj, true, "get")
+            .then((data) => {
+            if (data) {
+                this.setStor("isDistributorId", data.distributorId);
+                this.manInfo = data;
+            }
+            })
+            .catch((err) => {});
+        },
+    },
+    message(event){
+        console.log(event.detail.data);
+    },
+    onShareAppMessage(res) { //分享到微信好友
+    let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+    nowShareUrl = this.nowShareUrl+'?storeId='+this.storeId +'&shareDistributorId='+this.shareDistributorId+'&consignorId='+ this.consignorId+'&activitysaleId='+this.activitysaleId;
+    nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+    nowShareTitle = '广州大药房活动专场';
+    nowShareContent = '广州大药房活动专场';
+    return {
+        title: nowShareTitle,
+        content: nowShareContent,
+        imageUrl: nowShareLogo,
+        path: nowShareUrl,
+        success: ((data) => {
+            
+        }),
+        fail: ((err) => {
+            uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+            });
+        }),
+    }
+    },
+    onShareTimeline(res){
+        let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+        nowShareUrl = this.nowShareUrl+'?storeId='+this.storeId +'&shareDistributorId='+this.shareDistributorId+'&consignorId='+ this.consignorId+'&activitysaleId='+this.activitysaleId;
+        nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+        nowShareTitle = '广州大药房活动专场';
+        nowShareContent = '广州大药房活动专场';
+        return {
+            title: nowShareTitle,
+            content: nowShareContent,
+            imageUrl: nowShareLogo,
+            path: nowShareUrl,
+            success: ((data) => {
+                
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+}
+</script>

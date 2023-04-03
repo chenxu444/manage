@@ -1,0 +1,264 @@
+<template>
+  <div class="activeGoods">
+    <div class="slide_wrap " >
+        <swiper class="swiper">
+            <swiper-item>
+                <img src="../../static/image/user/share_bg.jpg" class="slide_img">
+            </swiper-item>
+        </swiper>
+    </div>
+    <div class="first_active bg_white uni-flex">
+        <div class=" good_item">
+            <div class=" img_wrap">
+                <div class=" ties font_color_white">推广价</div>
+                <image class="good_img" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            </div>
+            <div class="good_name">999感冒灵</div>
+            <div class=" font_color_red"><span class="money_icon">￥</span><span class="money">19.00</span></div>
+        </div>
+        <div class=" good_item">
+            <div class=" img_wrap">
+                <div class=" ties font_color_white">推广价</div>
+                <image class="good_img" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            </div>
+            <div class="good_name">999感冒灵</div>
+            <div class=" font_color_red"><span class="money_icon">￥</span><span class="money">19.00</span></div>
+        </div>
+        
+        <div class=" good_item">
+            <div class=" img_wrap">
+                <div class=" ties font_color_white">推广价</div>
+                <image class="good_img" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            </div>
+            <div class="good_name">999感冒灵</div>
+            <div class=" font_color_red"><span class="money_icon">￥</span><span class="money">19.00</span></div>
+        </div>
+        <div class=" good_item">
+            <div class=" img_wrap">
+                <div class=" ties font_color_white">推广价</div>
+                <image class="good_img" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            </div>
+            <div class="good_name">999感冒灵</div>
+            <div class=" font_color_red"><span class="money_icon">￥</span><span class="money">19.00</span></div>
+        </div>
+    </div>
+    <div class="coupon uni-flex font_color_white bg_white">
+        <div class="coupon_item uni-flex">
+            <div class="uni-flex-1 coupon_price">5 <span class="unit">元</span></div>
+            <div class="uni-flex-1 gain_wrap">
+                <div class="coupon_type">无门槛</div>
+                <div class="gainbtn bg_white">领取</div>
+            </div>
+        </div>
+        <div class="coupon_item uni-flex">
+            <div class="uni-flex-1 coupon_price">5 <span class="unit">元</span></div>
+            <div class="uni-flex-1 gain_wrap">
+                <div class="coupon_type">无门槛</div>
+                <div class="gainbtn bg_white">领取</div>
+            </div>
+        </div>
+        <div class="coupon_item uni-flex">
+            <div class="uni-flex-1 coupon_price">5 <span class="unit">元</span></div>
+            <div class="uni-flex-1 gain_wrap">
+                <div class="coupon_type">无门槛</div>
+                <div class="gainbtn bg_white">领取</div>
+            </div>
+        </div>
+    </div>
+    <div class="second_active  uni-flex">
+        <div class="second_item bg_white">
+            <image class="second_good" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            <div class="second_name">同仁六味地黄丸</div>
+            <div class=" font_color_999 second_price">推广价: <span class="money_icon font_color_red">￥</span><span class="money font_color_red" style="font-size:38rpx">199.12</span></div>
+        </div>
+        <div class="second_item bg_white">
+            <image class="second_good" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            <div class="second_name">同仁六味地黄丸</div>
+            <div class=" font_color_999 second_price">推广价: <span class="money_icon font_color_red">￥</span><span class="money font_color_red" style="font-size:38rpx">199.12</span></div>
+        </div>
+        <div class="second_item bg_white">
+            <image class="second_good" mode="aspectFit" :lazy-load="true" src="https://img2.baidu.com/it/u=2629006209,3888685974&fm=26&fmt=auto&gp=0.jpg"></image>
+            <div class="second_name">同仁六味地黄丸</div>
+            <div class=" font_color_999 second_price">推广价: <span class="money_icon font_color_red">￥</span><span class="money font_color_red" style="font-size:38rpx">199.12</span></div>
+        </div>
+    </div>
+    <div class=" footBtn bg_common font_color_white">我要推广</div>
+  </div>
+</template>
+
+<script>
+export default {
+
+}
+</script>
+
+<style>
+page{
+    min-height: 100%;
+}
+.footBtn{
+    height: 80rpx;
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    line-height: 80rpx;
+    font-size: 34rpx;
+}
+.activeGoods{
+    padding: 20rpx 20rpx 110rpx 20rpx;
+    min-height: 100%;
+    background: url('https://gimg2.baidu.com/image_search/src=http%3A%2F%2Ftupian.qqjay.com%2Fu%2F2017%2F0321%2F3_154046_2.jpg&refer=http%3A%2F%2Ftupian.qqjay.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1629432490&t=f43c236cc02bdb16e6485a91ab5c0bb1') no-repeat ;
+}
+.swiper{
+    height: 400rpx !important;
+}
+.slide_img{
+    height: 100%;
+    width: 100%;         
+    border-radius: 10rpx;
+}
+.slide_wrap{
+    width: auto;
+    box-sizing: border-box;
+    border-radius: 10rpx;
+}
+.first_active{
+    margin-top: 20rpx;
+    padding: 0 20rpx 20rpx 20rpx;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    border-radius: 10rpx;
+}
+.good_item{
+    margin-top: 20rpx;
+    width: 25%;
+    text-align: center;
+}
+.img_wrap{
+    position: relative;
+    width: 150rpx;
+    height: 150rpx;
+    margin: 0 auto;
+}
+.ties{
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100rpx;
+    text-align: center;
+    line-height: 40rpx;
+    font-size: 24rpx;
+    height: 40rpx;
+    background-color: #ff3737;
+    border-radius: 20rpx 0 20rpx 0 ;
+}
+.good_img{
+    width: 150rpx;
+    height: 150rpx;
+    border-radius: 20rpx;
+}
+.good_name{
+    text-align: center;
+    font-size: 24rpx;
+}
+.money_icon{
+    font-size: 24rpx;
+}
+.money{
+    font-size: 34rpx;
+    font-weight: 600;
+}
+.coupon{
+    margin-top: 150rpx;
+    border-radius: 20rpx;
+    padding: 0 20rpx 20rpx 20rpx;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.coupon_item{
+    position: relative;
+    width: 32%;
+    margin-top: 20rpx;
+    box-sizing: border-box;
+    height: 100rpx;
+    background-color: #ff4f78;
+    border-radius: 20rpx;
+    align-items: center;
+    text-align: center;
+}
+.coupon_item::after{
+    position: absolute;
+    content: '';
+    display: block;
+    background-color: #fff;
+    width: 20rpx;
+    height: 20rpx;
+    border-radius: 50%;
+    left: 50%;
+    top: 0;
+    transform: translate(0,-50%);
+}
+.coupon_item::before{
+    position: absolute;
+    content: '';
+    display: block;
+    background-color: #fff;
+    width: 20rpx;
+    height: 20rpx;
+    border-radius: 50%;
+    left: 50%;
+    bottom: 0;
+    transform: translate(0,50%);
+}
+.coupon_price{
+    line-height: 100rpx;
+    font-weight: 600;
+    font-size: 36rpx;
+    text-align: center;
+}
+.unit{
+    font-size: 30rpx;
+}
+.gain_wrap{
+    justify-content: center;
+}
+.coupon_type{
+    font-size: 22rpx;
+}
+.gainbtn{
+    width: 80rpx;
+    line-height: 30rpx;
+    height: 30rpx;
+    font-size: 20rpx;
+    border-radius: 20rpx;
+    color: #ff4f78;
+    text-align: center;
+    margin: 0 auto;
+}
+.second_active{
+    margin-top: 150rpx;
+    padding: 0 20rpx;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.second_good{
+    height: 320rpx;
+    width: 100%;
+    border-radius: 10rpx 10rpx 0 0 ;
+}
+.second_item{
+    margin-top: 30rpx;
+    width: 320rpx;
+    border-radius: 10rpx;
+}
+.second_name{
+    padding-left: 20rpx;
+    font-size: 30rpx;
+    font-weight: 600;
+}
+.second_price{
+    padding: 4rpx 20rpx 16rpx;
+}
+</style>

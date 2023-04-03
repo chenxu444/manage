@@ -1,0 +1,60 @@
+<template>
+    <view class="informationDetail">
+        <view class="newsTitle">{{newstitle}}</view>
+        <view class="newsDate">{{inputdate}}</view>
+        <view class="newsCont" v-html="newscontent"></view>
+    </view>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+            newsId: '',
+            newstitle: '',
+			inputdate: '',
+			newscontent: ''
+        }
+    },
+    onLoad(option) {
+        this.newsId = option.newsId;
+        this.initInfo();
+    },
+    methods: {
+        initInfo(){
+            let obj = {};
+            obj.newsId = this.newsId;
+            this.ebigRequest("/news/detail", obj, true, '', '', false, true).then((res) => {
+                console.log(res)
+                this.newstitle = res.newsTitle;
+                this.inputdate = res.releaseDatetime;
+                let newsCont = res.newsContent.replace(/\<img /gi, '<img width="100%" ');
+                newsCont = newsCont.replace(/\<p /gi, '<p style="word-wrap: break-word;" ');
+				this.newscontent = newsCont;
+            });
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+.informationDetail{
+    position: relative;
+    padding: 15px;
+    height: 100%;
+    box-sizing: border-box;
+
+    .newsTitle{
+        padding-bottom: 10rpx;
+        font-size: 40rpx;
+        line-height: 64rpx;
+        text-align: center;
+    }
+    .newsDate{
+        padding-bottom: 20rpx;
+        font-size: 28rpx;
+        text-align: center;
+        color: #999999;
+    }
+}
+</style>

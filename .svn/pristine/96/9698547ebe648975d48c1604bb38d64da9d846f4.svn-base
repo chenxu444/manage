@@ -1,0 +1,134 @@
+<script>
+    export default {
+        onLaunch: function () {
+            console.log('App Launch');
+            // #ifdef APP-PLUS
+            // 锁定屏幕方向
+            plus.screen.lockOrientation('portrait-primary'); //锁定
+            // 检测升级
+            uni.request({
+                url: 'https://uniapp.dcloud.io/update', //检查更新的服务器地址
+                data: {
+                    appid: plus.runtime.appid,
+                    version: plus.runtime.version,
+                    imei: plus.device.imei
+                },
+                success: (res) => {
+                    console.log('success', res);
+                    if (res.statusCode == 200 && res.data.isUpdate) {
+                        let openUrl = plus.os.name === 'iOS' ? res.data.iOS : res.data.Android;
+                        // 提醒用户更新
+                        uni.showModal({
+                            title: '更新提示',
+                            content: res.data.note ? res.data.note : '是否选择更新',
+                            success: (showResult) => {
+                                if (showResult.confirm) {
+                                    plus.runtime.openURL(openUrl);
+                                }
+                            }
+                        })
+                    }
+                }
+            })
+
+            var domModule = weex.requireModule('dom');
+            domModule.addRule('fontFace', {
+                'fontFamily': "uniicons",
+                'src': "url('./static/uni.ttf')"
+            });
+            // #endif
+
+            // #ifdef MP-WEIXIN
+            this.setStor('_appid_', uni.getAccountInfoSync().miniProgram.appId);
+            if (wx.canIUse('getUpdateManager')) {
+                const updateManager = wx.getUpdateManager()
+                //1. 检查小程序是否有新版本发布
+                updateManager.onCheckForUpdate(function (res) {
+                    // 请求完新版本信息的回调
+                    if (res.hasUpdate) {
+                        this.removeStor('_token')
+                        this.removeStor('memberInfo');
+                        this.removeStor("isLogin");
+                        this.removeStor("_mobile_");
+                        this.removeStor("__encryptdata__");
+                        this.removeStor("__ivdata__");
+                        this.removeStor("__memberid__");
+                        this.removeStor('sessionid');
+                        //2. 小程序有新版本，则静默下载新版本，做好更新准备
+                        updateManager.onUpdateReady(function () {
+                            updateManager.applyUpdate();
+                        })
+                        updateManager.onUpdateFailed(function () {
+                            // 新的版本下载失败
+                            wx.showModal({
+                                title: '已经有新版本了哟~',
+                                content: '新版本已经上线啦~，请您删除当前小程序，重新搜索打开哟~',
+                            })
+                        })
+                    }
+                })
+            } else {
+                // 如果希望用户在最新版本的客户端上体验您的小程序，可以这样子提示
+                wx.showModal({
+                    title: '提示',
+                    content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
+                })
+            }
+            // #endif
+
+            // 初始化默认门店信息 start
+            let _consignorId = this.getStor('_defaultConsignorId_');
+            if(!_consignorId){
+                this.ebigRequest("/consignor/appinfo", {'host':this.hostBase}, false).then((data) => {
+                    this.setStor('_defaultStoreId_', data.defStoreId ? data.defStoreId : this._storeId_);
+                    this.setStor('_storeId_', data.defStoreId ? data.defStoreId : this._storeId_);
+                    this.setStor('_defaultConsignorId_', data.consignorId);
+                    this.setStor('_defaultConsignorName_', data.consignorName);
+                    this.setStor('_appLogo_', data.appLogo);
+                    this.setStor('_customTel_', data.customTel);
+                    this.setStor('_shareLogo_', data.appLogo);
+                    this.ebigRequest("/store/details", {'storeId': data.defStoreId ? data.defStoreId : this._storeId_}, false).then((res) => {
+                        this.setStor('_storeName_', res.storeName);
+                        this.setStor('_shareTitle_', this.shareTitle);
+                        this.setStor('_defaultStoreName_', res.storeName);
+                        this.$nextTick(() => {
+                            this.$forceUpdate();
+                        })
+                    })
+                });
+            }
+            // 初始化默认门店信息 end
+        },
+        onShow: function () {
+            console.log('App Show')
+            uni.getSystemInfo({
+                success: (res) => {
+                    console.log(res);
+                    this.setStor('_getSystemInfo_', res);
+                    this.setStor('_model_', res.model);
+                    this.setStor('_windowHeight_', res.windowHeight);
+                    this.setStor('_windowWidth_', res.windowWidth);
+                }
+            });
+        },
+        onHide: function () {
+            console.log('App Hide')
+        },
+        globalData: {
+            test: ''
+        }
+    }
+</script>
+
+<style>
+::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    color: transparent;
+}
+
+
+
+
+
+</style>

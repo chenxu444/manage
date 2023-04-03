@@ -1,0 +1,36 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            distributorId: '',
+            nowShareUrl: '/distribution/pages/activeGoods/activeGoods',
+            storeId: '',
+            activitysaleId:''
+
+        }
+    },
+    onLoad(option) {
+        this.pageUrl = 'http://www.gzppc.com.cn:8081/Manager-test/res/active.html?distributorId='+option.distributorId+'&activitysaleId='+option.activitysaleId;
+        this.distributorId = option.distributorId
+        this.activitysaleId = option.activitysaleId
+        let _model_ = this.getStor('_model_');
+    },
+    message(event){
+        console.log(event.detail.data);
+    }
+}
+</script>

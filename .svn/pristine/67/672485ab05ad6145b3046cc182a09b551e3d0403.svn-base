@@ -1,0 +1,361 @@
+<template>
+    <view :style="isiphoneBt ? 'padding-bottom: 30px;' : ''">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="填写资料"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="topItem">基础信息</view>
+        <view class="userInfo">
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">姓名<span class=" font_color_red">*</span></view>
+                <input type="text" placeholder="请输入您的姓名" v-model="name">
+            </view>
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">手机号<span class=" font_color_red">*</span></view>
+                <input type="number" placeholder="请输入您的电话号码" disabled v-model="phone">
+                <button
+                    class="getMobile"
+                    open-type="getPhoneNumber"
+                    @getphonenumber="getPhoneNumber"
+                    lang="zh_CN"
+                >
+                </button>
+            </view>
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">身份证<span class=" font_color_red">*</span></view>
+                <input type="idcard" placeholder="请输入您的身份证" v-model="idCard">
+            </view>
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">邀请码<span class=" font_color_red">*</span></view>
+                <input type="text" placeholder="请输入您的邀请码" v-model="inviteCode">
+            </view>
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">单位</view>
+                <input type="text" placeholder="请输入您所在单位" v-model="company">
+            </view>
+            <view class="uni-flex info_item">
+                <view class="left font_color_666">部门</view>
+                <input type="text" placeholder="请输入您所在部门" v-model="team">
+            </view>
+        </view>
+        <view class="applyStatus border_common bg_common_light" v-if="status != ''">
+            <p class="font_color_common">审批状态：<span style="font-weight: 700;">{{status == 'COMMIT' ? '已提交' : status == 'APPROVED' ? '审批通过' : status == 'REFUSED' ? '审批失败' : status == 'DISABLED' ? '禁用' : status == 'DESTROYED' ? '注销' : status == 'NONE' ? '查无记录' : '暂无审批状态'}}</span></p>
+            <p class="font_color_common" v-if="message != ''">
+                审批意见：{{message ? message : '暂无审批意见'}}
+            </p>
+        </view>
+        <view class="submit bg_common" @click="submit" v-if="status == 'REFUSED' || status == 'NONE' || status == ''" :style="isiphoneBt ? 'bottom: 60rpx;' : ''">提交</view>
+    </view>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            isiphoneBt: false,
+            name:'',
+            phone:'',
+            idCard:'',
+            inviteCode:'',
+            company:'',
+            team:'',
+            isiphoneBt:false,
+            sessionkey: '',
+            appid: '',
+            status: '',
+            message: '',
+        }
+    },
+    onLoad(options){
+        if(options.status == 'check'){
+            this.checkResult();
+        }else{
+            this.inviteCode = options.code ? options.code : '';
+            uni.login({
+                provider: "weixin",
+                success: (res) => {
+                    this.appid = uni.getStorageSync('_appid_');
+                    this.ebigRequest(
+                        "/wechat/" + this.appid + "/jscode2session",
+                        { jscode: res.code },
+                        false,
+                        "post",
+                        "",
+                        true,
+                        true
+                    ).then((response) => {
+                        if(response.value){
+                            uni.setStorageSync("__openid__", response.value.openid);
+                            this.sessionkey = response.value.session_key;
+                        }
+                    });
+                },
+            });
+        }
+    },
+    mounted(){
+        let _model_ = uni.getStorageSync("_model_");
+        if (_model_.indexOf("iPhone X") != -1 || _model_.indexOf("iPhone XR") != -1 || _model_.indexOf("iPhone XS") != -1 || _model_.indexOf("iPhone XS Max") != -1 || _model_.indexOf("iPhone 11") != -1 || _model_.indexOf("iPhone 11 Pro") != -1 || _model_.indexOf("iPhone 11 Pro Max") != -1) {
+            this.isiphoneBt = true;
+        }
+    },
+    methods:{
+        showToast(title){
+            uni.showToast({
+                title,
+                icon:'none'
+            })
+        },
+        checkResult(){
+            this.doRequest("/distributorcenter/distributor/apply/result", {consignorId: this._consignorId_}, true, 'get').then(res => {
+                this.name = res.form.name;
+                this.phone = res.form.mobile;
+                this.idCard = res.form.idcard;
+                this.inviteCode = res.form.code;
+                this.company = res.form.companyName;
+                this.team = res.form.department;
+                this.status = res.status;
+                this.message = res.message;
+                if(this.status == 'APPROVED'){
+                    uni.setStorageSync(
+                        "isDistributorId",
+                        res.distributorId
+                    );
+                }
+            })
+        },
+        getPhoneNumber(e){ // 授权获取手机号
+            if (
+                this.sessionkey == undefined ||
+                this.sessionkey == null ||
+                this.sessionkey == ""
+            ) {
+                uni.showModal({
+                title: "温馨提示",
+                content: "获取手机号失败，请重试~",
+                showCancel: false,
+                success: (res1) => {
+                    uni.login({
+                    provider: "weixin",
+                    success: (res) => {
+                        this.ebigRequest(
+                            "/wechat/" + this.appid + "/jscode2session",
+                            { jscode: res.code },
+                            false,
+                            "post",
+                            "",
+                            true,
+                            true
+                        ).then((response) => {
+                            uni.setStorageSync("__openid__", response.value.openid);
+                            this.sessionkey = response.value.session_key;
+                        });
+                    },
+                    });
+                },
+                });
+            } else {
+                if (e.detail.errMsg == "getPhoneNumber:ok") {
+                    //允许授权
+                    var params = {
+                        encryptdata: e.detail.encryptedData,
+                        ivdata: e.detail.iv,
+                        sessionkey: this.sessionkey,
+                    };
+
+                    this.ebigRequest(
+                        "/wechat/decrypt",
+                        params,
+                        false,
+                        "post",
+                        "",
+                        false,
+                        true
+                    ).then((data) => {
+                        if (typeof data.value == "string") {
+                            data = JSON.parse(data.value);
+                        }
+                        this.phone = data.phoneNumber;
+                    })
+                }
+            }
+        },
+        IdentityCodeValid(code) { //校验身份证号码
+            // 验证身份证号
+            let tip, pass;
+            let city = {
+                11: '北京',
+                12: '天津',
+                13: '河北',
+                14: '山西',
+                15: '内蒙古',
+                21: '辽宁',
+                22: '吉林',
+                23: '黑龙江 ',
+                31: '上海',
+                32: '江苏',
+                33: '浙江',
+                34: '安徽',
+                35: '福建',
+                36: '江西',
+                37: '山东',
+                41: '河南',
+                42: '湖北 ',
+                43: '湖南',
+                44: '广东',
+                45: '广西',
+                46: '海南',
+                50: '重庆',
+                51: '四川',
+                52: '贵州',
+                53: '云南',
+                54: '西藏 ',
+                61: '陕西',
+                62: '甘肃',
+                63: '青海',
+                64: '宁夏',
+                65: '新疆',
+                71: '台湾',
+                81: '香港',
+                82: '澳门',
+                91: '国外 '
+            };
+            if (!code || !/^\d{6}(18|19|20)?\d{2}(0[1-9]|1[012])(0[1-9]|[12]\d|3[01])\d{3}(\d|X)$/i.test(code)) {
+                tip = '身份证号格式错误';
+                pass = false;
+            } else if (!city[code.substr(0, 2)]) {
+                tip = '地址编码错误';
+                pass = false;
+            } else {
+                //18位身份证需要验证最后一位校验位
+                if (code.length == 18) {
+                    code = code.split('');
+                    //∑(ai×Wi)(mod 11)
+                    //加权因子
+                    let factor = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+                    //校验位
+                    let parity = [1, 0, 'X', 9, 8, 7, 6, 5, 4, 3, 2];
+                    let sum = 0;
+                    let ai = 0;
+                    let wi = 0;
+                    for (let i = 0; i < 17; i++) {
+                        ai = code[i];
+                        wi = factor[i];
+                        sum += ai * wi;
+                    }
+                    let last = parity[sum % 11];
+                    if (parity[sum % 11] != code[17]) {
+                        tip = '校验位错误';
+                        pass = false;
+                    } else {
+                        pass = true;
+                    }
+                }
+            }
+            return pass;
+        },
+        submit(){
+            if(!this.name){
+                this.showToast('请输入您的真实姓名')
+                return
+            }
+            if(!this.isPhone(this.phone)){
+                this.showToast('请输入正确的手机号码')
+                return
+            }
+            if(!this.IdentityCodeValid(this.idCard)){
+                this.showToast('请输入正确的身份证号')
+                return
+            }
+            if(!this.inviteCode){
+                this.showToast('请输入邀请码')
+                return
+            }
+            let params = {
+                name: this.name,
+                mobile: this.phone,
+                consignorId: this._consignorId_,
+                idcard: this.idCard,
+                code: this.inviteCode,
+                companyName: this.company,
+                department: this.team,
+            }
+            this.doRequest("/distributorcenter/distributor/apply", params, true, 'json').then(res => {
+                if(res){
+                    uni.showToast({
+                        title: "申请提交成功,请耐心等候审核!",
+                        icon: "none",
+                    });
+                    this.$nextTick(() => {
+                        this.resetUrl('myCenter', 'mine');
+                    })
+                }
+            })
+        }
+    }
+}
+</script>
+
+<style>
+page{
+    background-color: #fff;
+}
+.topItem{
+    padding: 10rpx;
+    border-bottom: 4rpx solid #f2f2f2;
+    font-size: 36rpx;
+    font-weight: 600;
+}
+.userInfo{
+    padding: 0 20rpx 0;
+}
+.info_item{
+    position: relative;
+    height: 88rpx;
+    line-height: 88rpx;
+    border-bottom: 2rpx solid #f2f2f2;
+    align-items: center;
+    padding: 8rpx 0;
+}
+.info_item input{
+    height: 88rpx;
+    line-height: 88rpx;
+    flex: 1;
+}
+.left{
+    font-size: 30rpx;
+    margin-right: 20rpx;
+    width: 110rpx;
+    text-align: center;
+}
+.getMobile{
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 999;
+}
+uni-button.getMobile:after{
+    border: none;
+}
+button.getMobile::after{
+    border: none;
+}
+.applyStatus{
+    margin: 20rpx;
+    padding: 20rpx;
+    border: 1rpx solid;
+    border-radius: 10rpx;
+}
+.submit{
+    text-align: center;
+    height: 88rpx;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    color: #fff;
+    font-size: 34rpx;
+    line-height: 88rpx;
+}
+</style>

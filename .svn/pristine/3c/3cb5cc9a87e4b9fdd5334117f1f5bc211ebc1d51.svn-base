@@ -1,0 +1,702 @@
+<template>
+    <view class="promotionCenter">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="分销员中心"></uni-nav-hfbar>
+        <!-- #endif -->
+        <!-- 用户顶部信息 -->
+        <view class="user bg_common uni-flex">
+            <img :src="manInfo.headImgUrl" class="user_head" v-if="manInfo.headImgUrl">
+            <img src="../../static/image/user/head.png" class="user_head" v-else>
+            <view class="txtInfo uni-flex-1">
+                <view class="name_wrap clearfix">
+                    <input class="userName font_color_white" :focus="nick" :value="manInfo.memo||manInfo.distributorName" @blur="saveNick" v-show="nick" /> 
+                    <view class="fl userName font_color_white" v-show="!nick">{{manInfo.memo||manInfo.distributorName}}</view>
+                    <!-- <view class="fl font_color_white nick iconfont icon-edit uni-flex-1" @click="eidtName" v-show="!nick"></view> -->
+                </view>
+                <view class="level font_color_white bg_common">{{manInfo.distributorLevelName == null ? '' : manInfo.distributorLevelName}}</view>
+            </view>
+            <view class="iconfont icon-twocodeicon twocode" @click="toPage('promotionShare')"></view>
+            <view class="backtoIndex bg_common" @click="backtoIndex">更多产品 <span class="iconfont icon-right"></span></view>
+        </view>
+        <!-- 收益信息 -->
+        <view class="profit_warp bg_white uni-flex">
+            <view class="uni-flex-1 " @click="toPage('promotionOrderList')">
+                <view class="money">{{ manInfo.waitCommission ? toFixedFunc(manInfo.waitCommission) : '0.00' }}</view>
+                <view class=" font_color_999">预计收益(元)</view>
+            </view>
+            <view class="canTake uni-flex-1" @click="toPage('cashOut','nowMoney='+ toFixedFunc(manInfo.canWithDrawMoney))">
+                <view class="money">{{ manInfo.canWithDrawMoney ? toFixedFunc(manInfo.canWithDrawMoney) : '0.00' }}</view>
+                <view class=" font_color_999">可提现收益(元)</view>
+            </view>
+        </view>
+        <!-- 分销数量、订单数量 -->
+        <view class="nums_wrap ">
+            <view class="uni-flex bg_white first_col">
+                <view class="uni-flex-1" @click="toPage('promotionOrderList')">
+                    <view class="num font_color_common">{{ manInfo.orderNum ? manInfo.orderNum : 0 }}</view>
+                    <view>累计订单</view>
+                </view>
+                <view class="uni-flex-1">
+                    <view class="num font_color_common">{{ manInfo.customNum ? manInfo.customNum : 0 }}</view>
+                    <view>累积用户</view>
+                </view>
+                <view class="uni-flex-1" @click="toPage('guideMan')">
+                    <view class="num font_color_common">{{ manInfo.subDistributorNum ? manInfo.subDistributorNum : 0 }}</view>
+                    <view>累计导购员</view>
+                </view>
+            </view>
+            <view class="uni-flex bg_white second_col">
+                <view class="uni-flex-1" @click="toPage('promotionOrderList','activeNav=1')">
+                    <view class="num font_color_common">{{ manInfo.orderTodayNum ? manInfo.orderTodayNum : 0 }}</view>
+                    <view>今日订单</view>
+                </view>
+                <view class="uni-flex-1">
+                    <view class="num font_color_common">{{ manInfo.customdayNum ? manInfo.customdayNum : 0 }}</view>
+                    <view>今日新增用户</view>
+                </view>
+                <view class="uni-flex-1" @click="toPage('guideMan')">
+                    <view class="num font_color_common">{{ manInfo.subDistributorDaynNum ? manInfo.subDistributorDaynNum : 0 }}</view>
+                    <view>今日新增邀请</view>
+                </view>
+            </view>
+        </view>
+        <!-- 分销功能区域 -->
+        <view class="bg_white uni-flex icon_wrap">
+            <view class="iconItem uni-flex-1" @click="toPage('promotionShare')">
+                <view class="iconfont icon-regist iconSize"></view>
+                <view class="iconItem-des">邀请好友</view>
+            </view>
+            <view class="iconItem uni-flex-1" @click="toPage('guideMan')">
+                <view class="iconfont icon-friend iconSize"></view>
+                <view class="iconItem-des">我的导购员</view>
+            </view>
+            <view class="iconItem uni-flex-1" @click="toPage('list')">
+                <view class="iconfont icon-collectgoods iconSize"></view>
+                <view class="iconItem-des">推广商品</view>
+            </view>
+            <view class="iconItem uni-flex-1" @click="toPage('promotionOrderList')">
+                <view class="iconfont icon-advance iconSize"></view>
+                <view class="iconItem-des">推广订单</view>
+            </view>
+            <!-- <view class="iconItem uni-flex-1" @click="toPage('promotionDetail')">
+                <view class="iconfont icon-invoice iconSize"></view>
+                <view class="iconItem-des">收益明细</view>
+            </view> -->
+        </view>
+        <!-- 推广商品 -->
+        <view class=" font_color_common title">》》推广商品《《</view>
+        <view class="goods_wrap uni-flex" :style="goodsList.length > 0 ? 'padding-bottom: 60px;' : ''" v-if="goodsList.length > 0">
+            <view class="goods_item bg_white" v-for="goods in goodsList" :key="goods.skuSalNo" @click="openDetail(goods)">
+                <view class="goods_img">
+                    <image class="img" lazy-load="true" mode="aspectFit" :src="goods.imagePath ? goods.imagePath : '../../../static/image/default/no_img.jpg'"></image>
+                </view>
+                <view class="goods_txt">
+                    {{ goods.brandName ? goods.brandName : '' }}
+                    {{ goods.goodsName ? goods.goodsName : '' }}
+                    {{ goods.specification ? goods.specification : '' }}
+                </view>
+                <view class="goods_txt">
+                    {{ goods.storeDTO ? goods.storeDTO.storeName : '' }}
+                </view>
+                <view class=" font_color_red sellMoney">￥{{ goods.sellPrice ? toFixedFunc(goods.sellPrice.sellPrice ? goods.sellPrice.sellPrice : 0) : '0.00' }} /<span class="getMoney">赚￥{{ goods.commission ? toFixedFunc(goods.commission) : '0.00' }}</span></view>
+                <view class="bg_common shareBtn uni-flex">
+                    <view class="cancelCollect" style="width: 33.33%; border-right: 1px solid #EEEEEE" @click.stop="cancelCollect(goods, index)"><i class="iconfont icon-star-has font_color_white"></i></view>
+                    <view class="uni-flex-1" @click.stop="shareClick(goods)">分享</view>
+                </view>
+            </view>
+        </view>
+        <view class="noGoods" v-else>
+            <view class="noGoodsTips">快速收藏您想推广的产品吧!</view>
+            <view class="noGoodsBtn bg_common font_color_white" @tap="toPage('list')">去收藏</view>
+        </view>
+        <!-- 生成邀请码窗口 -->
+        <uni-popup ref="popup">
+            <view class="dialog">
+                <view class="dialogTitle">你的邀请码</view>
+                <view class="dialogTxt1">{{inviteCode.code}}</view>
+                <view class="dialogTxt2">(该码于{{inviteCode.invalidDate}}失效)</view>
+                <button class="dialogBtn font_color_common" @click="dialogBtn('copy',inviteCode)">
+                    复制邀请码
+                </button>
+                <button class="dialogBtn3 font_color_common" @click="dialogBtn('know',inviteCode)">
+                    知道了
+                </button>
+            </view>
+        </uni-popup>
+
+        <!-- 分享商品弹窗 -- start -->
+        <uni-popup ref="popupShare" :animation="true">
+            <view class="dia-wrap bg_white">
+                <view class="tit tc">温馨提示</view>
+                <view class="dia-des tc">确定分享该商品？</view>
+                <view class="btn-wrap tc uni-flex">
+                    <view class="btn-cancel uni-flex-1" @click="cancelShare">取消</view>
+                    <view class="btn-sure bg_common font_color_white uni-flex-1">
+                        确定
+                        <button class="share-btn" open-type="share"></button>
+                    </view>
+                </view>
+            </view>
+        </uni-popup>
+        <!-- 分享商品弹窗 -- end -->
+    </view>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+            manInfo: {},
+            inviteCode:{},
+            goodsList:[],
+            pageNo:1,
+            pageSize:10,
+            isAll: false,
+            nick:false,
+            consignorId: '',
+
+            shareGoods: {},
+            shareUrl: '/pages/detail/detail', //分享链接
+        }
+    },
+    onLoad(option) {
+        if(option._Auth__ != undefined && option._Auth__ != null && option._Auth__ != '' && option._Auth__ != 'undefined' && option._Auth__ != 'null'){
+            // #ifdef H5
+            uni.getStorageSync('token',option._Auth__);
+            // #endif
+        }
+        if(option.isDistributor){
+            // #ifdef H5
+            uni.getStorageSync('_isDistributor_', option.isDistributor);
+            // #endif
+        }
+        if(option.storeId){
+            // #ifdef H5
+            uni.getStorageSync('storeId', option.storeId);
+            // #endif
+        }
+    },
+    onShow() {
+        this.goodsList = [];
+        this.pageNo = 1;
+        this.isAll = false;
+        this.getManInfo();
+        this.getGoodsList()
+    },
+    onReachBottom() {
+        if(!this.isAll){
+            this.pageNo++;
+            this.getGoodsList();
+        }
+    },
+    onBackPress(e){
+        console.log("监听返回按钮事件",e);
+        window.location.href=this.baseUrl+'myCenter.html'
+        // 此处一定姚要return为true，否则页面不会返回到指定路径
+        return true;
+    },
+    onShareAppMessage() { //分享到微信好友
+        this.$refs.popupShare.close();
+        return {
+            title: this.shareGoods.goodsName,
+            content: '好药房 开启健康新生活',
+            imageUrl: this.shareGoods.imagePath,
+            path: this.shareUrl,
+            succsee: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            })
+        }
+    },
+    methods: {
+        openDetail(goods){
+            // 跳转商品详情
+            this.goUrl('detail', '', 'skuSalNo=' + goods.skuSalNo + '&storeId=' + goods.storeDTO.storeId + '&consignorId=' + goods.consignorId);
+        },
+        cancelShare: function() { //取消分享
+            this.$refs.popupShare.close();
+        },
+        shareClick: function(goods) { //点击商品分享
+            // #ifdef MP-WEIXIN
+            this.shareGoods = JSON.parse(JSON.stringify(goods));
+            this.shareUrl = this.shareUrl + '?skuSalNo=' + goods.skuSalNo + '&storeId=' + goods.storeDTO.storeId + '&consignorId=' + goods.consignorId + '&distributorId=' + goods.distributorId;
+            this.$refs.popupShare.open();
+            // #endif
+        },
+        getManInfo: function() { //获取分销员信息
+            let obj = {
+                consignorId: this._consignorId_
+            };
+            this.doRequest("/distributorcenter/distributor", obj, true, 'get').then((data) => {
+                console.log(data)
+                if(data.distributorStatus == 2){
+                    uni.showModal({
+                        title:'温馨提示',
+                        content:'分销员权限被禁用，请联系管理员',
+                        showCancel:false,
+                        complete:res=>{
+                            window.location.href='../myCenter.html'
+                        }
+                    })
+                }
+                if(data){
+                    uni.setStorageSync('isDistributorId', data.distributorId)
+                    this.manInfo = data;
+                    // 订单数据存储
+                    let orderModel = {
+                        orderNum:data.orderNum,
+                        waitCommission:data.waitCommission?data.waitCommission:0,
+                        recordedCommission:data.recordedCommission?data.recordedCommission:0
+                    }
+                    uni.setStorageSync('orderModel',orderModel)
+                }
+            }).catch(err => {
+
+            })
+        },
+        // 修改备注
+        eidtName(){
+            this.$nextTick(()=>{
+                this.nick = true
+            })
+        },
+        saveNick(e){
+            let params  =  {
+                memo:e.detail.value,
+            }
+            this.doRequest("/distributorcenter/distributor/consumer/update_nickname", obj, true).then((data) => {
+                this.nick = false
+                if(data){
+                    Object.assign(this.manInfo, {
+                        memo: params.memo
+                    })
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                }else{
+                    uni.showToast({
+                        title:'修改备注失败',
+                        icon:'none'
+                    })
+                }
+            })
+        },
+        backtoIndex(){
+            this.resetUrl('index');
+        },
+        getGoodsList(){ //获取推广商品数据
+            let nowStoreId_ = uni.getStorageSync('_storeId_');
+            let obj = {
+                pageNo:this.pageNo,
+                pageSize:this.pageSize,
+                sortType:'desc',
+                sortFiled:'normal',
+                consignorId: this._consignorId_,
+                // storeId: nowStoreId_,
+                queryWord: '',
+                collectFlag: true,
+            }
+            this.doRequest("/distributorcenter/distribution/products", obj, true, 'get').then((data) => {
+                if(data){
+                    if(data.length < this.pageSize){
+                        this.isAll = true;
+                    }
+                    data.map(item1 => {
+						let isTjFlag = false;
+						let promotionsArr = [];
+						let promotions = item1.promotions;
+						for(let key in promotions){
+							if(key == 3 || key == '3'){
+								isTjFlag = true;
+							}
+							promotionsArr.push({
+								flag: key,
+								des: promotions[key]
+							})
+						}
+						this.$set(item1,'isTjFlag',isTjFlag);
+						this.$set(item1,'promotionsArr',promotionsArr);
+						this.goodsList.push(item1);
+					})
+                }
+            })
+        },
+        // #ifdef H5
+        copyH5(data) {
+            let url = data;
+            let oInput = document.createElement('input');
+            oInput.value = url;
+            document.body.appendChild(oInput);
+            oInput.select(); // 选择对象;
+            document.execCommand("Copy"); // 执行浏览器复制命令
+            // 复制成功提示;
+            uni.showToast({
+                title: '复制成功',
+                icon: 'none',
+                duration: 2000
+            });
+            oInput.remove()
+        },
+        // #endif
+        //打开弹出获取邀请码 
+        becomeCode(){
+            if(this.inviteCode.code != undefined){
+                this.getInvateCode();
+            }else{
+                this.doRequest("/distributorcenter/distributor/invite/" + this.inviteCode.code, {}, true, 'get').then((data) => {
+                    if(data){
+                        let nowDate = new Date().getTime();
+                        let invalidDate = new Date(invalidDate).getTime();
+                        if(nowDate > invalidDate){
+                            this.getInvateCode();
+                        }
+                    }
+                })
+            }
+            this.$nextTick(() => {
+                this.$refs.popup.open();
+            })
+        },
+        // 获取邀请码
+        getInvateCode(){
+            let params = {
+                consignorId: this._consignorId_,
+                refresh: true,
+            }
+            this.doRequest("/distributorcenter/distributor/invite/getcode", params, true, 'get').then((data) => {
+                if(data){
+                    this.inviteCode = data;
+                }
+            })
+        },
+        dialogBtn(type,inviteItem){
+            if(type=='copy'){
+                var num = inviteItem.code + ''
+                // #ifdef MP-WEIXIN
+                uni.setClipboardData({
+                    data: num,
+                    success:res=> {
+                        uni.showToast({
+                            title:'复制成功',
+                            icon:'none'
+                        })
+                    }
+                })
+                // #endif
+                // #ifdef H5
+                this.copyH5(num); //调用copyH5方法;
+                // #endif
+                this.$refs.popup.close()
+            }else{
+                this.$refs.popup.close()
+            }
+        },
+        toFixedFunc: function(value) { //转为两位小数
+            return parseFloat(value).toFixed(2);
+        },
+        toPage: function(url, item) { //跳转分销内页面
+            if(url == 'promotionShare' && (this.manInfo.inviteFlag == 0 || this.manInfo.inviteFlag == '')){
+                uni.showToast({
+                    title:'您暂无邀请权限！',
+                    icon:'none'
+                })
+                return;
+            }
+            this.$nextTick(() => {
+                this.goUrl(url, 'distribution', item);
+            })
+        },
+        cancelCollect(goods, index){
+            var clobj = {};
+			clobj.skusalno = goods.skuSalNo;
+			clobj.storeId = goods.storeDTO.storeId;
+			clobj.collectFlag = false;
+            this.ebigRequest("/product/collect", clobj, true).then((data) => {
+                this.goodsList.splice(index, 1);
+                uni.showToast({
+                    title: "取消收藏成功!",
+                    icon: "none",
+                });
+            })
+        }
+    }
+}
+</script>
+
+<style>
+page {
+    background-color: #F2F2F2;
+}
+/* 邀请码弹出 */
+.dialog {
+    text-align: center;
+    background-color: #FFFFFF;
+    border-radius: 30rpx;
+}
+.dialogTitle {
+    padding: 20rpx 0;
+    font-weight: 700;
+    font-size: 34rpx;
+}
+.dialogTxt1 {
+    padding: 20rpx;
+    font-size: 34rpx;
+}
+.dialogTxt2 {
+    padding: 0 20rpx;
+    font-size: 34rpx;
+}
+.dialogBtn3 {
+    font-weight: 700;
+    padding: 10rpx 0;
+}
+/* 顶部用户 */
+.user {
+    padding: 30rpx 20rpx 40rpx 20rpx;
+    position: relative;
+}
+.backtoIndex {
+    position: absolute;
+    right: 0;
+    width: 180rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    text-align: center;
+    bottom: 30rpx;
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #FFFFFF;
+    border-radius: 10rpx 0 0 10rpx;
+}
+.user_head {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 50%;
+}
+.userName {
+    height: 60rpx;
+    font-weight: 600;
+    font-size: 36rpx;
+    line-height: 60rpx;
+}
+.nick {
+    width: 40rpx;
+    font-size: 32rpx;
+    line-height: 60rpx;
+}
+.txtInfo {
+    margin-left: 20rpx;
+}
+.level {
+    font-weight: 600;
+    width: 180rpx;
+    border-radius: 40rpx;
+    font-size: 24rpx;
+    padding: 0;
+    margin-top: 20rpx;
+}
+.twocode {
+    width: 52rpx;
+    font-size: 50rpx;
+    color: #FFFFFF;
+}
+/* 收益信息 */
+.profit_warp {
+    padding: 10rpx;
+    text-align: center;
+}
+.canTake {
+    border-left: 1px solid #E4E4E4;
+}
+.money {
+    color: rgb(247, 147, 29);
+    font-size: 40rpx;
+    font-weight: 400;
+    font-family: '微软雅黑';
+    margin-bottom: 4rpx;
+}
+/* 订单数量等 */
+.nums_wrap {
+    padding: 20rpx 14rpx 30rpx 14rpx;
+}
+.first_col {
+    padding: 20rpx 20rpx;
+    border-bottom: 1px solid #E4E4E4;
+    text-align: center;
+    border-top-left-radius: 12rpx;
+    border-top-right-radius: 12rpx;
+}
+.second_col {
+    padding: 20rpx 20rpx;
+    border-bottom: 1px solid #E4E4E4;
+    text-align: center;
+    border-bottom-left-radius: 12rpx;
+    border-bottom-right-radius: 12rpx;
+}
+.num {
+    font-weight: 700;
+    font-family: '微软雅黑 Bold', '微软雅黑 Regular', '微软雅黑';
+    margin-bottom: 6rpx;
+}
+/* 分销功能区域 */
+.icon_wrap {
+    padding: 20rpx;
+}
+.iconSize {
+    font-size: 50rpx;
+    color: #999999;
+}
+.iconItem {
+    text-align: center;
+}
+.iconItem-des {
+    font-size: 28rpx;
+}
+/* 推广商品 */
+.title {
+    font-weight: 700;
+    text-align: center;
+    height: 80rpx;
+    line-height: 80rpx;
+    font-family: '微软雅黑 Bold', '微软雅黑 Regular', '微软雅黑';
+}
+.goods_wrap {
+    padding: 0 24rpx;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.noGoods {
+    position: relative;
+    padding-bottom: 40rpx;
+}
+.noGoodsTips {
+    position: relative;
+    font-size: 32rpx;
+    text-align: center;
+    line-height: 80rpx;
+}
+.noGoodsBtn {
+    position: relative;
+    margin: 0 auto;
+    width: 220rpx;
+    height: 80rpx;
+    text-align: center;
+    line-height: 80rpx;
+    border-radius: 10rpx;
+}
+.goods_item {
+    width: 49%;
+    margin-bottom: 20rpx;
+    border-radius: 20rpx;
+}
+.goods_txt {
+    height: 68rpx;
+    margin: 14rpx 60rpx 14rpx 20rpx;
+    font-size: 24rpx;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.storeName {
+    margin: 0 20rpx 14rpx 20rpx;
+}
+.goods_img {
+    width: 100%;
+    height: 350rpx;
+    padding: 10rpx;
+    box-sizing: border-box;
+    border-top-left-radius: 20rpx;
+    border-top-right-radius: 20rpx;
+}
+.goods_img .img {
+    width: 100%;
+    height: 100%;
+}
+.getMoney {
+    padding-bottom: 10rpx;
+    font-size: 24rpx;
+    margin-left: 6rpx;
+}
+.sellMoney {
+    font-weight: 700;
+    padding-left: 20rpx;
+    padding-bottom: 10rpx;
+    font-family: '微软雅黑 Bold', '微软雅黑 Regular', '微软雅黑';
+}
+.shareBtn {
+    text-align: center;
+    border-bottom-left-radius: 20rpx;
+    border-bottom-right-radius: 20rpx;
+    margin-top: 6rpx;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 26rpx;
+    padding: 20rpx 0;
+}
+/* 分享商品弹窗 -- start */
+.dia-wrap {
+    width: 560rpx;
+    /* padding: 20rpx 40rpx; */
+    box-sizing: border-box;
+    border-radius: 10rpx;
+}
+.dia-wrap .tit {
+    line-height: 64rpx;
+}
+.dia-wrap .dia-des {
+    line-height: 100rpx;
+    font-size: 32rpx;
+}
+.dia-wrap .btn-wrap {
+    margin-top: 20rpx;
+    border-top: 2rpx solid #CCCCCC;
+    box-sizing: border-box;
+}  
+.btn-wrap .btn-cancel {
+    line-height: 80rpx;
+    border-radius: 0 0 0 10rpx;
+}
+.btn-wrap .btn-sure {
+    line-height: 80rpx;
+    position: relative;
+    border-radius: 0 0 10rpx 0;
+}
+.btn-sure .share-btn {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    z-index: 1;
+    opacity: 0;
+}
+/* 分享商品弹窗 -- end */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</style>

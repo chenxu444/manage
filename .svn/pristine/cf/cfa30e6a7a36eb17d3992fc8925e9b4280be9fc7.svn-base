@@ -1,0 +1,257 @@
+<template>
+  <div class="customer">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="我的客户"></uni-nav-hfbar>
+        <!-- #endif -->
+      <div class="search_wrap bg_white">
+          <span class="iconfont icon-search search_icon"></span>
+          <input type="text" placeholder="请输入顾客信息等关键字" class="search_ipt" v-model="keyword" @confirm="getMycustomer('search')">
+      </div>
+      <div class="customer_list">
+          <div class="customer_num">成员 ( {{customerList.length}} ) </div>
+          <div class="customer_item bg_white" v-for="(item,index) in customerList" :key="index" @click="toPage('customerInfo','distributorMemberId='+item.distributorMemberId+'&memberId='+item.memberId)">
+              <div class="customer_info uni-flex">
+                  <img :src="item.headimgUrl?item.headimgUrl:'../../../static/image/default/user_noimg.jpg'" class="goods_img">
+                  <div class=" customer_name  ">
+                        <div>{{item.memberNickname||toPhone(item.memberName)}}</div>
+                        <div class="font_color_999 invite_time">邀请时间：{{item.inputdate?dateSub(item.inputdate):'-'}}</div>
+                  </div>
+                  <div class="help_gain uni-flex-1" >
+                      <div style="padding-bottom: 16rpx;">vip</div>
+                      <span class="money_title font_color_999">帮赚积分:</span>
+                      <span class="money font_color_common"> {{toFixed(item.totalSalaryAmount ? item.totalSalaryAmount*1>9999?'9999+':item.totalSalaryAmount : 0)}}</span>
+                  </div>
+              </div>
+              <div class="last_time font_color_999">
+                最近下单时间：{{item.lastServDate?item.lastServDate:'-'}}
+              </div>
+              <!-- <div class="wait_gain" >
+                <div class="money_title font_color_999">待获得积分(元)</div>
+                <div class="money font_color_red"><span class="money_icon">￥</span> {{toFixed(item.totalSalaryAmount ? item.totalSalaryAmount : 0)}}</div>
+              </div> -->
+          </div>
+      </div>
+      <div class="nomore font_color_999" v-show="bottom">没有更多数据了</div>
+  </div>
+</template>
+
+<script>
+export default {
+    onLoad(options){
+        console.log(options);
+        this.customNum = options.customNum
+        this.isDistributorId = this.getStor('isDistributorId')
+        if(options.today){
+            this.today = options.today
+            uni.setNavigationBarTitle({
+                title:'今日新增用户'
+            })
+        }
+        this.getMycustomer()
+    },
+    onReachBottom(){
+        if(this.bottom){
+            return false
+        }else{
+            this.pageNo++
+            this.getMycustomer()
+        }
+    },
+    data(){
+        return{
+            keyword:'',
+            bottom:false,
+            pageNo: 1,
+            pageSize: 10,
+            customNum:'',
+            isDistributorId:'',
+            customerList:[],
+            today:'',
+        }
+    },
+    methods:{
+        // 根据字符串获取内容宽度
+        // #ifdef H5
+        getTextWidth(text, font) {
+            // re-use canvas object for better performance
+            var canvas = this.getTextWidth.canvas || (this.getTextWidth.canvas = document.createElement("canvas"));
+            var context = canvas.getContext("2d"); 
+            context.font = font;
+            var metrics = context.measureText(text);
+            return metrics.width;
+        },
+        // #endif
+        getMycustomer(type){
+            if(type == 'search'){
+                this.pageNo = 1
+                this.bottom = false
+                this.customerList = []
+            }
+            let obj = {};
+            obj.pageNo = this.pageNo;
+            obj.pageSize = this.pageSize;
+            obj.distributorId = this.isDistributorId
+            obj.keyword = this.keyword
+            if(this.today){
+                obj.startTime = this.getDay(0) +' 00:00:00' 
+                obj.endTime = this.getDay(0) +  ' 23:59:59'
+            }
+            this.doRequest("/distributorcenter/distributor/consumer/list", obj, true, 'get').then((data) => {
+                if(data){
+                    this.customerList = [...this.customerList,...data]
+                    if(data.length < this.pageSize){
+                        this.bottom = true
+                    }
+                }
+            })
+        },
+        edit(index){
+            
+        },
+        getDay(day){ 
+            var today = new Date();  
+            var targetday_milliseconds=today.getTime() + 1000*60*60*24*day;          
+            today.setTime(targetday_milliseconds); //注意，这行是关键代码
+            var tYear = today.getFullYear();  
+            var tMonth = today.getMonth();  
+            var tDate = today.getDate();  
+            tMonth = this.doHandleMonth(tMonth + 1);  
+            tDate = this.doHandleMonth(tDate);  
+            return tYear+"-"+tMonth+"-"+tDate;
+        },
+        doHandleMonth(month){  
+            var m = month;  
+            if(month.toString().length == 1){  
+                m = "0" + month;  
+            }  
+            return m;  
+        },
+        dateSub(date){
+            return date.substring(0,10)
+        },
+        toPage(url, item) { //跳转分销内页面
+            this.goUrl(url, 'distribution', item);
+        },
+        toFixed: (data) => {
+            return parseFloat(data).toFixed(2);
+        },
+       // 手机隐藏4位
+        toPhone(value){
+            return value.substring(0,3)+'****'+ value.substring(7,value.length)
+        },
+    }
+}
+</script>
+
+<style lang="scss" scoped>
+.page{
+    
+}
+.nomore{
+    text-align: center;
+    font-size: 28rpx;
+    margin: 50rpx 0;
+}
+.customer{
+    padding-top: 120rpx;
+    padding-left: 20rpx;
+    padding-right: 20rpx;
+}
+.search_wrap{
+    height: 55rpx;
+    padding: 20rpx 45rpx;
+    position: fixed;
+    z-index: 111;
+    top: 0;
+    left: 0;
+    right: 0;
+    .search_ipt{
+        border-radius: 30rpx;
+        background-color: #f2f2f2;
+        height: 55rpx;
+        padding-left: 70rpx;
+    }
+    .search_icon{
+        position: absolute;
+        top: 24rpx;
+        left: 70rpx;
+    }
+}
+.customer_list{
+    border-radius: 10rpx;
+    .customer_item{
+        margin-bottom: 20rpx;
+        padding: 30rpx 30rpx;
+        position: relative;
+        border-radius: 20rpx;
+    }
+    .customer_num{
+        font-size: 28rpx;
+        font-weight: 600;
+        margin-bottom: 20rpx;
+    }
+    .goods_img{
+        width: 110rpx;
+        height: 110rpx;
+        border-radius: 30rpx;
+        margin-right: 20rpx;
+    }
+    .customer_name{
+        font-weight: 700;
+        font-size: 14px;
+        width: 260rpx;
+        position: relative;
+        font-family: 'arial';
+        .user_edit{
+            position: absolute;
+            right: -34rpx;
+            top: -2rpx;
+            z-index: 0;
+        }
+        .invite_time{
+            margin-top: 20rpx;
+            width: 500rpx;
+            font-size: 24rpx;
+        }
+
+    }
+    .help_gain{
+        text-align: right;
+        .money_title{
+            text-align: right;
+            font-size: 26rpx;
+        }
+        .money{
+            font-size: 30rpx;
+            font-weight: 600;
+            text-align: right;
+            .money_icon{
+                font-size: 24rpx;
+            }
+        }
+    }
+    .last_time{
+        margin-top: 40rpx;
+        font-size: 24rpx;
+    }
+    .wait_gain{
+        position: absolute;
+        bottom: 10rpx;
+        right: 30rpx;
+        font-size: 26rpx;
+        text-align: right;
+        .money_title{
+            text-align: right;
+            font-size: 26rpx;
+        }
+        .money{
+            font-size: 30rpx;
+            font-weight: 600;
+            text-align: right;
+            .money_icon{
+                font-size: 24rpx;
+            }
+        }
+    }
+}
+</style>

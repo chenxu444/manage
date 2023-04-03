@@ -1,0 +1,85 @@
+<template>
+  <view class="uni-flex uni-row ebigNav" :style="isiphoneBt ? 'padding-bottom: 30px' : ''">
+    <view class="uni-nav-item" :class="pageActive == 1 ? 'font_color_common' : ''" @click="openNewPage('appointIndex')">
+      <view class="uni-nav-icon iconfont icon-index"></view>
+      <text>首页</text>
+    </view>
+    <view class="uni-nav-item" :class="pageActive == 2 ? 'font_color_common' : ''" @click="openNewPage('index')">
+      <view class="uni-nav-icon iconfont icon-mall"></view>
+      <text>商城</text>
+    </view>
+    <!-- <view class="uni-nav-item" :class="pageActive == 3 ? 'font_color_common' : ''" @click="openNewPage('cart')">
+      <view class="uni-nav-icon iconfont icon-cart"></view>
+      <text>需求清单</text>
+    </view> -->
+    <view class="uni-nav-item" :class="pageActive == 4 ? 'font_color_common' : ''" @click="openNewPage('appointList')">
+      <view class="uni-nav-icon iconfont icon-my"></view>
+      <text>我的</text>
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+  name: "UniNavBar",
+  props: {
+    pageActive: {
+      type: [Number, String],
+      default: '',
+    }
+  },
+  data() {
+    return {
+      isiphoneBt: false,
+    };
+  },
+  mounted() {
+    let _model_ = this.getStor('_model_');
+    if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+      this.isiphoneBt = true;
+      this.$emit('update:isiphoneBt', true);
+    }
+  },
+  created() {},
+  methods: {
+    openNewPage(res) {
+      let pages = getCurrentPages();
+      let curPage = pages[pages.length - 1];
+      if (curPage.route != "pages/" + res + "/" + res) {
+        this.replaceUrl(res, 'appoint');
+      }
+    },
+  }
+};
+</script>
+
+<style>
+.ebigNav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 999;
+    height: 50px;
+    background: #F7F7FA;
+    box-shadow: 0 -1px 7px #CCCCCC;
+}
+.uni-nav-item {
+    padding-top: 5px;
+    width: 33.33%;
+    font-size: 12px;
+    text-align: center;
+    line-height: 20px;
+    color: #777777;
+}
+.uni-nav-item .uni-nav-icon {
+    height: 25px;
+    font-size: 20px;
+    line-height: 25px;
+}
+.uni-nav-item uni-text {
+    display: block;
+}
+
+
+</style>

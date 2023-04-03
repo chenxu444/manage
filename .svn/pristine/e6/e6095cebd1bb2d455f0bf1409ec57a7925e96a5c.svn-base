@@ -1,0 +1,91 @@
+<template>
+    <view style="width: 100%;height: 100%;">
+        <web-view  :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            shareDistributorId: '',
+            nowShareUrl: '/activity/pages/activePage/activePage',
+            storeId: '',
+            activitysaleId:'',
+            consignorId:''
+
+        }
+    },
+    onLoad(option) {
+        let _model_ = this.getStor('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+        this.shareDistributorId = option.shareDistributorId
+        this.activitysaleId = option.activitysaleId
+        this.storeId =option.storeId || this.getStor('_storeId_') || this.getStor('_defaultStoreId_');
+        this.consignorId = option.consignorId || this.getStor('_defaultConsignorId_');
+        let _token = this.getStor("_token");
+        this.pageUrl = this.baseUrl + 'activePage.html'+'?storeId='+this.storeId+'&isiphoneBt='+this.isiphoneBt+'&shareDistributorId='+this.shareDistributorId+(_token ? '&_token=' + _token : '');
+    },
+    message(event){
+        console.log(event.detail.data);
+    },
+    onShareAppMessage(res) { //分享到微信好友
+    let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+    let distributorid = this.getStor('isDistributorId')
+    nowShareUrl = this.nowShareUrl+'?storeId='+this.storeId+'&consignorId='+this.consignorId+'&isiphoneBt='+this.isiphoneBt+'&shareDistributorId='+distributorid;
+    nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+    nowShareTitle = '广州大药房活动专区';
+    nowShareContent = '广州大药房活动专区';
+    return {
+        title: nowShareTitle,
+        content: nowShareContent,
+        imageUrl: nowShareLogo,
+        path: nowShareUrl,
+        success: ((data) => {
+            
+        }),
+        fail: ((err) => {
+            uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+            });
+        }),
+    }
+    },
+    onShareTimeline(res){
+        let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+        let distributorid = this.getStor('isDistributorId')
+        let _token = this.getStor("_token")
+        nowShareUrl = this.nowShareUrl+'?storeId='+this.storeId+'&isiphoneBt='+this.isiphoneBt+'&shareDistributorId='+distributorid+(_token ? '&_token=' + _token : '');
+        nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+        nowShareTitle = '广州大药房活动专区';
+        nowShareContent = '广州大药房活动专区';
+        return {
+            title: nowShareTitle,
+            content: nowShareContent,
+            imageUrl: nowShareLogo,
+            path: nowShareUrl,
+            success: ((data) => {
+              
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+}
+</script>

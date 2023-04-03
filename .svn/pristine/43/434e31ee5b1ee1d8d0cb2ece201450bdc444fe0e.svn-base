@@ -1,0 +1,106 @@
+<template>
+    <view id="page" style="width: 100%;">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="预约信息"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="wrap">
+            <!-- content -- start -->
+            <view class="content-wrap">
+                <scroll-view scroll-y="true" show-scrollbar="false" style="height: 100%;">
+                    <view class="appoint-status uni-flex">
+                        <view class="iconfont icon-selected"></view>
+                        <view class="uni-flex-1">已在排队中</view>
+                    </view>
+                    <view class="appoint-tips">
+                        <view class="tip"><span class="tip-b">最终预约结果稍后公布，</span>请在：</view>
+                        <view class="tip"><span class="tip-b">"个人中心——我的预约"</span>中查看</view>
+                    </view>
+                    <view class="btn-wrap">
+                        <view class="btn-item btn-return bg_common tc font_color_white" @click="replaceUrl('appointIndex', 'appoint')">返回首页</view>
+                        <view class="btn-item btn-look bg_white tc font_color_common border_common" @click="replaceUrl('appointList', 'appoint')">查看我的预约</view>
+                    </view>
+                </scroll-view>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    components:{},
+    data() {
+        return {
+            
+        }
+    },
+    onLoad(option) {
+        
+    },
+    onShow() {
+        
+    },
+    methods: {
+        
+    }
+}
+</script>
+
+<style lang="scss">
+page {
+    width: 100%;
+    height: 100%;
+    background-color: #FFFFFF;
+}
+.wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    .content-wrap {
+        width: 100%;
+        height: 100%;
+        padding: 60rpx 40rpx;
+        box-sizing: border-box;
+        .appoint-status {
+            line-height: 120rpx;
+            font-size: 48rpx;
+            font-weight: 700;
+            padding: 0 4rpx;
+            box-sizing: border-box;
+            .icon-selected {
+                margin-right: 20rpx;
+                font-size: 80rpx;
+                vertical-align: middle;
+                color: #09BB07;
+            }
+        }
+        .appoint-tips {
+            padding: 40rpx 0;
+            box-sizing: border-box;
+            font-size: 36rpx;
+            .tip {
+                .tip-b {
+                    font-weight: 700;
+                }
+            }
+        }
+        .btn-wrap {
+            padding: 40rpx 0;
+            box-sizing: border-box;
+            .btn-item {
+                width: 90%;
+                height: 80rpx;
+                line-height: 80rpx;
+                margin: 0 auto;
+                border-radius: 6rpx;
+                font-size: 28rpx;
+                &.btn-look {
+                    margin-top: 20rpx;
+                    border: 1px solid;
+                }
+            }
+        }
+    }
+}
+
+</style>

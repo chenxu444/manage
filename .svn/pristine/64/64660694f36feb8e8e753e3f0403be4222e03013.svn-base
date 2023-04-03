@@ -1,0 +1,708 @@
+<template>
+  <view class="page">
+    <!-- 头部状态导航 -->
+    <view class="allOrder bg_common font_color_white" @click="toggleNav(0)"
+      >全部订单<span class="iconfont icon-right"></span
+    ></view>
+    <view class="uni-flex bg_white nav">
+      <view
+        class="icon_item uni-flex uni-flex-1"
+        :class="orderStatus == index + 1 ? 'item_active' : ''"
+        v-for="(item, index) in orderNav"
+        :key="index"
+        @click="toggleNav(index + 1)"
+      >
+        <i class="iconfont icons" :class="item.icon"></i>
+        <text>{{ item.name }}</text>
+      </view>
+    </view>
+    <!-- 商品区域 -->
+    <view class="orderList">
+      <uni-pulldown-refresh
+        ref="uniPulldownRefresh"
+        id="pullContent"
+        :top="215"
+        :absolute="215"
+        @refresh="onPulldownReresh"
+      >
+        <view>
+          <view
+            class="goods_item bg_white"
+            v-for="(item, index) in content"
+            :key="index"
+          >
+            <view class="store border_bottom">
+              <view class="store_name">{{ item.storeName }}</view>
+              <view>单号：{{ item.orderNo }}</view>
+            </view>
+            <view
+              class="goods_info uni-flex"
+              v-for="(goodsItem, index) in item.orderDtls"
+              :key="index"
+              @click="goUrl('orderDetail', 'order', 'orderNo=' + item.orderNo)"
+            >
+              <img
+                :src="goodsItem.defaultPic"
+                class="goods_img"
+                alt="暂无图片"
+              />
+              <view class="uni-flex-1">
+                <span v-if="goodsItem.itemType != '1'" style="display: none">
+                  <i class="iconfont icon-gift"></i>
+                  <span v-if="goodsItem.itemType == '0'">[赠品]</span>
+                  <span v-else-if="goodsItem.itemType == '3'">[换购]</span>
+                  <span v-else>[组合包]</span>
+                </span>
+                {{
+                  (goodsItem.brandName ? goodsItem.brandName : "") +
+                  goodsItem.goodsName
+                }}
+              </view>
+              <view>
+                <view class="price">
+                  <span v-if="goodsItem.itemType == '0'">￥0.00</span>
+                  <span v-else-if="goodsItem.itemType == '3'">
+                    <span v-if="goodsItem.addmoney">
+                      {{
+                        orderDtl.needpoints +
+                        "积分 + " +
+                        orderDtl.addmoney +
+                        "元"
+                      }}
+                    </span>
+                    <span v-else>{{ orderDtl.needpoints + "积分" }}</span>
+                  </span>
+                  <span v-else
+                    >￥{{
+                      parseFloat(
+                        goodsItem.sellPrice.promoPrice
+                          ? goodsItem.sellPrice.promoPrice
+                          : goodsItem.sellPrice.sellPrice
+                          ? goodsItem.sellPrice.sellPrice
+                          : "0"
+                      ) | toFixed
+                    }}</span
+                  >
+                </view>
+                <view class="count font_color_666">
+                  共{{ parseInt(goodsItem.quantity) }}件
+                </view>
+              </view>
+              <view class="send_logo">
+                <view class="out">
+                  <view class="inner"></view>
+                  <view class="send_method">
+                    {{
+                      item.deliveryType == 1
+                        ? "同城快送"
+                        : item.deliveryType == 2
+                        ? "到店自提"
+                        : "快递配送"
+                    }}
+                  </view>
+                </view>
+              </view>
+            </view>
+            <view class="pay">
+              <span class="status"
+                >{{
+                  item.orderStatus
+                    | showOrderStatus(
+                      getAllRefundFlag(item.orderPackages),
+                      getAfterSaleFlag(item.orderDtls),
+                      item.payStatus,
+                      item.isComment,
+                      item.deliveryType
+                    )
+                }}&nbsp;</span
+              >
+              <span class="goods_count"
+                >共{{ parseInt(item.totalQuantity) }}件商品&nbsp;</span
+              >
+              <span
+                >合计：￥{{
+                  parseFloat(item.totalPayAmount) | toFixed
+                }}（含配送费￥{{
+                  parseFloat(item.deliveryFeeAmount) | toFixed
+                }}）</span
+              >
+            </view>
+            <view
+              class="btns_wrap uni-flex"
+              v-if="
+                !(
+                  item.cancelFlag != null &&
+                  item.cancelFlag != '' &&
+                  item.cancelFlag == '1'
+                )
+              "
+            >
+              <button
+                class="btns"
+                v-if="
+                  item.orderStatus == '1' &&
+                  item.payStatus != 8 &&
+                  ((item.orderType == 3 &&
+                    ((item.preSalStatus == 2 && item.payStatus == 1) ||
+                      (item.preSalStatus == 3 &&
+                        (item.payStatus == 3 || item.payStatus == 1)))) ||
+                    orderItem.orderType != 3)
+                "
+                @click="footerBtn(item, 'pay')"
+              >
+                付款
+              </button>
+              <button
+                class="btns font_color_666 cancel"
+                v-if="item.orderStatus == '1' || item.orderStatus == '2'"
+                @click="footerBtn(item, 'cancel')"
+              >
+                取消订单
+              </button>
+              <button
+                class="btns"
+                v-if="item.orderStatus == '3'"
+                @click="footerBtn(item, 'sure')"
+              >
+                确认收货
+              </button>
+              <button class="btns" @click="addAgain(item)">再次购买</button>
+              <!-- <button
+            class="btns"
+            v-if="
+              item.orderStatus == '4' &&
+              getAllRefundFlag(item.orderPackages) &&
+              !getOverMonthFlag(item.createTime) &&
+              !getRefundFlag(item.orderDtls)
+            "
+            @click="footerBtn(item, 'returnGoods')"
+          >
+            退货
+          </button> -->
+            </view>
+          </view>
+        </view>
+        <uni-load-more :status="status" :content-text="contentText" />
+      </uni-pulldown-refresh>
+    </view>
+    <!-- 取消订单弹窗 -->
+    <uni-popup ref="popup">
+      <view class="dialog">
+        <view class="dialogTitle">取消订单</view>
+        <view class="dialogTxt">亲~确定要取消订单吗？</view>
+        <input type="text" class="cancelIpt" v-model="userReason" />
+        <view class="uni-flex">
+          <button class="uni-flex-1 dialogBtn" @click="dialogButton(true)">
+            确定
+          </button>
+          <button class="uni-flex-1 dialogBtn" @click="dialogButton(false)">
+            取消
+          </button>
+        </view>
+      </view>
+    </uni-popup>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      // 头部导航
+      orderNav: [
+        { name: "待支付", icon: "icon-waitpay" },
+        { name: "待发货", icon: "icon-waitsend" },
+        { name: "待取货", icon: "icon-waittake" },
+        { name: "已完成", icon: "icon-waitevaluate" },
+        { name: "已取消", icon: "icon-canceled" },
+      ],
+      orderStatus: 0,
+      pageNo: 1,
+      pageSize: 8,
+      content: [],
+      // 取消订单参数
+      userReason: "",
+      orderNo: "",
+
+      reload: false,
+      statusColor: "#ccc",
+      status: "more",
+      contentText: {
+        contentdown: "上拉加载更多",
+        contentrefresh: "正在加载...",
+        contentnomore: "—— 我也是有底线的 ——",
+      },
+    };
+  },
+  onLoad(options) {
+    if (options.status) {
+      this.orderStatus = options.status;
+    }
+    this.getOrder("add");
+  },
+  onReachBottom() {
+    if (this.status != "noMore" && this.status != "loading") {
+      //上滑加载
+      this.getOrder("add");
+    }
+  },
+  methods: {
+    getOrder(type) {
+      if (this.reload) {
+        return;
+      }
+      this.status = "loading";
+      if (type === "refresh") {
+        this.pageNo = 1;
+        this.reload = true;
+      }
+      var params = {
+        pageNo: this.pageNo,
+        pageSize: this.pageSize,
+      };
+      if (this.orderStatus != 0) {
+        params.orderStatus = this.orderStatus;
+      }
+      this.ebigRequest("/order/list", params, true)
+        .then((res) => {
+          if (type == "refresh") {
+            this.content = [];
+          }
+          if (res.length < this.pageSize) {
+            this.status = "noMore";
+          } else {
+            this.status = "more";
+          }
+          this.content = [...this.content, ...res];
+          if (type === "refresh") {
+            this.reload = false;
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          this.pageNo = this.pageNo + 1;
+        })
+        .catch((err) => {
+          if (type === "refresh") {
+            this.reload = false;
+            this.content = [];
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          if (this.pageNo == 1) {
+            this.status = "noMore";
+            this.content = [];
+          } else {
+            this.status = "more";
+            this.pageNo = this.pageNo - 1;
+          }
+        });
+    },
+    // 等待加载
+    loadMore() {
+      this.status = "more";
+      this.getOrder("add");
+    },
+    //下拉刷新
+    onPulldownReresh() {
+      this.getOrder("refresh");
+    },
+    toggleNav(status) {
+      this.content = [];
+      this.pageNo = 1;
+      this.bottom = false;
+      this.orderStatus = status;
+      this.getOrder("refresh");
+    },
+    //检查订单中正常商品是否全部已退货
+    getAllRefundFlag(orderPackages) {
+      var flag = false;
+      orderPackages.map((item) => {
+        for (var i = 0; i < item.orderPackageDtls.length; i++) {
+          var item1 = item.orderPackageDtls[i];
+          if (item1.refundQty * 1 < item1.goodsQty * 1) {
+            flag = true;
+            return;
+          }
+        }
+      });
+      return flag;
+    },
+    getOverMonthFlag(creatTime) {
+      //订单创建至今是否超过一个月，超过一个月的不再处理售后
+      var flag = false;
+      var datetime = new Date(creatTime);
+      datetime.setDate(datetime.getDate() + 30);
+      var now = new Date();
+      var detime = now - datetime;
+      if (detime > 0) {
+        flag = true;
+      }
+      return flag;
+    },
+    getRefundFlag(orderDtlList) {
+      var flag = false;
+      for (var i = 0; i < orderDtlList.length; i++) {
+        var orderdtl = orderDtlList[i];
+        if (orderdtl.refundQty != null) {
+          if (orderdtl.refundQty * 1 < orderdtl.quantity * 1) {
+            flag = true;
+          }
+        }
+      }
+      return flag;
+    },
+    //检查订单是否售后成功过
+    getAfterSaleFlag(orderDtlList) {
+      var flag = false;
+      for (var i = 0; i < orderDtlList.length; i++) {
+        var orderdtl = orderDtlList[i];
+        if (orderdtl.refundqty * 1 > 0) {
+          flag = true;
+        }
+      }
+      return flag;
+    },
+    getAllRefundFlag(orderPackages) {
+      //检查订单中正常商品是否全部已退货
+      var flag = false;
+      orderPackages.map((item) => {
+        for (var i = 0; i < item.orderPackageDtls.length; i++) {
+          var item1 = item.orderPackageDtls[i];
+          if (item1.refundQty * 1 < item1.goodsQty * 1) {
+            flag = true;
+            return;
+          }
+        }
+      });
+      return flag;
+    },
+    // 模态框按钮事件
+    dialogButton(boolean) {
+      if (boolean) {
+        let params = {
+          orderNo: this.orderNo,
+          reason: this.userReason,
+        };
+        this.ebigRequest("/aftersale/cancelOrder", params, true).then((res) => {
+          this.$refs.popup.close();
+          uni.showModal({
+            title: "提示",
+            showCancel: false,
+            content: "取消成功，若已支付，退款将在一到两个工作日内到账",
+          });
+          this.$nextTick(() => {
+            this.getOrder("refresh");
+          });
+        });
+      } else {
+        this.$refs.popup.close();
+      }
+    },
+    orderConfirm(item) {
+      uni.showModal({
+        title: "温馨提示",
+        content: "是否确认收货?",
+        success: (res1) => {
+          if (res1.confirm) {
+            let obj = {};
+            obj.orderNo = item.orderNo;
+            this.ebigRequest("/order/updateReceived", obj, true).then((res) => {
+              uni.showToast({
+                title: "订单确认收货成功，感谢您的支持~",
+                icon: "none",
+                duration: 2000,
+              });
+              this.$nextTick(() => {
+                this.getOrder("refresh");
+              });
+            });
+          } else if (res1.cancel) {
+            console.log("用户点击取消");
+          }
+        },
+      });
+    },
+    addAgain(row) {
+      var condition = {};
+      condition.orderNo = row.orderNo;
+      this.ebigRequest("/order/batchAddCartByOrder", condition, true).then(
+        (res) => {
+          uni.showModal({
+            title: "温馨提示",
+            content: "商品已成功添加进购物车",
+            showCancel: false,
+            success: (res1) => {
+              if (res1.confirm) {
+                this.goUrl("cart");
+              }
+            },
+          });
+        }
+      );
+    },
+    // 底部按钮事件
+    footerBtn(item, type) {
+      if (type == "pay") {
+        this.goUrl("orderPay", "order", "orderNos=" + item.orderNo);
+      }
+      if (type == "cancel") {
+        this.$refs.popup.open();
+        this.orderNo = item.orderNo;
+      }
+      if (type == "sure") {
+        this.orderConfirm(item);
+      }
+      if (type == "returnGoods") {
+        this.goUrl("returnGoods", "order", "orderNo=" + item.orderNo);
+      }
+    },
+  },
+  filters: {
+    toFixed: (data) => {
+      return data.toFixed(2);
+    },
+    // 支付状态过滤器
+    showOrderStatus: function (
+      orderStatus,
+      isAllRefund,
+      isAfterSale,
+      payStatus,
+      isComment,
+      deliveryType
+    ) {
+      var showStatus = "无展示状态";
+      if (orderStatus == "1") {
+        //1:待支付  (支付 取消订单 取消商品 查看订单)
+        showStatus = "待支付";
+        if (payStatus == 7) {
+          showStatus = "支付失败";
+        } else if (payStatus == 8) {
+          showStatus = "支付结算中";
+        }
+      } else if (orderStatus == "2") {
+        //2:等待发货(取消订单 取消商品  查看订单)
+        showStatus = "待发货";
+        if (deliveryType == "2") {
+          showStatus = "待取货";
+        }
+      } else if (orderStatus == "3") {
+        //3:已发货(退货申请  查看订单)
+        showStatus = "待收货";
+      } else if (orderStatus == "4") {
+        //4:待评价，包括售后订单(售后订单    查看订单)
+        showStatus = "已完成";
+        if (isComment == "1") {
+          showStatus = "已完成";
+        }
+        if (isAllRefund && isAfterSale) {
+          showStatus = "已退款";
+        }
+      } else if (orderStatus == "5") {
+        //5:已取消(查看订单)
+        showStatus = "已取消";
+        if (payStatus == "4") {
+          showStatus = "待退款";
+        } else if (payStatus == "5") {
+          showStatus = "已退款";
+        }
+      } else if (orderStatus == "6") {
+        showStatus = "待取消";
+      }
+      return showStatus;
+    },
+  },
+};
+</script>
+
+<style>
+page,
+.page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #efeff4;
+  box-sizing: border-box;
+}
+/* 弹出框 */
+.dialog {
+  width: 560rpx;
+  background-color: #ffffff;
+  border-radius: 20rpx;
+}
+.cancelIpt {
+  margin: 30rpx auto;
+    padding: 10rpx;
+    width: 80%;
+    border: 1rpx solid #CCCCCC;
+}
+.dialogBtn {
+  border-radius: unset !important;
+  color: #007aff;
+}
+.dialogTitle {
+  font-weight: 700;
+  padding: 20rpx 0;
+  font-size: 36rpx;
+  text-align: center;
+}
+.dialogTxt {
+  text-align: center;
+}
+/* 导航 */
+.allOrder {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 111;
+  padding-right: 30rpx;
+  height: 80rpx;
+  text-align: right;
+  line-height: 80rpx;
+}
+.nav {
+  position: fixed;
+  top: 80rpx;
+  left: 0;
+  right: 0;
+  z-index: 111;
+}
+.icons {
+  font-size: 60rpx;
+  color: #1296db;
+}
+.icon_item {
+  position: relative;
+  text-align: center;
+  flex-direction: column;
+  padding: 0 20rpx 10rpx;
+  border-bottom: 4rpx solid #FFFFFF;
+}
+.item_active {
+  background-color: #f9f9f9;
+  border-bottom: 4rpx solid #3579c2;
+}
+.number {
+  position: absolute;
+  width: 30rpx;
+  height: 30rpx;
+  border: 1px solid #0000ff;
+  border-radius: 16rpx;
+  color: #0000ff;
+  font-size: 28rpx;
+  text-align: center;
+  line-height: 30rpx;
+  top: 4rpx;
+  left: 50%;
+  transform: translateX(50%);
+}
+.all_order {
+  text-align: right;
+  background-color: #3579c2;
+  padding: 10rpx 0;
+  padding-right: 30rpx;
+}
+/* 商品列表 */
+.border_bottom {
+  border-bottom: 1px solid #EEEEEE;
+}
+.goods_item {
+  margin: 10rpx;
+  border-radius: 20rpx;
+}
+.store {
+  padding: 20rpx 25px 10rpx 20rpx;
+}
+.store_name {
+  margin-right: 10rpx;
+}
+
+.goods_info {
+  padding: 20rpx;
+  position: relative;
+}
+.goods_img {
+  height: 156rpx;
+  width: 156rpx;
+  border: 1px solid #cccccc;
+  margin-right: 10rpx;
+  align-self: center;
+}
+.count {
+  text-align: center;
+  font-size: 24rpx;
+}
+.price {
+  font-weight: 700;
+}
+.out {
+  position: relative;
+  width: 80rpx;
+  height: 80rpx;
+  border: 4rpx solid #c3c3ff;
+  border-radius: 40rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.inner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx dashed #c3c3ff;
+  border-radius: 30rpx;
+  line-height: 100rpx;
+}
+.send_method {
+  position: absolute;
+  width: 100rpx;
+  font-size: 20rpx;
+  line-height: 30rpx;
+  color: #8080ff;
+  text-align: center;
+  border: 4rpx solid #8080ff;
+  transform: rotate(-20deg);
+}
+.send_logo {
+  position: absolute;
+  right: 140rpx;
+  bottom: 10rpx;
+}
+.pay {
+  text-align: right;
+  font-size: 26rpx;
+  padding: 20rpx 0 20rpx 20rpx;
+}
+.status {
+  color: #3579c2;
+  margin-right: 30rpx;
+  font-size: 28rpx;
+}
+.goods_count {
+  margin-right: 10rpx;
+}
+.btns {
+  padding: 0 20rpx;
+  border: 1px solid #3579c2;
+  border-radius: 40rpx;
+  color: #3579c2;
+  width: 150rpx;
+  line-height: 60rpx;
+  margin-right: 20rpx;
+  font-size: 26rpx;
+}
+
+.btns_wrap {
+  padding-bottom: 20rpx;
+  justify-content: flex-end;
+}
+.cancel {
+  border: 1px solid #666666;
+}
+.noMore {
+  text-align: center;
+  font-size: 30rpx;
+  color: #777777;
+  font-weight: 600;
+  padding: 20rpx;
+}
+</style>

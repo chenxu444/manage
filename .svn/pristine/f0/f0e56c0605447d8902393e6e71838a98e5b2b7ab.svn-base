@@ -1,0 +1,371 @@
+<template>
+  <div class="sign">
+    <div class="signtxt">
+      <div class="dosign">{{ signInfo.activityName ? signInfo.activityName : '暂无签到活动' }}</div>
+      <!-- <div>已连续签到{{ historyList.length > 0 ? historyList[0].signinNum : '0' }}天</div> -->
+      <div>已连续签到{{ historyList.length > 0 ? historyList.length : '0' }}天</div>
+    </div>
+    <view>
+      <uni-calendar
+        :insert="true"
+        @change="change"
+        :selected="selected"
+      />
+      <!-- :start-date="'2001-11-1'"
+        :end-date="'2099-11-1'" -->
+      <view class="btn_wrap">
+        <button class="sign_btn" @click="clickSign(signInfo.signinId)">{{sign == 'no' ? '暂无签到活动' : sign == true ? '已签到' : '立即签到'}}</button>
+      </view>
+    </view>
+    <div class="welfare bg_white">
+        <div class="ties">连续签到可领取以下奖励：</div>
+        <div class="quan uni-flex" v-if="cycleList.length > 0">
+            <div class="quan_item" v-for="(item,index) in cycleList" :key="index">
+                <div class="how_day">连续签到{{ item.cycleNum }}天</div>
+                <div class="how_day" v-html="signActCon(item)"></div>
+            </div>
+        </div>
+        
+        <div class="no_more" v-else>没有更多奖励~</div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+    data() {
+        return {
+        selected: [], //历史已签到显示
+        signInfo: {}, //签到信息
+        cycleList: [], //连续签到数据
+        historyList: [], //签到历史数据
+        sign: false, //今天是否已签到
+        singleGifeCon:'',
+        today:'', // 当前日期
+        chooseDay:''    // 日历选择的日期
+        };
+    },
+    methods: {
+        //   日历事件
+        change(e) {
+            this.chooseDay =e.fulldate
+        },
+        showToast(title){
+            uni.showToast({
+                title:title,
+                icon:'none',
+                duration: 1500,
+            })
+        },
+        //  获取签到活动信息
+        getSignInfo(type){
+            var date = new Date()
+            var nowMonth = date.getFullYear() + '-' + ((date.getMonth() + 1) > 9 ? (date.getMonth() + 1) : '0' + (date.getMonth() + 1));
+            var nowDay = date.getDate()
+            this.today = nowMonth + '-' + (parseInt(nowDay)>9 ? nowDay : '0'+nowDay)
+            this.chooseDay = this.today
+            let params = {
+                consignorId: this._consignorId_,
+                month: nowMonth
+            }
+            this.ebigRequest("/promotion/signin/info", params, type == false ? false : true).then((res) => {
+                if(res){
+                    this.signInfo = res
+                    this.cycleList = res.cycleContents && res.cycleContents != null ? res.cycleContents : [];
+                    this.historyList = res.records && res.records != null ? res.records : [];
+                    this.getSingleGife(res.dailyContents && res.dailyContents != null ? res.dailyContents : [])
+                    this.historyList.forEach(item =>{
+                        if(item.signinDate){
+                            // 历史签到
+                            var hasSign = {
+                                date:item.signinDate.substr(0,10),
+                                info: '已签到',
+                            }
+                            this.selected.push(hasSign)
+                            // 今天是否签到
+                            if(item.signinDate.substr(0,10) == this.today){
+                                this.sign = true
+                            }
+                        }
+                    })
+                }else{
+                    this.sign = 'no'
+                }
+            })
+        },
+        // 点击签到
+        clickSign(signinId){
+            if(this.sign == 'no'){
+                this.showToast('暂无签到活动')
+                return
+            }
+            if(this.sign){
+                this.showToast('今日已签到！')
+                return
+            }
+            if(this.chooseDay.indexOf(this.today) == -1){
+                console.log('chooseDay='+this.chooseDay,this.today);
+                this.showToast('请选择有效日期进行签到！')
+                return
+            }
+            if(this.today)
+            var params = {};
+            params.signinId = signinId;
+            this.ebigRequest("/promotion/signin/dosign", params, true).then((res) => {
+                if(res){
+                    this.showToast(this.singleGifeCon);
+                    this.$nextTick(() => {
+                        setTimeout(() => {
+                            this.getSignInfo(true)
+                        }, 1500);
+                    })
+                }
+            })
+        },
+        signActCon(item){ //连续签到奖励主内容
+            var html = '获得';
+            if(item.contentType == 5 || item.contentType == '5'){
+                html += '<span class="how_account">' + item.contentValue + '</span>积分';
+            }else if(item.contentType == 8 || item.contentType == '8'){
+                var coupon = item.couponCfg;
+                if(coupon == null || coupon == undefined){
+                    html = '';
+                    html += '暂无奖励信息';
+                }else{
+                    if (coupon.couponContentType == 1 || coupon.couponContentType == 7) {
+                        html += '￥<span>' + coupon.couponContent + '</span>';
+                    } else if (coupon.couponContentType == 2) {
+                        html += '<span class="how_account">' + Math.round(coupon.couponContent * 100) / 10  + '</span>';
+                    }else if(coupon.couponContentType == 3){
+                        html += coupon.couponContent + '张';
+                        html += '包邮券';
+                    } else if (coupon.couponContentType == 4 || coupon.couponContentType == 5) {
+                        html += '<span class="how_account">' + coupon.couponContent  + '</span>';
+                    } else if (coupon.couponContentType == 6) {
+                        html += coupon.couponContent + '张';
+                        html += '兑换券';
+                    }
+                    if (coupon.couponContentType == 2) {
+                        html += '折';
+                    } else if (coupon.couponContentType == 4) {
+                        html += '倍';
+                    } else if (coupon.couponContentType == 5) {
+                        html += '积分';
+                    };
+                    if (coupon.couponContentType == 1 || coupon.couponContentType == 7) {
+                        html += '代金券';
+                    } else if (coupon.couponContentType == 2) {
+                        html += '折扣券';
+                    } else if (coupon.couponContentType == 4 || coupon.couponContentType == 5) {
+                        html += '的积分券';
+                    };
+                }
+            }
+            return html;
+        },
+        getSingleGife(list){ //组装签到获取的奖励
+            var day = (this.historyList.length > 0 ? this.historyList[0].signinNum : 0) + 1; //当前已签到天数（加上今天签到成功）
+            var html = '今日签到获得：';
+            for(var i=0;i<list.length;i++){
+                var item = list[i];
+                if(i != 0){
+                    html += '，';
+                }
+                if(item.contentType == 5 || item.contentType == '5'){
+                    html += item.contentValue + '积分';
+                }else if(item.contentType == 8 || item.contentType == '8'){
+                    var coupon = item.couponCfg;
+                    if(coupon != null && coupon != undefined){
+                        if (coupon.couponContentType == 1 || coupon.couponContentType == 7) {
+                            html += '￥' + coupon.couponContent;
+                        } else if (coupon.couponContentType == 2) {
+                            html += Math.round(coupon.couponContent * 100) / 10;
+                        }else if(coupon.couponContentType == 3){
+                            html += coupon.couponContent + '张';
+                        } else if (coupon.couponContentType == 4 || coupon.couponContentType == 5) {
+                            html += coupon.couponContent;
+                        } else if (coupon.couponContentType == 6) {
+                            html += coupon.couponContent + '张';
+                        }
+                        if (coupon.couponContentType == 2) {
+                            html += '折';
+                        } else if (coupon.couponContentType == 4) {
+                            html += '倍';
+                        }
+                        //  else if (coupon.couponContentType == 5) {
+                        //     html += '积分';
+                        // };
+                        if (coupon.couponContentType == 1 || coupon.couponContentType == 7) {
+                            html += '代金券';
+                        } else if (coupon.couponContentType == 2) {
+                            html += '折扣券';
+                        } else if (coupon.couponContentType == 3) {
+                            html += '包邮券';
+                        } else if (coupon.couponContentType == 4 || coupon.couponContentType == 5) {
+                            html += '积分券';
+                        } else if (coupon.couponContentType == 6) {
+                            html += '兑换券';
+                        };
+                    }
+                }
+            }
+            var isFirst = true;
+            for(var j=0;j<this.cycleList.length;j++){
+                var res = this.cycleList[j];
+                if(res.cycleNum == day){
+                    if(isFirst){
+                        isFirst = false;
+                        html += '；连续签到' + day + '天获得：';
+                    }else{
+                        html += '，';
+                    }
+                    if(res.contentType == 5 || res.contentType == '5'){
+                        html += res.contentValue + '积分';
+                    }else if(res.contentType == 8 || res.contentType == '8'){
+                        var coupon1 = res.couponCfg;
+                        if(coupon1 != null && coupon1 != undefined){
+                            if (coupon1.couponContentType == 1 || coupon1.couponContentType == 7) {
+                                html += '￥' + coupon1.couponContent;
+                            } else if (coupon1.couponContentType == 2) {
+                                html += Math.round(coupon1.couponContent * 100) / 10;
+                            }else if(coupon1.couponContentType == 3){
+                                html += coupon1.couponContent + '张';
+                            } else if (coupon1.couponContentType == 4 || coupon1.couponContentType == 5) {
+                                html += coupon1.couponContent;
+                            } else if (coupon1.couponContentType == 6) {
+                                html += coupon1.couponContent + '张';
+                            }
+                            if (coupon1.couponContentType == 2) {
+                                html += '折';
+                            } else if (coupon1.couponContentType == 4) {
+                                html += '倍';
+                            }
+                            //  else if (coupon1.couponContentType == 5) {
+                            //     html += '积分';
+                            // };
+                            if (coupon1.couponContentType == 1 || coupon1.couponContentType == 7) {
+                                html += '代金券';
+                            } else if (coupon1.couponContentType == 2) {
+                                html += '折扣券';
+                            } else if (coupon1.couponContentType == 3) {
+                                html += '包邮券';
+                            } else if (coupon1.couponContentType == 4 || coupon1.couponContentType == 5) {
+                                html += '积分券';
+                            } else if (coupon1.couponContentType == 6) {
+                                html += '兑换券';
+                            };
+                        }
+                    }
+                }
+            }
+            this.singleGifeCon = html;
+        }
+    },
+    onLoad(){
+        this.getSignInfo()
+    }
+};
+</script>
+
+<style>
+page {
+    background-color: #FF8C00;
+}
+.sign {
+    padding: 0 24rpx 20rpx;
+}
+.signtxt {
+    padding: 20rpx 0;
+    color: #FFFFFF;
+}
+.dosign {
+    font-size: 36rpx;
+    font-weight: 600;
+    padding-bottom: 20rpx;
+}
+.uni-calendar__content {
+    border-top-right-radius: 10rpx;
+    border-top-left-radius: 10rpx;
+}
+.uni-calendar__backtoday {
+    top: 18rpx !important;
+}
+/* 小圆点 */
+.uni-calendar-item__weeks-box-circle.data-v-bac203be {
+    background-color: red !important;
+    top: 8rpx !important;
+    right: -2rpx !important;
+    opacity: .6;
+}
+/* 签到字体 */
+.uni-calendar-item--extra.data-v-bac203be {
+    color: red !important;
+    font-weight: 700 !important;
+}
+.uni-checked {
+    background-color: #FF8C00 !important;
+}
+.uni-calendar-item__weeks-box-item.data-v-bac203be {
+    height: 90rpx !important;
+    width: 90rpx !important;
+}
+/* 以前选中背景颜色 */
+.uni-calendar-item--disable {
+    display: none !important;
+}
+/* 今天选中背景颜色 */
+.uni-calendar-item--isDay {
+    background-color: #FF8C00 !important;
+}
+.uni-calendar__header {
+    height: 90rpx !important;
+}
+.sign_btn {
+    background-color: #FF8C00;
+    height: 70rpx;
+    line-height: 70rpx;
+}
+.btn_wrap {
+    border-bottom-right-radius: 10rpx;
+    border-bottom-left-radius: 10rpx;
+    background-color: #FFFFFF;
+    padding: 20rpx 40rpx;
+    color: #FFFFFF;
+}
+.welfare {
+    margin-top: 20rpx;
+    padding: 20rpx 0 0 20rpx;
+    border-radius: 10rpx;
+}
+.ties {
+    font-size: 26rpx;
+    color: chocolate;
+}
+.quan {
+    flex-wrap: wrap;
+}
+.quan_item {
+    box-sizing: border-box;
+    font-size: 26rpx;
+    background-color: #F6DF57;
+    color: chocolate;
+    padding: 18rpx;
+    width: auto;
+    border-radius: 10rpx;
+    margin: 16rpx 16rpx 16rpx 0;
+}
+.how_account {
+    font-size: 30rpx;
+    font-weight: 700;
+}
+.how_day {
+    padding: 8rpx 0;
+}
+.no_more {
+    text-align: center;
+    padding: 20rpx 0;
+}
+
+
+
+</style>

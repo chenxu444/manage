@@ -1,0 +1,460 @@
+<template>
+    <view class="promotionOrderList">
+        <!-- 顶部nav -->
+        <view class="nav bg_white uni-flex font_color_666">
+            <view class="selected" :class="activeNav==index ? 'activeNav bg_common_light font_color_common' : ''" v-for="(item,index) in nav" :key="index" @click="toggleNav(index)">{{item}}</view>
+            <view class="uni-flex-1 chooseTime font_color_999 uni-flex">
+                <span style="font-size:24rpx;" @click="open" :class="isChangeTime?'font_color_common':''">自定义时间</span>
+                <span class="iconfont icon-right chooseIcon" @click="open" :class="isChangeTime ? 'changeIcon font_color_common' : 'font_color_999'"></span>
+            </view>
+        </view>
+        <view class="time-mod-wrap uni-flex" v-show="isChangeTime">
+            <view class="time-start uni-flex-1 font_color_999" @click="openDate('start')" >{{ startDate }}</view>
+            <view class="time-to tc">至</view>
+            <view class="time-end uni-flex-1 font_color_999" @click="openDate('end')">{{ endDate }}</view>
+        </view>
+        <view class="totalMessage">
+            共<span class=" font_color_common">{{totalModel.orderNum||0}}笔</span>订单
+            <view style="margin-top:10rpx;">
+                已入账佣金<span class=" font_color_common">{{(totalModel.recordedCommission||0)|toFixed}}元，</span>待获得<span class=" font_color_common">{{(totalModel.waitCommission||0)|toFixed}}元</span>
+            </view>
+        </view>
+        <!-- 订单汇总 -->
+        <view>
+            <uni-pulldown-refresh
+                ref="uniPulldownRefresh"
+                id="pullContent"
+                :top="210"
+                :absolute="210"
+                @refresh="onPulldownReresh"
+            >
+                <view class="totalContent">
+                    <view class="orderItem bg_white" @click="toPage('promotionOrderDetail','commissionsettleid='+item.commissionsettleid)" v-for="(item,index) in orderList" :key="index">
+                        <view class="order-no">订单编号：{{item.orderNo}}</view>
+                        <view class="user uni-flex">
+                            <view class="uni-flex-1"><span class="font_color_999">顾客：</span>{{item.memberName}}</view>
+                            <view class="orderStatus font_color_999">{{item.orderStatus | toStatus}}</view>
+                        </view>
+                        <view class="orderTime font_color_999">
+                            下单时间：{{item.inputDate}}
+                        </view>
+                        <view class="orderGoods uni-flex">
+                            <img :src="item.orderDtlDTOList[0]?item.orderDtlDTOList[0].defaultPic:''" class="goods_img">
+                            <view class="uni-flex-1">
+                                <view class="goods_name font_color_999">{{item.orderDtlDTOList[0]?item.orderDtlDTOList[0].goodsName:'暂无数据'}}<span class="goods_name_num" v-if="item.orderDtlDTOList.length > 1">等<span class="font_color_common">{{item.orderDtlDTOList.length}}个</span>商品</span></view>
+                                <view class="uni-flex">
+                                    <view class="uni-flex-1 roat font_color_common">{{item.commissionType==1?'佣金比例'+ toPercent(item.rate):'首单拉新奖励'}}</view>
+                                    <view class="goods_num" :class="item.orderDtlDTOList.length>1?'font_color_common':''">{{item.orderDtlDTOList.length>1?`共${item.totalNum||0}件`:`x${item.orderDtlDTOList[0]?item.orderDtlDTOList[0].quantity:0}`}}</view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="totalPrice font_color_999">订单总价：￥{{(item.totalMoney?item.totalMoney:0) | toFixed}}</view>
+                        <view class="getMoney" :class="item.commissionStatus== 2 ? 'roat font_color_common' : ''" v-if="item.commissionType==1">{{item.commissionStatus == 1 ? '预计获得佣金：￥'+item.actCommission : item.commissionStatus== 2 ? '已入账佣金：￥'+item.actCommission : '客户已取消订单'}}</view>
+                        <view class="getMoney" :class="item.commissionStatus== 2 ? 'roat font_color_common' : ''" v-else>{{item.commissionStatus == 1 ? '预计获得拉新奖励：￥'+item.actCommission : item.commissionStatus== 2 ? '已入账拉新奖励：￥'+item.actCommission : '客户已取消订单'}}</view>
+                    </view>
+                </view>
+                <uni-load-more :status="status" :content-text="contentText" />
+            </uni-pulldown-refresh>
+        </view>
+        <!-- 日期选择 -->
+        <uni-calendar ref="calendar" :insert="false" @confirm="confirm"></uni-calendar>
+    </view>
+</template>
+
+<script>
+import uniCalendar from '@/components/uni-calendar/uni-calendar.vue'
+export default {
+    data(){
+        return{
+            nav:['全部','今日','近三日','近七日'],
+            totalModel:{},
+            activeNav:0,
+            isChangeTime: false,
+            dateType: 'start',
+            startDate: '',
+            endDate: '',
+            orderList:[],
+            pageNo: 1,
+            pageSize: 10,
+
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——"
+            },
+        }
+    },
+    components:{
+        uniCalendar
+    },
+    onReachBottom() {
+        if(this.status != 'noMore' && this.status != 'loading'){
+            //上滑加载
+            this.getOrderList('add')
+        }
+    },
+    onPageScroll(res){   // 监听页面滚动
+        this.startDate = '';
+        this.endDate = '';
+        this.isChangeTime = false;
+    },
+    methods:{
+        toggleNav(index){
+            this.activeNav = index
+            this.isChangeTime = false
+            if(this.activeNav == 0){
+                this.startDate = ''
+                this.endDate = ''
+            }
+            if(this.activeNav == 1){
+                this.startDate = this.getDay(0)
+                this.endDate = this.getDay(0)
+            }
+            if(this.activeNav == 2){
+                this.startDate = this.getDay(-2)
+                this.endDate = this.getDay(0)
+            }
+            if(this.activeNav == 3){
+                this.startDate = this.getDay(-6)
+                this.endDate = this.getDay(0)
+            }
+            this.getOrderList('refresh')
+        },
+        // 获取订单列表
+        getOrderList(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+            obj.startTime = this.startDate + (this.startDate ? ' 00:00:00' : '');
+            obj.endTime = this.endDate + (this.endDate ? ' 23:59:59' : '');
+            obj.pageNo = this.pageNo;
+            obj.pageSize = this.pageSize;
+            this.ebigRequest("/distribution/getOrderListByDistributor", obj, true).then((res) => {
+                if(type == 'refresh'){
+                    uni.pageScrollTo({
+                        scrollTop: 0,
+                        duration: 100
+                    });
+                    this.orderList = [];
+                }
+                
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                this.orderList = [...this.orderList, ...res]
+                this.orderList.map(item => {
+                    // 商品数量
+                    var totalNum = 0
+                    if(item.orderDtlDTOList.length>0){
+                        item.orderDtlDTOList.forEach(item2 => {
+                        totalNum += item2.quantity
+                    })
+                    }
+                    item.totalNum = totalNum
+                })
+                // 总单 总收益
+                this.totalModel = uni.getStorageSync('orderModel')
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.orderList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.orderList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getOrderList("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getOrderList("refresh");
+        },
+        open(){
+            this.activeNav = 0
+            this.isChangeTime = !this.isChangeTime;
+            if(!this.isChangeTime){
+                this.dateType = 'start';
+                this.startDate = '';
+                this.endDate = '';
+            }else{
+                this.startDate = '开始日期';
+                this.endDate = '结束日期';
+            }
+        },
+        confirm(e){
+            if(this.dateType == 'start'){
+                var date = e.fulldate.replace(/-/g, '/');
+                var dateTime = new Date(date).getTime();
+                if(this.endDate != '结束日期'){
+                    var endDate =  this.endDate.replace(/-/g, '/');
+                    var endDateTime = new Date(endDate).getTime();
+                    if(dateTime <= endDateTime){
+                        this.startDate = e.fulldate;
+                    }else{
+                        uni.showToast({
+                            title: "开始日期不能大于结束日期！",
+                            icon: "none",
+                        });
+                        this.startDate = '开始日期';
+                    }
+                }else{
+                    this.startDate = e.fulldate;
+                }
+            }else if(this.dateType == 'end'){
+                var date = e.fulldate.replace(/-/g, '/');
+                var dateTime = new Date(date).getTime();
+                if(this.startDate != '开始日期'){
+                    var startDate =  this.startDate.replace(/-/g, '/');
+                    var startDateTime = new Date(startDate).getTime();
+                    if(dateTime >= startDateTime){
+                        this.endDate = e.fulldate;
+                    }else{
+                        uni.showToast({
+                            title: "结束日期不能小于开始日期！",
+                            icon: "none",
+                        });
+                        this.endDate = '结束日期';
+                    }
+                }else{
+                    this.endDate = e.fulldate;
+                }
+            }
+            if(this.startDate != '开始日期' && this.endDate != '结束日期'){
+                this.getOrderList("refresh");
+            }
+        },
+        getDay(day){ 
+            var today = new Date();  
+            var targetday_milliseconds=today.getTime() + 1000*60*60*24*day;          
+            today.setTime(targetday_milliseconds); //注意，这行是关键代码
+            var tYear = today.getFullYear();  
+            var tMonth = today.getMonth();  
+            var tDate = today.getDate();  
+            tMonth = this.doHandleMonth(tMonth + 1);  
+            tDate = this.doHandleMonth(tDate);  
+            return tYear+"-"+tMonth+"-"+tDate;
+        },
+        doHandleMonth(month){  
+            var m = month;  
+            if(month.toString().length == 1){  
+                m = "0" + month;  
+            }  
+            return m;  
+        },
+        openDate(type){
+            this.dateType = type;
+            this.$refs.calendar.open();
+        },
+        toPage: function(url, item) { //跳转分销内页面
+            this.goUrl(url, 'distribution', item);
+        },
+        // 小数点转百分比
+        toPercent(point){
+            var str=Number(point*100).toFixed(0);
+            str+="%";
+            return str;
+        },
+    },
+    filters:{
+        toFixed: (data) => {
+            return parseFloat(data).toFixed(2);
+        },
+        
+        // 订单状态
+        toStatus: (data) => {
+            if(data == 1){
+                return '待付款'
+            }
+            if(data == 2){
+                return '待发货'
+            }
+            if(data == 3){
+                return '待收货'
+            }
+            if(data == 4){
+                return '已完成'
+            }
+            if(data == 5){
+                return '已取消'
+            }
+            if(data == 6){
+                return '售后处理中'
+            }
+        }
+    },
+    onLoad(options){
+        if(options.activeNav){
+            this.activeNav = options.activeNav
+            this.toggleNav(options.activeNav)
+            return
+        }
+        this.getOrderList('add')
+    }
+    
+}
+</script>
+
+<style>
+page {
+    background-color: #F2F2F2;
+}
+.promotionOrderList {
+    padding-top: 88rpx;
+}
+.nav {
+    height: 92rpx;
+    position: fixed;
+    top: 0;
+    /* #ifdef H5 */
+    top: 88rpx;
+    /* #endif */
+    left: 0;
+    right: 0;
+    z-index: 99;
+    line-height: 92rpx;
+    align-items: center;
+}
+.time-mod-wrap {
+    position: fixed;
+    top: 92rpx;
+    /* #ifdef H5 */
+    top: 180rpx;
+    /* #endif */
+    right: 0;
+    left: 0;
+    z-index: 99;
+    background-color: #FFFFFF;
+    text-align: center;
+    height: 60rpx;
+    line-height: 60rpx;
+    border-bottom: 1rpx solid #EEEEEE;
+}
+.totalMessage {
+    position: fixed;
+    top: 92rpx;
+    /* #ifdef H5 */
+    top: 180rpx;
+    /* #endif */
+    right: 0;
+    left: 0;
+    z-index: 98;
+    padding: 0 20rpx 10rpx;
+    background-color: #FFFFFF;
+    border-bottom: 1rpx solid #EEEEEE;
+}
+.selected {
+    width: 100rpx;
+    background-color: #E4E4E4;
+    height: 40rpx;
+    line-height: 44rpx;
+    text-align: center;
+    font-size: 26rpx;
+    border-radius: 6rpx;
+    margin-left: 20rpx;
+}
+.chooseTime {
+    justify-content: flex-end;
+    text-align: right;
+    margin-right: 10rpx;
+}
+.chooseIcon {
+    display: block;
+    padding: 0 10rpx;
+    font-size: 30rpx;
+    transform: rotate(90deg);
+}
+.changeIcon {
+    transform: rotate(-90deg);
+}
+.totalContent {
+    padding: 0 20rpx;
+}
+/* 订单列表 */
+.orderItem {
+    padding: 20rpx 30rpx;
+    border-radius: 10rpx;
+    margin-bottom: 20rpx;
+}
+.orderStatus {
+    width: 200rpx;
+    text-align: right;
+}
+.orderGoods {
+    padding: 14rpx 0;
+}
+.orderTime {
+    padding-top: 16rpx;
+}
+.goods_img {
+    width: 110rpx;
+    height: 110rpx;
+    margin-right: 20rpx;
+}
+.roat {
+    font-size: 24rpx;
+}
+
+.goods_name {
+    height: 80rpx;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.goods_name_num {
+    margin-left: 20rpx;
+}
+.goods_num {
+    width: 100rpx;
+    text-align: right;
+    font-size: 24rpx;
+}
+.totalPrice {
+    text-align: right;
+    font-size: 24rpx;
+    padding: 14rpx 0;
+}
+.getMoney {
+    text-align: right;
+    font-size: 24rpx;
+}
+.hasSure {
+    font-family: '微软雅黑 Bold', '微软雅黑';
+    font-weight: 700;
+    font-size: 24rpx;
+}
+.noMore {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 600;
+    padding: 20rpx;
+}
+</style>

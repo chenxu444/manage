@@ -1,0 +1,211 @@
+<template>
+  <view class="page">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="我的收藏"></uni-nav-hfbar>
+    <!-- #endif -->
+    <uni-pulldown-refresh
+      ref="uniPulldownRefresh"
+      id="pullContent"
+      :top="0"
+      :absolute="0"
+      @refresh="onPulldownReresh"
+    >
+      <view>
+        <view
+          class="collect_item uni-flex bg_white"
+          v-for="(item, index) in content"
+          :key="index"
+        >
+          <view class="goods_wrap" @click="openDetail(item)">
+            <img :src="item.imagePath" class="goods_img" />
+          </view>
+          <view class="uni-flex-1" @click="openDetail(item)">
+            <view class="font_color_666">{{ item.goodsName }}</view>
+            <view class="price">￥ {{ toFixed(item.sellPrice) }}</view>
+            <view class="font_color_999">
+              收藏时间：{{
+                item.collectTime
+                  ? item.collectTime.substring(0, item.collectTime.indexOf(" "))
+                  : "--"
+              }}
+            </view>
+          </view>
+          <span
+            class="iconfont icon-collect icon_love"
+            @click="cancelCollect(item.skuSalNo, item.storeDTO.storeId, index)"
+          ></span>
+        </view>
+      </view>
+      <uni-load-more :status="status" :content-text="contentText" />
+    </uni-pulldown-refresh>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      pageSize: 15,
+      pageNo: 1,
+      content: [],
+      reload: false,
+      statusColor: "#ccc",
+      status: "more",
+      contentText: {
+        contentdown: "上拉加载更多",
+        contentrefresh: "正在加载...",
+        contentnomore: "—— 我也是有底线的 ——",
+      },
+    };
+  },
+  onShow() {
+    this.getCollect("refresh");
+  },
+  onReachBottom() {
+    if (this.status != "noMore" && this.status != "loading") {
+      //上滑加载
+      this.getCollect("add");
+    }
+  },
+  methods: {
+    // 获取收藏数据
+    getCollect(type) {
+      if (this.reload) {
+        return;
+      }
+      this.status = "loading";
+      if (type === "refresh") {
+        this.pageNo = 1;
+        this.reload = true;
+      }
+      let params = {
+        pageSize: this.pageSize,
+        pageNo: this.pageNo,
+      };
+      this.ebigRequest("/product/collections", params, true)
+        .then((res) => {
+          if (type == "refresh") {
+            this.content = [];
+          }
+          if (res.length < this.pageSize) {
+            this.status = "noMore";
+          } else {
+            this.status = "more";
+          }
+          this.content = [...this.content, ...res];
+          if (type === "refresh") {
+            this.reload = false;
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          this.pageNo = this.pageNo + 1;
+        })
+        .catch((err) => {
+          if (type === "refresh") {
+            this.reload = false;
+            this.content = [];
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          if (this.pageNo == 1) {
+            this.status = "noMore";
+            this.content = [];
+          } else {
+            this.status = "more";
+            this.pageNo = this.pageNo - 1;
+          }
+        });
+    },
+    // 等待加载
+    loadMore() {
+      this.status = "more";
+      this.getCollect("add");
+    },
+    //下拉刷新
+    onPulldownReresh() {
+      this.getCollect("refresh");
+    },
+    // 取消收藏
+    cancelCollect(skusalno, storeId, index) {
+      uni.showModal({
+        title: "提示",
+        content: "您确定取消收藏？",
+        confirmColor: "#007aff",
+        success: (res) => {
+          if (res.confirm) {
+            let params = {
+              skusalno: skusalno,
+              storeId: storeId,
+              collectFlag: false,
+            };
+            this.ebigRequest("/product/collect", params, true).then((res) => {
+              uni.showToast({
+                title: "已取消收藏",
+                icon: "none",
+                duration: 1000,
+              });
+              this.content.splice(index, 1);
+            });
+          }
+        },
+      });
+    },
+    toFixed(data) {
+      return data ? data.sellPrice.toFixed(2) : "暂无报价";
+    },
+    openDetail(item) {
+      this.goUrl(
+        "detail",
+        '',
+        "skuSalNo=" +
+          item.skuSalNo +
+          "&storeId=" +
+          item.storeDTO.storeId +
+          "&consignorId=" +
+          item.consignorId
+      );
+    },
+  },
+};
+</script>
+
+<style>
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.collect_item {
+    padding: 30rpx 20rpx;
+    height: 170rpx;
+    border-bottom: 1px solid #EEEEEE;
+    align-items: center;
+}
+.goods_wrap {
+    width: 240rpx;
+}
+.goods_img {
+    width: 188rpx;
+    height: 188rpx;
+}
+.icon_love {
+    color: #ED3344;
+    font-size: 50rpx;
+    text-align: center;
+}
+.ties {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 600;
+    padding: 20rpx;
+}
+.price {
+    font-size: 40rpx;
+    font-weight: 500;
+    color: #ED3344;
+}
+
+
+</style>

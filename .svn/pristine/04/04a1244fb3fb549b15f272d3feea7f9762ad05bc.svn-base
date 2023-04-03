@@ -1,0 +1,129 @@
+<template>
+  <div class="diseaseArea bg_white">
+        <!-- 头部 head -->
+        <div class="diseaseHead bg_white">
+            <div class="head-cont">
+                <span style="padding-left: 10px;">慢病专区</span>
+                <div class="fr" style="font-size: 15px;line-height: 35px;">
+                    全部>
+                </div>
+            </div>
+        </div>
+        <!-- 头部 head -->
+        <!-- 主要内容start -->
+        <div class="pageNav" id="diseasecontent">
+            <div class="nav-list">
+                <div class="nav-cont "  v-for="item in diseaseObj">
+                    <div class="nav-item" >
+                        <img :src="item.imgUrl" alt="" style="width: 100%;height: 100%;">
+                        <span>{{item.title}}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+export default {
+    name: 'diseaseArea',
+     data () {
+        return {
+            diseaseObj: [
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '冠心病'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                },
+                {
+                    imgUrl: '../../static/image/default/nav12.png',
+                    title: '高血压'
+                }
+            ]
+        }
+    },
+
+}
+</script>
+
+<style>
+page {
+    height: 100%;
+    background-color: white;
+}
+.diseaseHead {
+    position: relative;
+    top: 40px;
+    width: 100%;
+    height: 60px;
+    padding: 5px;
+    border-bottom: 1px solid #ececec;
+}
+.diseaseHead .head-cont {
+    padding: 10px 5px 0 0;
+    font-weight: 400;
+}
+.pageNav {
+    position: relative;
+    top: 35px;
+    margin: 15px 0 0;
+    padding-bottom: 10px;
+}
+.pageNav .nav-list .nav-cont{
+    float: left;
+    width: 50%;
+    height: 80px;
+    padding: 0 6px;
+    margin-bottom: 11px;
+    line-height: 18px;
+}
+.pageNav .nav-list .nav-cont .nav-item {
+    height: 100%;
+    box-shadow: 0px 2px 12px 0px rgba(201, 219, 230, 0.44);
+    border-radius: 10px;
+}
+.pageNav .nav-list .nav-cont .nav-item div {
+    font-size: 16px;
+    font-weight: 400;
+    padding-left: 12px;
+}
+
+.pageNav .nav-list .nav-cont .nav-item .font {
+    padding-top: 20px;
+}
+.nav-item span {
+    position: relative;
+    top: -75%;
+    left: 15px;
+    font-weight: 400;
+    font-size: 16px;
+}
+
+</style>

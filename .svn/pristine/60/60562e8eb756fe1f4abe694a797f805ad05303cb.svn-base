@@ -1,0 +1,126 @@
+<template>
+  <div class="active">
+    <div class="active_item bg_white">
+      <div class="item_top ">
+        <div class="icon_ties font_color_common">专属</div>
+        <div class="title">张三活动专场</div>
+        <div class="uni-flex">
+          <div class="font_color_999 introduce uni-flex-1">
+            活动专场有超多价值的推广商品活动专场有超多价值的推广商品活动专场有超多价值的推广商品活动专场有超多价值的推广商品
+            <div class="moreTXT font_color_common">{{ "[更多]" }}</div>
+          </div>
+          <div class="right_icon iconfont icon-right font_color_999"></div>
+        </div>
+      </div>
+      <div class="success font_color_999">专场成交额 <span class="money_icon">￥</span><span class="money">1000000</span></div>
+      <div class=" uni-flex  share_num">
+          <div class="uni-flex-1 font_color_999">转发数：<span class=" font_color_000">1000</span></div>
+          <div class="uni-flex-1 font_color_999">点击数：<span class=" font_color_000">100000</span></div>
+      </div>
+      <button class="share_btn bg_common font_color_white">分享</button>
+    </div>
+    <div class="active_item bg_white">
+      <div class="item_top ">
+        <div class="icon_ties font_color_common">专属</div>
+        <div class="title">张三活动专场</div>
+        <div class="uni-flex">
+          <div class="font_color_999 introduce uni-flex-1">
+            活动专场有超多价值的推广商品活动专场有超多价值的推广商品活动专场有超多价值的推广商品活动专场有超多价值的推广商品
+            <div class="moreTXT font_color_common">{{ "[更多]" }}</div>
+          </div>
+          <div class="right_icon iconfont icon-right font_color_999"></div>
+        </div>
+      </div>
+      <div class="success font_color_999">专场成交额 <span class="money_icon">￥</span><span class="money">1000000</span></div>
+      <div class=" uni-flex  share_num">
+          <div class="uni-flex-1 font_color_999">转发数：<span class=" font_color_000">1000</span></div>
+          <div class="uni-flex-1 font_color_999">点击数：<span class=" font_color_000">100000</span></div>
+      </div>
+      <button class="share_btn bg_common font_color_white">分享</button>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {};
+</script>
+
+<style>
+.active {
+  padding: 30rpx;
+}
+.active_item{
+    margin-bottom: 40rpx;
+    border-radius: 20rpx;
+}
+.item_top {
+  position: relative;
+  padding: 20rpx;
+  border-bottom: 6rpx dashed #e2e2e2;
+}
+.icon_ties {
+  position: absolute;
+  right: -20rpx;
+  top: -20rpx;
+  border: 4rpx solid #007bc8;
+  border-radius: 50%;
+  height: 60rpx;
+  width: 60rpx;
+  line-height: 60rpx;
+  font-size: 24rpx;
+  text-align: center;
+  font-weight: 600;
+}
+.title {
+  font-size: 34rpx;
+  padding-bottom: 10rpx;
+}
+.introduce {
+  position: relative;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  height: 80rpx;
+}
+.moreTXT {
+  position: absolute;
+  bottom: -2rpx;
+  right: 0;
+  text-align: right;
+  width: 80rpx;
+  font-size: 14px;
+  background-color: #fff;
+}
+.right_icon {
+  width: 80rpx;
+  font-size: 44rpx;
+  text-align: center;
+}
+
+.success{
+    padding: 10rpx 20rpx;
+    font-size: 24rpx;
+    
+}
+
+.money_icon{
+    margin-left: 30rpx;
+    font-size: 28rpx;
+    color: #ffc800;
+}
+.money{
+    font-size: 34rpx;
+    color: #ffc800;
+}
+.share_num{
+    padding: 0 20rpx 10rpx 20rpx;
+    justify-content: space-between;
+    font-size: 24rpx;
+}
+.share_btn{
+    border-radius: 0 0 30rpx 30rpx;
+}
+</style>

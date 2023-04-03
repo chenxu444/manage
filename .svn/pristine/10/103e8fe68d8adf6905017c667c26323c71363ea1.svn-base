@@ -1,0 +1,170 @@
+<template>
+  <view class="page">
+    <uni-pulldown-refresh
+      ref="uniPulldownRefresh"
+      id="pullContent"
+      :top="0"
+      :absolute="0"
+      @refresh="onPulldownReresh"
+    >
+      <view>
+        <view
+          class="Orderitem bg_white"
+          v-for="(item, index) in content"
+          :key="index"
+          @click="choiceOrder(item)"
+        >
+          <view class="shop">
+            <span>{{ item.storeName }}</span>
+            <span class="numm">单号：{{ item.orderNo }}</span>
+          </view>
+          <view class="price">
+            共{{ item.totalQuantity }}件商品 合计￥{{
+              parseFloat(item.totalPayAmount) | toFixed
+            }}
+            含配送费(￥{{ parseFloat(item.deliveryFeeAmount) | toFixed }}))
+          </view>
+        </view>
+      </view>
+      <uni-load-more :status="status" :content-text="contentText" />
+    </uni-pulldown-refresh>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      bottom: false,
+      pageNo: 1,
+      pageSize: 15,
+      content: [],
+      reload: false,
+      statusColor: "#ccc",
+      status: "more",
+      contentText: {
+        contentdown: "上拉加载更多",
+        contentrefresh: "正在加载...",
+        contentnomore: "—— 我也是有底线的 ——",
+      },
+    };
+  },
+  onLoad() {
+    this.getOrderList("add");
+  },
+  onReachBottom() {
+    if (this.status != "noMore" && this.status != "loading") {
+      //上滑加载
+      this.getOrderList("add");
+    }
+  },
+  methods: {
+    getOrderList(type) {
+      if (this.reload) {
+        return;
+      }
+      this.status = "loading";
+      if (type === "refresh") {
+        this.pageNo = 1;
+        this.reload = true;
+      }
+      let params = {
+        orderStatus: 4,
+        pageNo: this.pageNo,
+        pageSize: this.pageSize,
+      };
+      this.ebigRequest("/order/list", params, true)
+        .then((res) => {
+          if (type == "refresh") {
+            this.content = [];
+          }
+          if (res.length < this.pageSize) {
+            this.status = "noMore";
+          } else {
+            this.status = "more";
+          }
+          this.content = [...this.content, ...res];
+          if (type === "refresh") {
+            this.reload = false;
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          this.pageNo = this.pageNo + 1;
+        })
+        .catch((err) => {
+          if (type === "refresh") {
+            this.reload = false;
+            this.content = [];
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          if (this.pageNo == 1) {
+            this.status = "noMore";
+            this.content = [];
+          } else {
+            this.status = "more";
+            this.pageNo = this.pageNo - 1;
+          }
+        });
+    },
+    // 等待加载
+    loadMore() {
+      this.status = "more";
+      this.getOrderList("add");
+    },
+    // 下拉刷新
+    onPulldownReresh() {
+      this.getOrderList("refresh");
+    },
+    // 选中订单
+    choiceOrder(item) {
+      let pages = getCurrentPages(); //当前页
+      let beforePage = pages[pages.length - 2]; //上个页面
+      if (beforePage.route != undefined) {
+        beforePage.$vm.orderNo = item.orderNo;
+        beforePage.$vm.consignorId = item.consignorId;
+        uni.navigateBack({
+          delta: 1,
+        });
+      }
+    },
+  },
+  filters: {
+    toFixed(data) {
+      return data.toFixed(2);
+    },
+  },
+};
+</script>
+
+<style>
+page {
+    position: relative;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.border_bottom_1 {
+    border-bottom: 1px solid #EEEEEE;
+}
+.Orderitem {
+    margin: 20rpx 20rpx 0;
+    border-radius: 6rpx;
+}
+.shop {
+    padding: 16rpx 32rpx;
+}
+.numm {
+    text-align: right;
+}
+.price {
+    padding: 16rpx 32rpx;
+    text-align: right;
+}
+.noMore {
+    text-align: center;
+    font-size: 30rpx;
+    color: #666666;
+    padding: 20rpx;
+}
+
+</style>

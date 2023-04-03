@@ -1,0 +1,320 @@
+<template>
+    <view class="setDrugUserPage">
+        <view class="su_form bg_white" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">真实姓名</view>
+                <input name="linkname" v-model="userName" :maxlength="5" class="item-input uni-flex-1" type="text" :adjust-position="true" placeholder="请输入真实姓名" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">手机号码</view>
+                <input name="linkname" v-model="mobile" :maxlength="11" class="item-input uni-flex-1" type="number" :adjust-position="true" placeholder="请输入手机号码" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">身份证号</view>
+                <input name="linkname" v-model="idCard" :maxlength="18" @input="changeIdCard" class="item-input uni-flex-1" type="idcard" :adjust-position="true" placeholder="请输入身份证号" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">出生年月</view>
+                <input name="linkname" v-model="birthDate" class="item-input uni-flex-1" type="text" disabled="true" :adjust-position="true" placeholder="请选择出生年月" @click="openDateFunc()" />
+                <w-picker mode="date" startYear="1920" :endYear="endYear" :defaultVal="defualtDay" :current="false" @confirm="onDateConfirm" :disabledAfter="true" ref="dateTime" themeColor="#f00"></w-picker>
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">年龄</view>
+                <input name="linkname" v-model="age" class="item-input uni-flex-1" type="text" disabled="true" :adjust-position="true" placeholder="请输入年龄" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">性别</view>
+                <radio-group class="item-input uni-flex uni-flex-1" @change="radioChange">
+                    <label class="uni-flex-1">
+                        <radio value="1" :checked="gender == '1'" />男
+                    </label>
+                    <label class="uni-flex-1">
+                        <radio value="2" :checked="gender == '2'" />女
+                    </label>
+                </radio-group>
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">疾病史</view>
+                <input name="linkname" v-model="diseases" :maxlength="100" class="item-input uni-flex-1" type="text" :adjust-position="true" placeholder="请输入疾病史" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label">关系</view>
+                <picker class="item-input uni-flex-1" @change="bindPickerChange" :value="relateType - 1" :range="relateTypeArr">
+                    <view>{{relateTypeArr[relateType - 1]}}</view>
+                </picker>
+            </view>
+            <view class="mode-item mod-addr uni-flex" style="border: none;">
+                <view class="item_label uni-flex-1" style="line-height: 32px;">是否默认(默认使用该用药人)</view>
+                <view class="input_addr" style="width: 50px; text-align: center;">
+                    <switch
+                        :checked="isDefault == 1 ? true : false"
+                        :color="baseColor"
+                        style="transform: scale(0.7, 0.7)"
+                        @change="switchChange"
+                    />
+                </view>
+            </view>
+        </view>
+        <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+            <button class="bg_common font_color_white" @click="saveUser">保存</button>
+        </view>
+    </view>
+</template>
+
+
+<script>
+let pages = '';//当前页
+let beforePage = '';//上个页面
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            userId: '',
+            userName: '',
+            mobile: '',
+            gender: 1,
+            idCard: '',
+            birthDate: '',
+            age: '',
+            relateType: 1,
+            diseases: '',
+            relateTypeArr: ['本人', '他人'],
+            isDefault: false,
+            endYear: '',
+            defualtDay: '',
+            
+        };
+    },
+    onLoad(option) {
+        let nowDate = new Date();
+        let year = nowDate.getFullYear();
+        let month = nowDate.getMonth() + 1;
+        let day = nowDate.getDate();
+        let defualtDay = [];
+        this.endYear = year;
+        defualtDay.push(year + "");
+        defualtDay.push(month < 10 ? "0" + month : month + "");
+        defualtDay.push(day < 10 ? "0" + day : day + "");
+        this.defualtDay = defualtDay;
+
+        pages = getCurrentPages(); //当前页面栈
+        beforePage = pages[pages.length - 2];//上个页面
+        if(option.editIndex != undefined && option.editIndex != null && option.editIndex != ''){
+            this.isEdit = true;
+            if (pages.length > 1) {
+                let userObj = beforePage.$vm.content[option.editIndex];
+                this.userId = userObj.userId;
+                this.userName = userObj.userName;
+                this.mobile = userObj.mobile;
+                this.idCard = userObj.idCard;
+                this.gender = userObj.gender;
+                this.birthDate = userObj.birthDate;
+                this.age = userObj.age;
+                this.relateType = userObj.relateType;
+                this.diseases = userObj.diseases;
+                this.isDefault = userObj.isDefault ? 1 : 0;
+            }
+        }
+    },
+    mounted() {
+        let _model_ = uni.getStorageSync('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+        }
+    },
+    methods: {
+        openDateFunc() {
+            // 打开日期窗口
+            this.$refs["dateTime"].show();
+        },
+        changeIdCard() {
+            // 改变身份证号
+            if(this.idCard.length == 18){
+                this.birthDate = this.getBirth(this.idCard);
+                this.age = this.GetAge(this.birthDate);
+            }else{
+                this.birthDate = '';
+                this.age = '';
+            }
+        },
+        getBirth(idcard) {
+            // 根据身份证获取生日
+            console.log(idcard);
+            let reg = /^[0-9]d{17}([0-9]|x|X)$/;
+            if (reg.test(idcard)) {
+                this.$message.error('身份证不合法!');
+                return;
+            }
+            let year = idcard.substr(6, 4);
+            let month = idcard.substr(10, 2);
+            let day = idcard.substr(12, 2);
+            let defualtDay = [];
+            defualtDay.push(year + "");
+            defualtDay.push(month < 10 ? "0" + month : month + "");
+            defualtDay.push(day < 10 ? "0" + day : day + "");
+            this.defualtDay = defualtDay;
+            return year + '-' + month + '-' + day;
+        },
+        onDateConfirm(date) {
+            // 修改出生年月
+            this.birthDate = date.result;
+            this.GetAge(this.birthDate);
+        },
+        GetAge(strBirthday){       
+            // 格式化岁数
+            let returnAge,
+                strBirthdayArr=strBirthday.split("-"),
+                birthYear = strBirthdayArr[0],
+                birthMonth = strBirthdayArr[1],
+                birthDay = strBirthdayArr[2],  
+                d = new Date(),
+                nowYear = d.getFullYear(),
+                nowMonth = d.getMonth() + 1,
+                nowDay = d.getDate();   
+            if(nowYear == birthYear){
+                returnAge = 0;//同年 则为0周岁
+            }
+            else{
+                let ageDiff = nowYear - birthYear ; //年之差
+                if(ageDiff > 0){
+                    if(nowMonth == birthMonth) {
+                        let dayDiff = nowDay - birthDay;//日之差
+                        if(dayDiff < 0) {
+                            returnAge = ageDiff - 1;
+                        }else {
+                            returnAge = ageDiff;
+                        }
+                    }else {
+                        let monthDiff = nowMonth - birthMonth;//月之差
+                        if(monthDiff < 0) {
+                            returnAge = ageDiff - 1;
+                        }
+                        else {
+                            returnAge = ageDiff ;
+                        }
+                    }
+                }else {
+                    returnAge = -1;//返回-1 表示出生日期输入错误 晚于今天
+                }
+            } 
+            return returnAge;//返回周岁年龄
+        },
+        radioChange(e){
+            // 修改性别
+            this.gender = e.detail.value;
+        },
+        bindPickerChange(e){
+            // 修改关系
+            this.relateType = e.detail.value * 1 + 1;
+        },
+        switchChange(e) {
+            // 修改默认
+            this.isDefault = e.detail.value;
+        },
+        saveUser(){
+            // 保存用药人
+            let saveobj = {};
+            if(this.userId){
+                saveobj.userId = this.userId;
+            }
+
+            if(this.userName == undefined || this.userName == null || this.userName == ''){
+                uni.showToast({
+                    title: "抱歉！您还未填写真实姓名",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.userName = this.userName;
+            
+            if(this.mobile == undefined || this.mobile == null || this.mobile == '' || this.mobile.substring(0, 1) != '1' && this.mobile.length != 11){
+                uni.showToast({
+                    title: "请您填写正确的手机号码",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.mobile = this.mobile;
+
+            if(this.idCard == undefined || this.idCard == null || this.idCard == '' || !this.isIDcard(this.idCard)){
+                uni.showToast({
+                    title: "请您填写正确的身份证号码",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.idCard = this.idCard;
+
+            saveobj.relateType = this.relateType;
+            saveobj.birthDate = this.birthDate;
+            saveobj.gender = this.gender;
+            saveobj.age = this.age;
+            saveobj.diseases = this.diseases;
+
+            /* 是否设置默认地址 */
+            saveobj.isDefault = this.isDefault ? 1 : 0;
+            /* 是否设置默认地址 */
+
+            this.ebigRequest("/druguser/update", saveobj, true).then((res) => {
+                uni.showToast({
+                    title: "用药人保存成功！",
+                    icon: "none",
+                });
+                this.$nextTick(() => {
+                    beforePage.$vm.getDruger();
+                    setTimeout(() => {
+                        uni.navigateBack({
+                            delta: 1,
+                        });
+                    }, 300)
+                })
+            })
+        }
+    }
+}
+</script>
+
+<style lang="scss">
+.su_form {
+    display: block;
+    padding: 20rpx 0 120rpx 20rpx;
+    box-sizing: border-box;
+
+    .mode-item {
+        line-height: 60rpx;
+        padding: 20rpx;
+        box-sizing: border-box;
+        border-bottom: 1px solid #F6F6F6;
+
+        .item_label {
+            width: 120rpx;
+            line-height: 60rpx;
+        }
+        .item-input {
+            width: 100%;
+            height: 60rpx;
+            line-height: 60rpx;
+            padding: 0 16rpx;
+            box-sizing: border-box;
+            font-size: 28rpx;
+        }
+    }
+}
+.btn_wrap {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    line-height: 80rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+    font-size: 36rpx;
+    background: #F2F2F2;
+
+    button {
+        border-radius: 80rpx;
+    }
+}
+
+</style>

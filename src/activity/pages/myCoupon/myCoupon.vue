@@ -1,0 +1,651 @@
+<template>
+    <view id="page" style="width: 100%;">
+         <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="我的优惠券"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="wrap">
+            <!-- topTab -- start -->
+            <view class="tab-wrap uni-flex font_color_white bg_white">
+                <view class="tab-item uni-flex-1 border_common tc" :class="tabIndex == 0 ? 'on font_color_common' : 'font_color_666'" @tap="tabClick(0);">全部可用({{ canUseNum }})</view>
+                <view class="tab-item uni-flex-1 border_common tc" :class="tabIndex == 1 ? 'on font_color_common' : 'font_color_666'" @tap="tabClick(1);">可领优惠券</view>
+            </view>
+            <!-- topTab -- end -->
+            <!-- content -- start -->
+            <view class="content-wrap" :class="tabIndex == 0 ? 'tab-show' : 'tab-hidden'">
+                <view class="coupon-list" v-if="couponList.length > 0 && status != 'loading'">
+                    <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="0" :absolute="0">
+                        <view class="coupon-item bg_white" :class="index == 0 ? 'first' : ''" v-for="(coup,index) in couponList">
+                            <view class="coupon-con-wrap uni-flex">
+                                <view class="couponCon-main font_color_white" :class="tabIndex == 0 ? 'bg_common' : ''">
+                                    <span class="main-type" v-if="coup.couponContentType == 1 || coup.couponContentType == 7">￥</span>
+                                    <span class="main-con">{{ couponTypeFilter(coup.couponContent, coup.couponContentType) }}</span>
+                                    <span class="main-unit">{{ couponContFilter(coup.couponContentType) }}</span>
+                                    <image v-if="tabIndex == 0 && coup.outDate" class="img" mode="aspectFit" :lazy-load="true" src="../../static/image/com/outdate.png"></image>
+                                </view>
+                                <view class="couponCon-info uni-flex-1">
+                                    <view class="info-head font_color_666">
+                                        <span class="coupon-type font_color_white" :class="tabIndex == 0 ? 'bg_common' : ''">{{ coupontypeFunc(coup.couponContentType) }}</span>
+                                        {{ coup.couponCfgName }}
+                                    </view>
+                                    <view class="info-time-btn uni-flex">
+                                        <view class="info-time uni-flex-1">{{ coup.startDate }} ~ {{ coup.endDate }}</view>
+                                        <view class="info-no-btn font_color_white" v-if="tabIndex == 0 && coup.zbky">暂不可用</view>
+                                        <view class="info-btn bg_common font_color_white" v-if="tabIndex == 0 && !coup.zbky" @click="useCoupon(coup.couponCfgId)">立即使用</view>
+                                    </view>
+                                    <view class="info-other uni-flex">
+                                        <view class="other-get tl uni-flex-1">已领取{{ coup.applysCount }}张</view>
+                                        <view class="other-more tr uni-flex-1">
+                                            <span @click="showMoreCoup(index)">
+                                                详细信息
+                                                <span class="iconfont" :class="coup.showMore ? 'icon-top' : 'icon-bottom'"></span>
+                                            </span>
+                                        </view>
+                                    </view>
+                                    <image v-if="tabIndex != 0" class="img" mode="aspectFit" :lazy-load="true" src="../../static/image/com/unused.png"></image>
+                                </view>
+                            </view>
+                            <view class="coupon-des-wrap" v-show="coup.showMore">
+                                <view class="couponDes-rule">规则说明：{{ couponRuleFilter(coup.conditionMemo, coup.reachType) }}</view>
+                                <view class="couponDes-dtl" v-if="coup.couponCfgDesc != undefined && coup.couponCfgDesc != null && coup.couponCfgDesc != ''">详细信息：{{ coup.couponCfgDesc }}</view>
+                            </view>
+                        </view>
+                        <uni-load-more :status="status" :content-text="contentText" />
+                    </uni-pulldown-refresh>
+                </view>
+                <view class="noCoupon-list tc" v-else-if="status != 'loading'">
+                    <span class="iconfont icon-nocoupon" style="font-size: 80px;"></span>
+                    <view>{{ tabIndex == 0 ? '暂无可使用优惠券~' : '暂无可领优惠券~'}}</view>
+                </view>
+            </view>
+            <!-- content -- end -->
+            <!-- 领券中心 -->
+            <!-- content -- start -->
+            <view class="content-wrap" id="couponCenter">
+                <coupon-center ref="couponCenter" :class="tabIndex == 1 ? 'tab-show' : 'tab-hidden'"></coupon-center>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+import couponCenter from '../couponCenter/couponCenter.vue'
+export default {
+    components: {
+        couponCenter: couponCenter
+    },
+    data() {
+        return {
+            tabIndex: 0, //0: 全部优惠券 1: 领取优惠券
+            scrollTop: 0, //初始页面滚动高度
+            
+            canUseNum: 0, //可用优惠券数量
+            getUseNum: 0, //可领取的优惠券数量
+            // 优惠券请求参数
+            pageNo: 1,
+            pageSize: 10,
+            couponType: 2, //优惠券类型
+            isOpen: 'myCoupon',
+            storeId: '',
+            // 优惠券参数
+            couponList: [],
+            
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad(option) { 
+        this.storeId = option.storeId ? option.storeId : ''
+    },
+    onShow() {
+        this.getCouponNum();
+        this.getCouponData('add');
+    },
+    onReachBottom() {
+        if(this.isOpen == 'myCoupon'){
+            if (this.status != "noMore" && this.status != "loading") {
+                //上滑加载
+                this.getCouponData("add");
+            }
+        }else{
+            if (this.$refs.couponCenter.status != "noMore" && this.$refs.couponCenter.status != "loading") {
+                //上滑加载
+                this.$refs.couponCenter.getCouponData('add');
+            }
+        }
+    },
+    methods: {
+        tabClick: function(index) { //优惠券分类切换
+            this.tabIndex = index;
+            if(index == 0){
+                this.couponType = 2;
+                this.isOpen = 'myCoupon';
+                this.getCouponData('refresh');
+            }else if(index == 1){
+                this.isOpen = 'couponCenter';
+                this.$refs.couponCenter.getCouponData('refresh');
+            }
+            this.$nextTick(() => {
+                this.scrollTop = 0;
+            });
+        }, 
+        getCouponNum: function() { //获取优惠券数量信息
+            var obj = {};
+            obj.consignorId = this.getStor('_shopConsignorId_') ? this.getStor('_shopConsignorId_') : this.getStor('_defaultConsignorId_');
+            this.ebigRequest("/coupon/showMyCouponNum", obj).then((data) => {
+                if(data){
+                    this.canUseNum = data.noUse; //可用优惠券数量
+                }
+            }).catch(err => {
+
+            });
+        },
+        getCoupon: function (couponCfgId, index) { // 领取优惠券
+            var obj = {};
+            obj.couponcfgid = couponCfgId;
+            this.ebigRequest("/coupon/receiveCouponByCfgId", obj, true).then((data) => {
+                if(data){
+                    if (data.couponMoney == null || data.couponMoney == '') { // 若存在,则判定为随机立减券,并告知用户 随机立减的具体金额
+                        uni.showToast({
+                            title: "领取优惠券成功!",
+                            icon: "none",
+                        });
+                    } else {
+                        uni.showToast({
+                            title: '恭喜您,抢到' + data.couponMoney + '元代金券!',
+                            icon: "none",
+                        });
+                    }
+                    var isAgain = false;
+                    this.getAgainArr.map((item, index) => {
+                        if (couponCfgId == item) {
+                            isAgain = true;
+                            return;
+                        }
+                    })
+                    var txt = '已领取';
+                    var canAgainGet = data.canAgainGet;
+                    if (canAgainGet == 'true' || canAgainGet == true) {   // 可以重复领取
+                        if (!isAgain) {
+                            this.getAgainArr.push(couponCfgId);
+                        }
+                        txt = '再次领取';
+                    }
+                    this.couponList[index].canAgainGet = canAgainGet;
+                    this.couponList[index].applysCount = applysCount;
+                    this.couponList[index].hasGot = true;
+                    this.couponList[index].txt = txt;
+                    console.log(this.couponList)
+                    this.$forceUpdate();
+                }
+            }).catch(err => {
+                
+            })
+        },
+        getCouponData: function(type) { //获取商品优惠券数据
+            if(this.reload){
+                return;
+            }
+            uni.showLoading({
+                title: '努力加载中...',
+                mask: true
+            });
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+			obj.pageNo = this.pageNo;
+			obj.pageSize = this.pageSize;
+			obj.usestatus = this.couponType;
+			obj.consignorId = this.getStor('_shopConsignorId_') ? this.getStor('_shopConsignorId_') : this.getStor('_defaultConsignorId_');
+            
+            this.ebigRequest("/coupon/showMyCoupons", obj).then((data) => {
+                if(type == 'refresh'){
+                    this.couponList = [];
+                }
+                if(data.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                //
+                data.map(item => {
+                    var c_startTime = item.startDate.replace(/-/g, '/');
+                    var startTime = item.nowDate.replace(/-/g, '/');
+                    var endTime = item.endDate.replace(/-/g, '/');
+                    var zbkyFlag = false;
+                    var outDate = this.DateMinus(startTime, endTime);
+                    var outDateFlag = false;
+                    if (this.DateMinus(new Date().toLocaleDateString().replace(/-/g, '/'), new Date(c_startTime)) > 0) { //未到优惠券使用时间
+                        zbkyFlag = true;
+                    }
+                    if (outDate < 2) { // 天数小于3天时提醒
+                        outDateFlag = true;
+                    }
+                    Object.assign(item, {
+                        zbky: zbkyFlag,
+                        outDate: outDateFlag,
+                        showMore: false
+                    });
+                });
+                this.couponList = [...this.couponList,...data];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.couponList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.couponList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+            this.$nextTick( () => {
+                uni.hideLoading();
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getCouponData("add");
+        },
+        useCoupon: function (couponCfgId) { // 使用优惠券
+            uni.navigateTo({
+                url: '/pages/list/list?couponCfgId=' + couponCfgId
+            });
+        },
+        couponTypeFilter: function (value, couponcontenttype) { //优惠券内容过滤 
+            if (couponcontenttype == 1 || couponcontenttype == 7) {
+                return value;
+            } else if (couponcontenttype == 2) {
+                return Math.round(value * 100) / 10;
+            } else if (couponcontenttype == 3) {
+                return '包邮';
+            } else if (couponcontenttype == 4 || couponcontenttype == 5) {
+                return value;
+            } else if (couponcontenttype == 6) {
+                return '兑换';
+            };
+        },
+        coupontypeFunc: function (value) { // 优惠券类型过滤
+            if (value == 1 || value == 7) {
+                return '代金券';
+            } else if (value == 2) {
+                return '折扣券';
+            } else if (value == 3) {
+                return '包邮券';
+            } else if (value == 4 || value == 5) {
+                return '积分券';
+            } else if (value == 6) {
+                return '兑换券';
+            };
+        },
+        couponContFilter: function (value) { // 优惠券单位过滤
+            if (value == 2) {
+                return '折';
+            } else if (value == 4) {
+                return '倍';
+            } else if (value == 5) {
+                return '积分';
+            };
+        },
+        couponRuleFilter: function (value, res) {   // 优惠券规则过滤
+            if (value) {
+                var rules = value.split(',');
+                if (rules.length > 1) {
+                    if (res == 1) { //res = reachtype 满足条件 1：任意满足   2:所有满足
+                        var html = '该券只需要'
+                        rules.map((item, index) => {
+                            if (index == 0) {
+                                html += item.substring(0, item.length - 2);
+                            } else {
+                                html += '，或' + item.substring(0, item.length - 2);
+                            }
+                        })
+                        html += '满足其中一项条件即可使用！';
+                        return html;
+                    } else {
+                        var html = '该券需要'
+                        rules.map((item, index) => {
+                            if (index == 0) {
+                                html += item.substring(0, item.length - 2);
+                            } else {
+                                html += '，且' + item.substring(0, item.length - 2);
+                            }
+                        })
+                        html += '同时满足方可使用！';
+                        return html;
+                    }
+                } else {
+                    return rules[0];
+                }
+            } else {
+                return '暂无规则内容';
+            }
+        },
+        showMoreCoup: function(index) { //查看优惠券详情
+            this.$set(this.couponList[index],'showMore',!this.couponList[index].showMore);
+        },
+        DateMinus: function (date1, date2) { //字符串日期相减得出天数
+            var sdate = new Date(date1);
+            var now = new Date(date2);
+            var days = now.getTime() - sdate.getTime();
+            var day = parseInt(days / (1000 * 60 * 60 * 24));
+            return day;
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.wrap {
+    width: 100%;
+    // height: 100%;
+    position: relative;
+    .tab-wrap {
+        width: 100%;
+        height: 88rpx;
+        line-height: 88rpx;
+        padding: 0 20rpx;
+        box-sizing: border-box;
+        font-size: 28rpx;
+        position: fixed;
+        top: 0;
+        /* #ifdef H5 */   
+        top: 88rpx;
+        /* #endif */   
+        z-index: 3;
+        .tab-item {
+            position: relative;
+        }
+        .tab-item.on {
+            border-bottom: 1px solid;
+            box-sizing: border-box;
+        }
+    }
+    .content-wrap {
+        width: 100%;
+        padding-top: 108rpx;
+        padding-bottom: 100rpx;
+        box-sizing: border-box;
+        .coupon-list {
+            padding: 0 20rpx;
+            box-sizing: border-box;
+            .coupon-item {
+                margin-top: 20rpx;
+                position: relative;
+                overflow: hidden;
+                &.first {
+                    margin-top: 0;
+                }
+                .coupon-con-wrap {
+                    .couponCon-main {
+                        width: 220rpx;
+                        height: 220rpx;
+                        line-height: 112rpx;
+                        padding: 56rpx 0;
+                        box-sizing: border-box;
+                        text-align: center;
+                        background-color: #939393;
+                        position: relative;
+                        .main-type {
+                            font-size: 28rpx;
+                        }
+                        .main-con {
+                            font-size: 68rpx;
+                        }
+                        .main-unit {
+                            font-size: 36rpx;
+                        }
+                        .img {
+                            width: 112rpx;
+                            height: 112rpx;
+                            position: absolute;
+                            top: 0;
+                            right: 0;
+                        }
+                    }
+                    .couponCon-info {
+                        position: relative;
+                        .info-head {
+                            height: 96rpx;
+                            line-height: 44rpx;
+                            padding: 12rpx 20rpx 0;
+                            box-sizing: border-box;
+                            overflow: hidden;
+                            display: -webkit-box;
+                            text-overflow: ellipsis;
+                            -webkit-line-clamp: 2;
+                            -webkit-box-orient: vertical;
+                            white-space: pre-wrap;
+                            font-size: 28rpx;
+                            .coupon-type {
+                                margin-right: 10rpx;
+                                padding: 8rpx 16rpx;
+                                box-sizing: border-box;
+                                font-size: 20rpx;
+                                border-radius: 50rpx;
+                                background-color: #939393;
+                            }
+                        }
+                        .info-time-btn {
+                            line-height: 56rpx;
+                            margin: 0 20rpx;
+                            padding: 6rpx 0;
+                            box-sizing: border-box;
+                            border-bottom: 1px dashed #EEEEEE;
+                            font-size: 24rpx;
+                            color: #AAAAAA;
+                            .info-btn {
+                                height: 44rpx;
+                                line-height: 44rpx;
+                                margin-top: 6rpx;
+                                padding: 0 20rpx;
+                                box-sizing: border-box;
+                                border-radius: 50rpx;
+                                font-size: 24rpx;
+                            }
+                            .info-no-btn {
+                                height: 44rpx;
+                                line-height: 44rpx;
+                                margin-top: 6rpx;
+                                padding: 0 20rpx;
+                                box-sizing: border-box;
+                                border-radius: 50rpx;
+                                font-size: 24rpx;
+                                background-color: #939393;
+                            }
+                        }
+                        .info-other {
+                            height: 54rpx;
+                            line-height: 54rpx;
+                            padding: 0 20rpx;
+                            box-sizing: border-box;
+                            color: #8F8F94;
+                            .other-more .iconfont {
+                                color: #939393;
+                            }
+                        }
+                        .img {
+                            width: 140rpx;
+                            height: 140rpx;
+                            display: block;
+                            position: absolute;
+                            right: 20rpx;
+                            top: 10rpx;
+                        }
+                    }
+                }
+                .coupon-des-wrap {
+                    line-height: 40rpx;
+                    padding: 20rpx;
+                    box-sizing: border-box;
+                    font-size: 24rpx;
+                }
+            }
+        }
+        .noCoupon-list {
+            line-height: 1.2;
+            padding-top: 100rpx;
+            box-sizing: border-box;
+        }
+    }
+    .bTab-wrap {
+        width: 100%;
+        height: 100rpx;
+        line-height: 100rpx;
+        box-sizing: border-box;
+        font-size: 30rpx;
+        position: fixed;
+        bottom: 0;
+        z-index: 3;
+        .img {
+            width: 64rpx;
+            height: 64rpx;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10rpx;
+        }
+    }
+// 
+    .content-wrap-get {
+        width: 100%;
+        padding-top: 90rpx;
+        padding-bottom: 80rpx;
+        box-sizing: border-box;
+        .coupon-list {
+            padding: 0 20rpx;
+            box-sizing: border-box;
+            .coupon-item {
+                margin-top: 20rpx;
+                position: relative;
+                overflow: hidden;
+                .coupon-con-wrap {
+                    padding: 16rpx 20rpx;
+                    box-sizing: border-box;
+                    .couponCon-info {
+                        padding-right: 20rpx;
+                        border-right: 1px dashed #CDCDCD;
+                        box-sizing: border-box;
+                        position: relative;
+                        .img {
+                            width: 64rpx;
+                            height: 64rpx;
+                            position: absolute;
+                            right: 0;
+                            top: 0;
+                        }
+                        .info-head {
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            .coupon-type {
+                                margin-right: 10rpx;
+                                padding: 8rpx 16rpx;
+                                box-sizing: border-box;
+                                font-size: 20rpx;
+                                border-radius: 10rpx;
+                                line-height: 44rpx;
+                            }
+                        }
+                        .info-time {
+                            line-height: 56rpx;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            font-size: 28rpx;
+                            color: #8F8F94;
+                        }
+                        .info-other {
+                            height: 72rpx;
+                            line-height: 72rpx;
+                            .couponCon-main {
+                                font-weight: 700;
+                                color: #F2292E;
+                                .main-type, .main-unit {
+                                    font-size: 28rpx;
+                                }
+                                .main-con {
+                                    font-size: 48rpx;
+                                }
+                            }
+                            .other-more {
+                                font-size: 26rpx;
+                                color: #999999;
+                            }
+                        }
+                    }
+                    .couponCon-get-wrap {
+                        padding: 0 30rpx 0 50rpx;
+                        box-sizing: border-box;
+                        .info-get {
+                            padding-bottom: 20rpx;
+                            box-sizing: border-box;
+                            .icon-received {
+                                width: 100rpx;
+                                height: 100rpx;
+                                font-size: 100rpx;
+                                line-height: 1;
+                                margin: 0 auto;
+                            }
+                        }
+                        .info-btn {
+                            padding: 4rpx 16rpx;
+                            border-radius: 10rpx;
+                            box-sizing: border-box;
+                            font-size: 24rpx;
+                            text-align: center;
+                        }
+                    }
+                }
+                .coupon-des-wrap {
+                    line-height: 40rpx;
+                    padding: 20rpx;
+                    border-top: 1px solid #F2F2F2;
+                    box-sizing: border-box;
+                    font-size: 24rpx;
+                }
+            }
+        }
+        .noCoupon-list {
+            line-height: 1.2;
+            padding-top: 100rpx;
+            box-sizing: border-box;
+        }
+    }
+
+    .tab-show{
+        display: block;
+    }
+
+    .tab-hidden{
+        display: none;
+    }
+
+}
+
+</style>

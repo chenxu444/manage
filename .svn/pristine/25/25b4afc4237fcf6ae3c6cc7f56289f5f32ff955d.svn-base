@@ -1,0 +1,661 @@
+<template>
+    <view id="page" style="width: 100%;height: 100%;">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="导购员详情"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="main-wrap">
+            <!-- info -- start -->
+            <view class="info-wrap bg_white uni-flex">
+                <view class="man-head">
+                    <image class="img" lazy-load="true" mode="aspectFit" :src="totalModel.headImgUrl ? totalModel.headImgUrl : '../../static/image/user/user_noimg.jpg'"></image>
+                </view>
+                <view class="man-info uni-flex-1">
+                    <view class="info-1 uni-flex">
+                        <view class="name uni-flex-1">{{totalModel.distributorName}}</view>
+                        <view class="time uni-flex-1 font_color_999 tr">{{totalModel.joinDate}}</view>
+                    </view>
+                    <view class="info-2 uni-flex">
+                        <view class="rank uni-flex-1 font_color_999">{{totalModel.distributorLevelName}}</view>
+                        <view class="child uni-flex-1 font_color_999 tr"><span class="font_color_common">{{totalModel.subDistributorNum != '' ? totalModel.subDistributorNum : 0}}</span>个导购员</view>
+                    </view>
+                </view>
+            </view>
+            <!-- info -- end -->
+            <!-- timeChange -- start -->
+            <view class="time-wrap bg_white">
+                <view class="time-list uni-flex">
+                    <view class="time-item" :class="timeDuration == '0' ? 'on font_color_common' : 'font_color_999'" @click="selectTime('0')">全部</view>
+                    <view class="time-item" :class="timeDuration == '1' ? 'on font_color_common' : 'font_color_999'" @click="selectTime('1')">今日</view>
+                    <view class="time-item" :class="timeDuration == '2' ? 'on font_color_common' : 'font_color_999'" @click="selectTime('2')">近三日</view>
+                    <view class="time-item" :class="timeDuration == '3' ? 'on font_color_common' : 'font_color_999'" @click="selectTime('3')">近七日</view>
+                    <view class="time-other uni-flex-1" :class="isChangeTime ? 'font_color_common' : 'font_color_999'" @click="timeChangeClick">查询条件<span class="iconfont" :class="isChangeTime ? 'icon-top' : 'icon-bottom'"></span></view>
+                </view>
+                
+                <view class="time-mod-wrap " v-show="isChangeTime">
+                    <view class="item_wrap uni-flex">
+                        <view class=" font_color_999">查询时间：</view>
+                        <view class="time-start uni-flex-1 font_color_999" @click="openDate('start')">{{ startDate||'开始日期' }}</view>
+                        <view class="time-to tc">至</view>
+                        <view class="time-end uni-flex-1 font_color_999" @click="openDate('end')">{{ endDate||'结束日期' }}</view>
+                    </view>
+                    <view class=" uni-flex item_wrap">
+                        <view class=" font_color_999">异常订单：</view>
+                        <view class="input_addr" style="width: 100rpx; text-align: center;">
+                            <switch
+                                :checked="valid? false :true "
+                                :color="baseColor"
+                                style="transform: scale(0.6, 0.6)"
+                                @change="switchChange"
+                            />
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <!-- timeChange -- end -->
+            <view class="totalMessage bg_white">
+                共<span class=" font_color_common">{{totalModel.orderNum||0}}笔</span>订单，已入账积分<span class=" font_color_common">{{toFixed(totalModel.recordedCommission||0)}}，</span>待获得<span class=" font_color_common">{{toFixed(totalModel.waitCommission||0)}}</span>
+            </view>
+            <!-- content -- start -->
+            <view class="content-wrap">
+                <uni-pulldown-refresh
+                    ref="uniPulldownRefresh"
+                    id="pullContent"
+                    :top="380"
+                    :absolute="367"
+                    @refresh="onPulldownReresh"
+                >
+                    <view class="totalContent">
+                        <view class="orderItem bg_white" @click="toPage('promotionOrderDetail','distributeTradeId='+item.distributeTradeId)" v-for="(item,index) in orderList" :key="index">
+                            <view class="user uni-flex">
+                                <view class="uni-flex-1"><span class="font_color_999">顾客：</span>{{toPhone(item.customerInfo?item.customerInfo:'')}}</view>
+                                <view class="orderStatus  font_color_common">{{item.orderDtlDTO.orderDtlStatus | toStatus}}</view>
+                            </view>
+                            <view class="orderTime font_color_999">
+                                下单时间：{{item.inputDate}}
+                            </view>
+                            <view class="orderGoods uni-flex">
+                                <img :src="item.orderDtlDTO && item.orderDtlDTO.defaultPic ? item.orderDtlDTO.defaultPic : '../../../static/image/default/no_img.jpg'" class="goods_img">
+                                <view class="uni-flex-1">
+                                    <view class="goods_name font_color_999">{{item.orderDtlDTO?item.orderDtlDTO.goodsName:'暂无数据'}}</view>
+                                    <view class="uni-flex">
+                                        <view class="uni-flex-1 roat font_color_common">{{levelFunc(item)}}</view>
+                                        <view class="goods_num" >{{`x${item.orderDtlDTO?item.orderDtlDTO.quantity:0}`}}</view>
+                                    </view>
+                                </view>
+                            </view>
+                            <view class="totalPrice font_color_999">订单总价：￥{{toFixed(item.orderDtlDTO.totalAmount?item.orderDtlDTO.totalAmount:0)}}</view>
+                            <view class="getMoney" :class="item.tradeStatus== 2 ? 'roat font_color_common' : ''" >{{item.tradeStatus == 1 ? '商品积分：积分确认中' : item.tradeStatus== 2 ? '商品积分：'+item.incomeAmount : '客户已取消订单'}}</view>
+                        </view>
+                    </view>
+                    <uni-load-more :status="status" :content-text="contentText" />
+                </uni-pulldown-refresh>
+            </view>
+            <!-- content -- end -->
+            <uni-calendar ref="calendar" :insert="false" @confirm="confirm" :range="false"></uni-calendar>
+        </view>
+    </view>
+</template>
+
+<script>
+import uniCalendar from '@/components/uni-calendar/uni-calendar.vue'
+export default {
+    components:{
+        uniCalendar
+    },
+    data() {
+        return {
+            timeDuration: '0', //全部：'0' 今日：'1' 近三日：'2' 近七日：'3' 自定义时间：'4'
+            isChangeTime: false,
+            valid:true,
+            dateType: 'start',
+            startDate: '',
+            endDate: '',
+            distributorId:'',
+            guideManDetail:{},
+            totalModel:{},
+            orderList:[],
+            pageNo: 1,
+            pageSize: 10,
+            
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——"
+            },
+        }
+    },
+    onLoad(option) {
+        this.distributorId = option.distributorId
+        this.getOrderList('add')
+        this.getGuideDetail()
+        this.guideManDetail = this.getStor('guideManDetail')
+    },
+    onShow() {
+        
+    },
+    onReachBottom() {
+        if(this.status != 'noMore' && this.status != 'loading'){
+            //上滑加载
+            this.getOrderList('add')
+        }
+    },
+    onPageScroll(res){   // 监听页面滚动
+        this.startDate = '';
+        this.endDate = '';
+        this.isChangeTime = false;
+    },
+    methods: { 
+        selectTime: function(type) { // 时间周期选择
+            this.pageNo = 1
+            this.timeDuration = type;
+            if(this.isChangeTime){
+                this.isChangeTime = !this.isChangeTime;
+                this.dateType = 'start';
+                this.startDate = '';
+                this.endDate = '';
+            }
+
+            var now = new Date(); //当天
+            var endD = now.getFullYear() + '-' + ((now.getMonth() + 1) > 9 ? (now.getMonth() + 1) : '0' + (now.getMonth() + 1)) + '-' + now.getDate(); //当天日期
+            var endT = now.getTime(); //当天时间戳
+
+            var date = new Date();
+            if(type == '0'){ //全部
+                this.startDate = '';
+                this.endDate = '';
+                this.getOrderList('refresh')
+                return;
+            }else if(type == '1'){ //今日
+                this.startDate = endD;
+                this.endDate = endD;
+                this.getOrderList('refresh')
+                return;
+            }else if(type == '2'){ //近三日
+                var staT = endT + 1000 * 60 * 60 * 24 * (-3);
+            }else if(type == '3'){ //近七日
+                var staT = endT + 1000 * 60 * 60 * 24 * (-7);
+            }
+            date.setTime(staT);
+            var staD = date.getFullYear() + '-' + ((date.getMonth() + 1) > 9 ? (date.getMonth() + 1) : '0' + (date.getMonth() + 1)) + '-' + date.getDate();
+
+            this.startDate = staD;
+            this.endDate = endD;
+            this.getOrderList('refresh')
+        },
+        getGuideDetail(){
+            let obj = {
+                distributorId:this.distributorId
+            }
+            this.doRequest("/distributorcenter/distributor/" + obj.distributorId, obj, true, 'get').then((data) => {
+                console.log(data);
+                if(data){
+                    this.totalModel = data
+                }
+            })
+        },
+        
+        // 获取订单列表
+        getOrderList(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+            obj.startTime = this.startDate + (this.startDate ? ' 00:00:00' : '');
+            obj.endTime = this.endDate + (this.endDate ? ' 23:59:59' : '');
+            obj.pageNo = this.pageNo;
+            obj.pageSize = this.pageSize;
+            obj.distributorId = this.distributorId
+            obj.valid = this.valid
+            this.doRequest("/distributorcenter/distributor/orderlist", obj, true,'get').then((res) => {
+                if(type == 'refresh'){
+                    uni.pageScrollTo({
+                        scrollTop: 0,
+                        duration: 100
+                    });
+                    this.orderList = [];
+                }
+                
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                this.orderList = [...this.orderList,...res]
+                console.log(this.orderList );
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.orderList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.orderList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getOrderList("add");
+        },
+        switchChange(e) {
+            // 异常状态
+            this.valid = !e.detail.value ;
+            this.getOrderList('refresh')
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getOrderList("refresh");
+        },
+        toPage: function(url, item) { //跳转分销内页面
+            this.goUrl(url, 'distribution', item);
+        },
+        timeChangeClick: function() { //点击自定义选择时间
+            this.isChangeTime = !this.isChangeTime;
+            if(!this.isChangeTime){
+                this.timeDuration = '0';
+                this.dateType = 'start';
+                this.startDate = '';
+                this.endDate = '';
+            }else{
+                this.timeDuration = '4';
+                
+            }
+        },
+        levelFunc(item){
+            // distributionInfo: "821-分销20210808|一级系数：0.5;二级系数：0.1"
+            let isDistributorId = this.getStor('isDistributorId')
+            let arr = item.distributionInfo.split('|')
+            arr = arr[1].split(';')
+            if(item.distributorId == isDistributorId){
+                return arr[0]
+            }else{
+                return arr[1]
+            }
+        },
+        // 手机隐藏4位
+        toPhone(value){
+            return value.substring(0,3)+'****'+ value.substring(7,value.length)
+        },
+        openDate: function(type){ //打开时间选择
+            this.dateType = type;
+            this.$refs.calendar.open();
+        },
+        confirm: function(e){ //确定时间选择
+            if(this.dateType == 'start'){
+                var date = e.fulldate.replace(/-/g, '/');
+                var dateTime = new Date(date).getTime();
+                if(this.endDate != ''){
+                    var endDate =  this.endDate.replace(/-/g, '/');
+                    var endDateTime = new Date(endDate).getTime();
+                    if(dateTime <= endDateTime){
+                        this.startDate = e.fulldate;
+                    }else{
+                        uni.showToast({
+                            title: "开始日期不能大于结束日期！",
+                            icon: "none",
+                        });
+                        this.startDate = '';
+                    }
+                }else{
+                    this.startDate = e.fulldate;
+                }
+            }else if(this.dateType == 'end'){
+                var date = e.fulldate.replace(/-/g, '/');
+                var dateTime = new Date(date).getTime();
+                if(this.startDate != ''){
+                    var startDate =  this.startDate.replace(/-/g, '/');
+                    var startDateTime = new Date(startDate).getTime();
+                    if(dateTime >= startDateTime){
+                        this.endDate = e.fulldate;
+                    }else{
+                        uni.showToast({
+                            title: "结束日期不能小于开始日期！",
+                            icon: "none",
+                        });
+                        this.endDate = '';
+                    }
+                }else{
+                    this.endDate = e.fulldate;
+                }
+            }
+            if(this.startDate != '' && this.endDate != ''){
+                this.getOrderList('refresh')
+            }
+        },
+        // 小数点转百分比
+        toPercent(point){
+            var str=Number(point*100).toFixed(0);
+            str+="%";
+            return str;
+        },
+         toFixed: (data) => {
+            return parseFloat(data).toFixed(2);
+        },
+    },
+    filters:{
+        // 订单状态
+        toStatus: (data) => {
+            if(data == 1){
+                return '待付款'
+            }
+            if(data == 2){
+                return '待发货'
+            }
+            if(data == 3){
+                return '待收货'
+            }
+            if(data == 4){
+                return '已完成'
+            }
+            if(data == 5){
+                return '已取消'
+            }
+            if(data == 6){
+                return '售后处理中'
+            }
+        }
+    },
+}
+</script>
+
+<style lang="scss">
+page {
+    width: 100%;
+    height: 100%;
+    background-color: #F2F2F2;
+}
+.main-wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    // manInfo
+    .info-wrap {
+        width: 100%;
+        height: 160rpx;
+        padding: 20rpx;
+        box-sizing: border-box;
+        position: fixed;
+        top: 0;
+        // #ifdef H5
+        top: 88rpx;
+        // #endif
+        left: 0;
+        right: 0;
+        z-index: 99;
+        margin: auto;
+        .man-head {
+            width: 120rpx;
+            height: 120rpx;
+            .img {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        .man-info {
+            padding-left: 20rpx;
+            box-sizing: border-box;
+            .info-1 {
+                line-height: 60rpx;
+                .name {
+                    font-size: 36rpx;
+                }
+            }
+            .info-2 {
+                line-height: 60rpx;
+            }
+        }
+    }
+    // timeChange
+    .time-wrap {
+        width: 100%;
+        position: fixed;
+        top: 160rpx;
+        // #ifdef H5
+        top: 248rpx;
+        // #endif
+        left: 0;
+        right: 0;
+        z-index: 99;
+        margin: auto;
+        border-top: 10rpx solid #EEEEEE;
+        
+        .time-list {
+            padding: 20rpx;
+            box-sizing: border-box;
+            .time-item {
+                width: 100rpx;
+                height: 44rpx;
+                line-height: 44rpx;
+                margin-right: 20rpx;
+                border-radius: 10rpx;
+                font-size: 24rpx;
+                text-align: center;
+                background-color: #ECECEC;
+                &.on {
+                    background-color: #A6D1EC;
+                }
+            }
+            .time-other {
+                height: 44rpx;
+                line-height: 44rpx;
+                font-size: 26rpx;
+                text-align: right;
+                .iconfont {
+                    vertical-align: bottom;
+                    font-size: 36rpx;
+                }
+            }
+        }
+        .time-mod-wrap {
+            position: fixed;
+            top: 240rpx;
+            // #ifdef H5
+            top: 342rpx;
+            // #endif
+            right: 0;
+            left: 0;
+            height: 100rpx;
+            padding: 10rpx;
+            border-bottom: 1rpx solid #EEEEEE;
+            background: #FFFFFF;
+            .item_wrap{
+                height: 50rpx;
+                align-items: center;
+            }
+            .time-start, .time-end {
+                border-radius: 10rpx;
+                box-sizing: border-box;
+                font-size: 26rpx;
+                height: 50rpx;
+                line-height: 50rpx;
+                text-align: center;
+            }
+            .time-to {
+                width: 100rpx;
+            }
+        }
+    }
+    .totalMessage {
+        position: fixed;
+        top: 254rpx;
+        // #ifdef H5
+        top: 342rpx;
+        // #endif
+        right: 0;
+        left: 0;
+        z-index: 98;
+        padding: 0 20rpx;
+        height: 80rpx;
+        line-height: 80rpx;
+        border-bottom: 1rpx solid #EEEEEE;
+    }
+    // content
+    .content-wrap {
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        .content-main-wrap {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            .order-des {
+                height: 72rpx;
+                line-height: 72rpx;
+                padding: 0 20rpx;
+                box-sizing: border-box;
+            }
+            .order-wrap {
+                width: 100%;
+                height: 100%;
+                padding-top: 72rpx;
+                box-sizing: border-box;
+                position: absolute;
+                top: 0;
+                right: 0;
+                left: 0;
+                margin: auto;
+                .order-list {
+                    padding: 0 20rpx 20rpx 20rpx;
+                    box-sizing: border-box;
+                    .order-item {
+                        margin-bottom: 20rpx;
+                        padding: 20rpx;
+                        border-radius: 10rpx;
+                        box-sizing: border-box;
+                        .order-man-status {
+                            line-height: 40rpx;
+                            font-size: 30rpx;
+                        }
+                        .order-time {
+                            padding-top: 10rpx;
+                            box-sizing: border-box;
+                            line-height: 40rpx;
+                        }
+                        .goods-list {
+                            .goods-item {
+                                padding: 10rpx 0;
+                                box-sizing: border-box;
+                                .goods-img {
+                                    width: 100rpx;
+                                    height: 100rpx;
+                                    .img {
+                                        width: 100%;
+                                        height: 100%;
+                                    }
+                                }
+                                .info {
+                                    padding-left: 20rpx;
+                                    box-sizing: border-box;
+                                    .goods-name {
+                                        line-height: 40rpx;
+                                    }
+                                    .goods-price-num {
+                                        padding-top: 10rpx;
+                                        box-sizing: border-box;
+                                        line-height: 40rpx;
+                                        .get-price {
+                                            color: #F7931D;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .order-money, .order-can-get {
+                            line-height: 48rpx;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+.totalContent {
+    padding: 0 20rpx;
+}
+/* 订单列表 */
+.orderItem {
+    padding: 20rpx 30rpx;
+    border-radius: 10rpx;
+    margin-bottom: 20rpx;
+}
+.orderStatus {
+    width: 200rpx;
+    text-align: right;
+}
+.orderGoods {
+    padding: 14rpx 0;
+}
+.orderTime {
+    padding-top: 16rpx;
+}
+.goods_img {
+    width: 110rpx;
+    height: 110rpx;
+    margin-right: 20rpx;
+}
+.roat {
+    font-size: 24rpx;
+    font-weight: 600;
+}
+
+.goods_name {
+    height: 80rpx;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.goods_name_num {
+    margin-left: 20rpx;
+}
+.goods_num {
+    width: 100rpx;
+    text-align: right;
+    font-size: 24rpx;
+}
+.totalPrice {
+    text-align: right;
+    font-size: 24rpx;
+    padding: 14rpx 0;
+}
+.getMoney {
+    text-align: right;
+    font-size: 24rpx;
+}
+.hasSure {
+    font-family: '微软雅黑 Bold', '微软雅黑';
+    font-weight: 700;
+    color: #F7931D;
+    font-size: 28rpx;
+}
+.font_color_or {
+    color: #F7931D !important;
+}
+.noMore {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 600;
+    padding: 20rpx;
+}
+</style>

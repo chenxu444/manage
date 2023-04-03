@@ -1,0 +1,201 @@
+<template>
+  <div class="complainDetail">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="投诉详情"></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="topNav bg_white uni-flex border_bottom_1">
+      <span
+        class="toggle uni-flex-1"
+        :class="navActive == false ? 'font_color_common' : ''"
+        @click="toggleNav(false)"
+        >详情</span
+      >
+      <span
+        class="toggle uni-flex-1"
+        :class="navActive == true ? 'font_color_common' : ''"
+        @click="toggleNav(true)"
+        >进度</span
+      >
+    </div>
+    <!-- 详情区域 -->
+    <div class="detail_wrap bg_white" v-show="navActive==false">
+        <div class="item">
+            <span class="left">投诉类型：</span>
+            <span class="font_color_999">{{complainDetail.title}}</span>
+        </div>
+        <div class="item">
+            <span class="left">订单编号：</span>
+            <span class="font_color_999">{{complainDetail.orderNo}}</span>
+        </div>
+        <div class="item">
+            <span class="left">联系手机：</span>
+            <span class="font_color_999">{{complainDetail.mobile}}</span>
+        </div>
+        <div class="item">
+            <span class="left">投诉时间：</span>
+            <span class="font_color_999">{{complainDetail.complainDate ? complainDetail.complainDate : ''}}</span>
+        </div>
+        <div class="item">
+            <span class="left">投诉内容：</span>
+            <span class="font_color_999">{{complainDetail.content}}</span>
+        </div>
+    </div>
+    <!-- 进度区域 -->
+    <div class="progress" v-show="navActive == true">
+        <div class="progress_item" :class="[item.id <= actStep ? 'active' : '',item.id == actStep ? 'dash-hidden' : '']"
+            v-for="item in progressStep" :key="item.id"
+            >
+            <div class="progress_tit">{{item.tit}}</div>
+            <div class="progress_con font_color_666">{{item.con}}</div>
+            <div class="font_color_666">{{item.date}}</div>
+        </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      navActive: false,
+      complainId:'',
+      complainDetail:{},
+      actStep:0,
+      progressStep:[{
+            id: -1,
+            tit: '投诉提交',
+            con: '已经成功提交投诉至商家',
+            date: ''
+        },{
+            id: 0,
+            tit: '商家针对投诉处理中...',
+            con: '专业客服已跟进您的投诉，请您保持手机畅通，耐心等待客服来电',
+            date: ''
+        },{
+            id: 1,
+            tit: '投诉处理完成',
+            con: '',
+            date: ''
+        }]
+    };
+  },
+  methods: {
+    toggleNav(boolean) {
+      this.navActive = boolean;
+      if (boolean) {
+        
+      }
+    },
+    getComplainDetail(){
+        this.doRequest("/usercenter/complain/detail", {complainId:this.complainId}, true).then((res) => {
+            this.complainDetail = res
+            console.log(typeof res.complainDate);
+            this.actStep = res.complainStatus;
+            this.progressStep[0].date = res.complainDate;
+            this.progressStep[1].date = res.complainDate;
+            if(res.handleDate != null){
+                this.progressStep[2].date = res.handleDate;
+            }
+            if(res.handleComment != null){
+                this.progressStep[2].con = res.handleComment;
+            }
+        })
+    },
+  },
+  onLoad(options){
+      this.complainId = options.complainId
+      this.getComplainDetail()
+  }
+};
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+}
+.border_bottom_1 {
+    border-bottom: 1px solid #EEEEEE;
+}
+.complainDetail {
+    padding-top: 90rpx;
+}
+.topNav {
+    position: fixed;
+    height: 90rpx;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+.toggle {
+    width: 50%;
+    text-align: center;
+    line-height: 90rpx;
+    text-align: center;
+}
+.detail_wrap {
+    padding: 20rpx;
+}
+.item {
+    padding: 20rpx 0;
+}
+.left {
+    font-size: 32rpx;
+    margin-right: 36rpx;
+}
+/* 进度 */
+.progress {
+    padding: 40rpx 32rpx 40rpx 100rpx;
+}
+.progress_tit {
+    font-size: 32rpx;
+}
+.progress_con {
+    padding: 20rpx 0;
+}
+.progress_item {
+    position: relative;
+    padding-bottom: 60rpx;
+}
+.progress_item:before {
+    position: absolute;
+    content: '';
+    display: block;
+    width: 24rpx;
+    height: 24rpx;
+    border-radius: 50%;
+    background-color: #CCCCCC;
+    top: 6rpx;
+    left: -50rpx;
+    z-index: 2;
+}
+.progress_item:after {
+    content: '';
+    width: 1px;
+    height: 100%;
+    background-color: #CCCCCC;
+    position: absolute;
+    top: 6rpx;
+    left: -40rpx;
+    z-index: 1;
+    display: block;
+}
+.progress_item.active:before {
+    background-color: #199ED8;
+    box-shadow: 0 0 0 20rpx #89CCE9;
+}
+.progress_item.active:after {
+    background-color: #199ED8;
+}
+.progress_item.active.dash-hidden:after {
+    content: '';
+    background-color: #CCCCCC;
+}
+.progress_item:last-child:after {
+    content: '';
+    display: none;
+}
+.progress_item.active .progress_tit {
+    color: #199ED8;
+}
+
+</style>

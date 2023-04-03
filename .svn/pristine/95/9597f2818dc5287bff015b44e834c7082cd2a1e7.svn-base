@@ -1,0 +1,207 @@
+<template>
+    <view id="page" style="width: 100%;height: 100%;">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="成为分销商"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="shareInfo uni-flex" v-if="code != ''">
+            <image class="shareImg" :src="headImgUrl" v-if="headImgUrl != ''" />
+            <view class="shareTips uni-flex-1"><span class="font_color_common fontWeight">{{idName}}</span>邀请你成为分销商</view>
+        </view>
+        <view class="main-wrap">
+            <div class="content_txt">线上分销商中心</div>
+            <div class="content_txt2">成为分销商</div>
+            <!-- content -- start -->
+            <view class="content-wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx;' : ''">
+                <view class="banner-img">
+                    <image class="img" lazy-load="true" mode="scaleToFill" src=""></image> 
+                </view>
+                <view class="btn-become tc bg_common font_color_white" @click="becomeClick" :style="isiphoneBt ? 'bottom: 60rpx;' : ''">成为分销商</view>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    components:{
+        
+    },
+    data() {
+        return {
+            isiphoneBt: false,
+            headImgUrl: '',
+            idName: '',
+            code: '', // 邀请码
+            distributorId: '',
+        }
+    },
+    onLoad(option) {
+        this.checkStatus();
+        if(option.code){
+            this.code = option.code ? option.code : '';
+        }else if(option.scene){
+            let scene = decodeURIComponent(option.scene);
+            this.code = scene.substring(scene.indexOf('=') + 1, scene.length);
+        }
+        this.$nextTick(() => {
+            if(this.code){
+                this.initMan();
+            }
+        })
+    },
+    onShow() {
+    },
+    mounted(){
+        let _model_ = uni.getStorageSync("_model_");
+        if (_model_.indexOf("iPhone X") != -1 || _model_.indexOf("iPhone XR") != -1 || _model_.indexOf("iPhone XS") != -1 || _model_.indexOf("iPhone XS Max") != -1 || _model_.indexOf("iPhone 11") != -1 || _model_.indexOf("iPhone 11 Pro") != -1 || _model_.indexOf("iPhone 11 Pro Max") != -1) {
+            this.isiphoneBt = true;
+        }
+    },
+    methods: {
+        checkStatus(){
+            this.doRequest('/distributorcenter/distributor/check_status', {consignorId: this._consignorId_}, true, 'get').then(res => {
+                if(res == 'APPROVED' || res == 'DISABLED'){
+                    this.replaceUrl("promotionCenter", "distribution");
+                } else if(res == 'COMMIT' || res == 'REFUSED'){
+                    this.replaceUrl("applyInfo", "distribution", 'status=check' + (this.code ? '&code=' + this.code : ''));
+                }
+            });
+        },
+        initMan(){
+            if(this.code){
+                this.doRequest("/distributorcenter/distributor/invite/" + this.code, {}, true, 'get').then((data) => {
+                    if(data){
+                        this.idName = data.creator;
+                    }else{
+                        this.code = '';
+                        uni.showToast({
+                            title: "您的邀请码已过期!",
+                            icon: "none",
+                        });
+                    }
+                })
+            }
+        },
+        becomeClick: function() { //点击成为推广员
+            this.becomeSure();
+        },
+        // 验证是否是分销员
+        becomeSure: function() { //确定
+            this.goUrl("applyInfo", "distribution", this.code != '' ? "code=" + this.code : '');
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+page {
+    width: 100%;
+    height: 100%;
+    background-color: #FFFFFF;
+}
+.shareInfo {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 999;
+    padding-left: 40rpx;
+    height: 100rpx;
+    font-size: 30rpx;
+    line-height: 100rpx;
+    background: #FFFFFF;
+    border-bottom: 1rpx solid #EEEEEE;
+
+    .shareImg {
+        overflow: hidden;
+        display: block;
+        margin: 10rpx 20rpx 0;
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 80rpx;
+    }
+}
+.content_txt {
+    position: absolute;
+    top: 350rpx;
+    width: 100%;
+    text-align: center;
+    font-size: 60rpx;
+    letter-spacing: 4rpx;
+    color: rgb(156, 121, 5);
+    font-weight: 700;
+    z-index: 4;
+}
+.content_txt2 {
+    position: absolute;
+    top: 550rpx;
+    left: 50%;
+    width: 360rpx;
+    transform: translateX(-50%);
+    text-align: center;
+    font-size: 60rpx;
+    letter-spacing: 4rpx;
+    color: #FFFFFF;
+    background-color: rgb(156, 121, 5);
+    font-weight: 700;
+    z-index: 4;
+}
+.main-wrap {
+    width: 100%;
+    height: 100%;
+    // content
+    .content-wrap {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        box-sizing: border-box;
+        .banner-img {
+            width: 100%;
+            height: 100%;
+            padding-bottom: 88rpx;
+            box-sizing: border-box;
+            .img {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        .btn-become {
+            width: 100%;
+            height: 88rpx;
+            line-height: 88rpx;
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            z-index: 1;
+            margin: auto;
+        }
+    }
+}
+.dia-wrap {
+    width: 560rpx;
+    padding: 20rpx 40rpx;
+    box-sizing: border-box;
+    .tit {
+        line-height: 64rpx;
+    }
+    .dia-input {
+        margin-top: 10rpx;
+        height: 72rpx;
+        border: 2rpx solid #CCCCCC;
+        box-sizing: border-box;
+        .input {
+            width: 100%;
+            height: 100%;
+            padding: 0 20rpx;
+            box-sizing: border-box;
+        }
+    }
+    .btn-sure {
+        line-height: 64rpx;
+        margin-top: 30rpx;
+    }
+}
+
+</style>

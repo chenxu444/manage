@@ -1,0 +1,516 @@
+<template>
+  <view class="share" style="width: 100%; height: 100%">
+    <!-- 分享弹出 -->
+    <uni-popup ref="invitePopup" class="invitePopup">
+      <view
+        v-show="sharePicUrl"
+        style="
+          overflow: hidden;
+          width: 630rpx;
+          height: 894rpx;
+          border-radius: 10rpx;
+        "
+      >
+        <image
+          :src="sharePicUrl"
+          class="shareImg"
+          mode="scaleToFill"
+          style="width: 630rpx; height: 894rpx; border-radius: 10rpx"
+        />
+        <view class="shareTies">长按图片保存~~~</view>
+      </view>
+      <view
+        id="sharepage"
+        style="width: 630rpx; height: 894rpx"
+        v-show="sharePicUrl == ''"
+      >
+        <view class="main-wrap">
+          <view class="content-wrap">
+            <view class="bg-img">
+              <img class="img" src="../../static/image/user/shareBg.png" />
+            </view>
+            <view class="invite-info">
+              <view class="tit tc" style="display: none">邀请卡</view>
+              <view class="inviteImg" id="couponQrcode"></view>
+              <view class="des tc">邀请一起加入，推广赢奖励</view>
+              <view class="invite-man">
+                <view class="manImg">
+                  <image
+                    class="img"
+                    lazy-load="true"
+                    mode="aspectFit"
+                    :src="headImgUrl"
+                  ></image>
+                </view>
+                <view class="manName tc">{{ idName }}</view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
+    <uni-popup ref="popup" type="share">
+      <uni-popup-share @select="select"></uni-popup-share>
+    </uni-popup>
+    <!-- #ifdef H5 -->
+    <view
+      class="share-tip"
+      :class="showShareWX ? 'show' : 'hide'"
+      @click="closePupu"
+    >
+      <img
+        :src="infoUrl + 'img/share_help.png'"
+        style="width: 100%; height: 100%"
+      />
+    </view>
+    <!-- #endif -->
+    <view class="topimg">
+      <img src="../../static/image/user/share_bg.jpg" class="bg_img" />
+    </view>
+    <view class="share_item">
+      <view class="share_detail bg_white">
+        <view class="item_top">
+          <view class="uni-flex">
+            <view class="uni-flex-1" style="text-align: center">
+              <img src="../../static/image/user/share1.png" class="shareIcon" />
+            </view>
+            <view class="uni-flex-1" style="text-align: center">
+              <img src="../../static/image/user/share2.png" class="shareIcon" />
+            </view>
+            <view class="uni-flex-1" style="text-align: center">
+              <img src="../../static/image/user/share3.png" class="shareIcon" />
+            </view>
+          </view>
+          <view class="uni-flex share_txt">
+            <view class="uni-flex-1 point" style="text-align: center">
+              邀请好友成为分销商
+            </view>
+            <view class="uni-flex-1 point" style="text-align: center">
+              好友客户下单购物
+            </view>
+            <view class="uni-flex-1 point" style="text-align: center">
+              邀请者获得邀请奖励
+            </view>
+          </view>
+        </view>
+        <view class="codeImg uni-flex">
+          <img
+            src="../../static/image/user/share_bg.jpg"
+            class="twoCode"
+            @click="open"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 确认分享弹窗 -- start -->
+    <uni-popup ref="sharePop" :animation="true">
+      <view class="dia-wrap bg_white">
+        <view class="tit tc">温馨提示</view>
+        <view class="dia-des tc">确定分享该商品？</view>
+        <view class="btn-wrap tc uni-flex">
+          <view class="btn-cancel uni-flex-1" @click="cancelShare">取消</view>
+          <view class="btn-sure bg_common font_color_white uni-flex-1">
+            确定
+            <button class="share-btn" open-type="share"></button>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
+    <!-- 确认分享弹窗 -- end -->
+
+    <uniPoster
+      ref="uniPoster"
+      @cancel="canvasCancel"
+      :simpleFlag="true"
+      :posterBgFlag="true"
+      :canvasAttr.sync="canvasAttr"
+    />
+  </view>
+</template>
+
+<script>
+// #ifdef H5
+import html2canvas from "@/static/js/html2canvas.min.js";
+import QRCode from "qrcode2";
+// #endif
+import uniPopup from "@/distribution/components/uni-popup/uni-popup.vue";
+import uniPopupShare from "@/distribution/components/uni-popup/uni-popup-share.vue";
+import uniPopupMessage from "@/distribution/components/uni-popup/uni-popup-message.vue";
+import uniPopupDialog from "@/distribution/components/uni-popup/uni-popup-dialog.vue";
+export default {
+  components: {
+    uniPopup,
+    uniPopupMessage,
+    uniPopupDialog,
+    uniPopupShare,
+  },
+  data() {
+    return {
+      canvasAttr: {
+        marginLR: 0,
+        marginTB: 0,
+        innerLR: 50,
+        innerTB: 130,
+        radius: 0,
+        fillColor: "#ffffff",
+        posterShareWidth: 110,
+        posterShareImgUrl: "",
+        posterCodeUrl: "",
+        codeRatio: 1.5,
+        codeRadius: 0,
+        codeName: "",
+        codeFontSize: 14,
+        codeLineHeight: 20,
+        codeColor: "#000000",
+        title: "邀 请 一 起 加 入，推 广 赢 奖 励",
+        titleFontSize: 15,
+        titleLineHeight: 20,
+        titleColor: "#000000",
+        headImgUrl: "",
+        headImgWidth: 0.25,
+        headImgRatio: 1,
+        headImgRadius: 0.5,
+        posterBgUrl: "../../distribution/static/image/user/shareBg.png",
+      },
+      sharePicUrl: "",
+      urlParams: {},
+      idName: "",
+      headImgUrl: "",
+      showShareWX: false,
+      nowUrl: "/distribution/pages/becomeGuide/becomeGuide",
+    };
+  },
+  onShareAppMessage(res) {
+    //分享到微信好友
+    this.$refs.sharePop.close();
+    return {
+      title: "分销商邀请",
+      content: this.idName + "想要邀请您成为分销商",
+      imageUrl: this.headImgUrl,
+      path: this.nowUrl,
+      success: (data) => {
+        uni.showToast({
+          title: "分享成功!",
+          icon: "none",
+        });
+      },
+      fail: (err) => {
+        uni.showToast({
+          title: "分享失败!",
+          icon: "none",
+        });
+      },
+    };
+  },
+  methods: {
+    select(e) {
+      if (e.index == 0) {
+        this.$refs.popup.close();
+        // #ifdef H5
+        this.showShareWX = true;
+        // #endif
+
+        // #ifdef MP-WEIXIN
+        this.$refs.sharePop.open();
+        // #endif
+      }
+      if (e.index == 1) {
+        this.$refs.popup.close();
+        // #ifdef MP-WEIXIN
+        this.canvasAttr.posterCodeUrl = this.base + "/wechat/" + uni.getAccountInfoSync().miniProgram.appId + "/getUnlimitedCode?scene=" + encodeURIComponent('urlParams=true&shareDistributorId=' + uni.getStorageSync("_isDistributorId_") + '&code=' + this.urlParams.code + '&idName=' + this.urlParams.idName + '&headImgUrl=' + this.urlParams.headImgUrl) + '&width=280&page=distribution/pages/becomeGuide/becomeGuide';
+        this.$nextTick(() => {
+            this.$refs.uniPoster.posterShow();
+        })
+        // #endif
+      }
+    },
+    open() {
+      
+      this.$refs.popup.open();
+    },
+    closePupu() {
+      this.showShareWX = false;
+    },
+    canvasCancel: function () {
+      //关闭海报回调
+    },
+    getManInfo: function () {
+      //获取分销员信息
+      uni.showLoading({
+        title: "努力加载中...",
+        mask: true,
+      });
+      let obj = {};
+      this.ebigRequest("/distributor/getDistributorInfo", obj, false)
+        .then((data) => {
+          if (data) {
+            this.idName = data.distributorName;
+            this.headImgUrl = data.headImgUrl;
+            this.urlParams = {
+              idName: data.memo ? data.memo : data.distributorName,
+              headImgUrl: data.headImgUrl,
+            };
+            Object.assign(this.canvasAttr, {
+              headImgUrl: data.headImgUrl,
+              codeName: data.memo ? data.memo : data.distributorName,
+            });
+            this.getInvateCode();
+          }
+        })
+        .catch(() => {
+          uni.hideLoading();
+        });
+    },
+    getInvateCode() {
+      let params = {
+        codeType: 2,
+      };
+      this.ebigRequest("/member-center/getInviteCode", params, false)
+        .then((data) => {
+          if (data) {
+            Object.assign(this.urlParams, {
+              code: data.code,
+            });
+            this.$nextTick(() => {
+              this.getCodeUrl();
+            });
+          }
+        })
+        .catch(() => {
+          uni.hideLoading();
+        });
+    },
+    getCodeUrl() {
+      //获取缩短的链接
+      // #ifdef H5
+      var initUrl =
+        this.baseUrl +
+        "distribution/index.html#/pages/distribution/becomeGuide?urlParams=" +
+        JSON.stringify(this.urlParams);
+      var getUrl = {};
+      getUrl.targetUrl = this.createAutoLoginUrl(initUrl);
+      this.ebigRequest("/url/create", getUrl, true).then(
+        (data) => {
+          this.nowUrl = this.base + data;
+          this.sharePlatform(
+            "分销员邀请",
+            this.idName + "想要邀请您成为分销员",
+            this.nowUrl,
+            this.headImgUrl
+          );
+        },
+        "",
+        true,
+        true
+      );
+      // #endif
+
+      this.$nextTick(() => {
+        setTimeout(() => {
+          uni.hideLoading();
+          this.$refs.popup.open();
+        }, 250);
+      });
+    },
+    couponQrCode() {
+      new QRCode(document.getElementById("couponQrcode"), {
+        text: this.nowUrl,
+        width: 150,
+        height: 150,
+        colorDark: "#000",
+        colorLight: "#fff",
+        correctLevel: QRCode.CorrectLevel.Q,
+      });
+    },
+  },
+  onShow() {},
+  mounted() {},
+  onLoad() {
+    // #ifdef H5
+    this.configWechat();
+    // #endif
+    this.getManInfo();
+  },
+};
+</script>
+
+<style lang="scss" >
+page {
+  height: 100%;
+}
+.topimg {
+  height: 400rpx;
+}
+.bg_img {
+  width: 100%;
+  height: 400rpx;
+}
+.share_item {
+  padding: 0 30rpx;
+  position: absolute;
+  top: 340rpx;
+  left: 0;
+  right: 0;
+}
+.inviteBg {
+  width: 80%;
+  height: 80%;
+  background-color: #ffffff;
+}
+.share_detail {
+  padding: 26rpx;
+  border-radius: 30rpx;
+}
+.shareIcon {
+  width: 120rpx;
+  height: 120rpx;
+}
+.share_txt {
+  margin-top: 10rpx;
+  padding: 10rpx 0;
+  border-top: 6rpx solid #ee231e;
+}
+.point {
+  position: relative;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+.invitePopup {
+  width: 100%;
+  height: 100%;
+}
+.point::before {
+  display: block;
+  position: absolute;
+  content: "";
+  width: 28rpx;
+  height: 28rpx;
+  background-color: #ee231e;
+  border-radius: 14rpx;
+  left: 50%;
+  transform: translateX(-100%);
+  top: -30rpx;
+}
+.uni-popup__wrapper-box {
+  width: 100%;
+  height: 100%;
+}
+.codeImg {
+  height: 400rpx;
+  align-items: center;
+  justify-content: center;
+}
+.shareTies {
+  margin-top: 20rpx;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+  font-size: 32rpx;
+}
+.twoCode {
+  width: 246rpx;
+  height: 246rpx;
+}
+.canvas {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 10;
+}
+.main-wrap {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  // content
+  .content-wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-size: 100% 100%;
+    .bg-img {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1;
+      margin: auto;
+      box-sizing: border-box;
+      .img {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    .invite-info {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      margin: auto;
+      box-sizing: border-box;
+      .tit {
+        margin-top: 100rpx;
+        font-size: 64rpx;
+        font-weight: 700;
+      }
+      .invite-man {
+        box-sizing: border-box;
+        .manImg {
+          width: 130rpx;
+          height: 130rpx;
+          margin: 20rpx auto 0;
+          border-radius: 50%;
+          .img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+          }
+        }
+        .manName {
+          margin-top: 20rpx;
+          font-size: 32rpx;
+          font-weight: 700;
+        }
+      }
+      .des {
+        margin-top: 20rpx;
+        font-size: 32rpx;
+        font-weight: 700;
+      }
+      .inviteImg {
+        width: 300rpx;
+        height: 300rpx;
+        margin: 220rpx auto 0;
+        .img {
+          width: 100%;
+          height: 100%;
+        }
+      }
+    }
+  }
+}
+.share-tip {
+  position: fixed;
+  z-index: 20;
+  padding: 120rpx 120rpx 200rpx;
+  background: rgba(0, 0, 0, 0.7);
+  inset: 0;
+
+  &.show {
+    display: block;
+  }
+  &.hide {
+    display: none;
+  }
+}
+</style>

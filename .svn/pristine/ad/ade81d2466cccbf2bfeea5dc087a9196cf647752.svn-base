@@ -1,0 +1,1897 @@
+<template>
+    <view class="orderConfirm">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="需求提交"></uni-nav-hfbar>
+        <!-- #endif -->
+        <!-- 地址开始 -->
+        <view class="address bg_white" @click="openAddress" v-if="deliveryType != '2'">
+            <view class="addrCont uni-flex">
+                <view class="uni-flex-1" v-if="orderAddress != null && orderAddress != ''">
+                    <view class="userInfo">{{orderAddress.provinceName + orderAddress.cityName + (orderAddress.disrictName ? orderAddress.disrictName : '')}}</view>
+                    <view class="addrInfo">{{orderAddress.address}}</view>
+                    <view class="userInfo">{{orderAddress.linkManName + ' ' + orderAddress.mobile}}</view>
+                </view>
+                <view class="noAddr uni-flex-1" v-else>暂无收货地址</view>
+                <view class="iconfont icon-right"></view>
+            </view>
+            <view class="borderB"></view>
+        </view>
+        <!-- 地址结束 -->
+        
+        <!-- 门店信息开始 -->
+        <view class="storeDTO bg_white" v-else>
+            <view class="addrInfo" style="font-size: 30rpx;">门店名称：{{storeDTO != undefined && storeDTO != null && storeDTO != '' ? storeDTO.storeName : ''}}</view>
+            <view class="userInfo">门店电话：{{storeDTO != undefined && storeDTO != null && storeDTO != '' ? storeDTO.customTel : ''}}</view>
+            <view class="userInfo">门店地址：{{storeDTO != undefined && storeDTO != null && storeDTO != '' ? storeDTO.address : ''}}</view>
+            <view class="borderB"></view>
+        </view>
+        <!-- 门店信息结束 -->
+
+        <!-- 问诊信息开始 -->
+        <view class="askInfo" id="orderAskInfo" @click="openAskInfo" v-if="recipeShow">
+            <view class="notAsk uni-flex" v-if="!showRecipe">
+                <view class="uni-flex-1">
+                    <view class="askInfoTxt font_color_000">请提交问诊信息</view>
+                    <view class="askInfoDes">法律规定购买处方药须填写用药人真实信息并提供有效处方单，请上传</view>
+                </view>
+                <view class="askInfoAdd" style="line-height: 112rpx;">添加<i class="iconfont icon-right"></i></view>
+            </view>
+            <view class="hasAsk uni-flex" v-else>
+                <view class="askInfoTxt font_color_000 uni-flex-1">已上传处方</view>
+                <view class="askInfoAdd">修改<i class="iconfont icon-right"></i></view>
+            </view>
+        </view>
+        <!-- 问诊信息结束 -->
+
+        <!-- 支付方式开始 -->
+        <view class="pageLine payType bg_white uni-flex" v-if="isRedeem">
+            <view class="plTip">支付方式</view>
+            <view class="plCont uni-flex-1">
+                积分兑换<view class="iconfont icon-right"></view>
+            </view>
+        </view>
+        <view class="pageLine payType bg_white uni-flex" v-else>
+            <view class="plTip">支付方式</view>
+            <view class="plCont uni-flex-1">
+                在线支付<view class="iconfont icon-right"></view>
+            </view>
+        </view>
+        <!-- 支付方式结束 -->
+        <!-- 商户内容（商品、配送方式、配送时间等）开始 -->
+        <view class="orderDTO bg_white">
+            <view class="orderItem" v-for="od in orderDTO">
+                <view class="storeName">
+                    <view class="iconfont icon-shop"></view>{{od.storeName}}
+                </view>
+                <view class="orderGoods">
+                    <view v-for="items in od.orderDiscountGroupDtlDTOS" v-if="od.orderDiscountGroupDtlDTOS != null && od.orderDiscountGroupDtlDTOS.length > 0">
+                        <view class="goodsItem uni-flex" v-for="item in items.orderDTOS">
+                            <image class="goodsImg" :src="item.defaultPic | goodsimgPath(90)" onerror="this.src='img/no_img.jpg'" />
+                            <view class="goodsDetails uni-flex-1">
+                                <view class="goodsName uni-flex wrap-2">
+                                    <i class="activityIcon" v-if="item.itemType == '5'">特价</i>
+                                    <i class="activityIcon" v-if="item.activtysSign == 1 || item.activtysSign == 5">满减</i>
+                                    <view class="uni-flex-1">{{item.brandName ? item.brandName : '' + ' ' + item.goodsName}}</view>
+                                </view>
+                                <view class="goodsSku wrap">{{item.specification}}</view>
+                                <view class="goodsPriQyt uni-flex">
+                                    <view class="goodsPri uni-flex-1 font_color_common" v-if="item.sellPrice != null">
+                                        ￥{{item.sellPrice | initPrice}}
+                                        <i v-if="item.sellPrice.promoPrice != undefined && item.sellPrice.promoPrice != null && item.sellPrice.promoPrice != '' && item.sellPrice.promoPrice != '0'">￥{{item.sellPrice.sellPrice}}</i>
+                                    </view>
+                                    <view class="goodsPri uni-flex-1 font_color_common" v-else>暂无报价</view>
+                                    <view class="goodsQty uni-flex-1">x{{item.quantity}}</view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="goodsSuit" v-for="sItems in items.orderDtlGroupDTOS" v-if="items.orderDtlGroupDTOS != null">
+                            <view class="suitTips uni-flex">
+                                <view class="suitIcon">套餐</view>
+                                <view class="suitMoney uni-flex-1">{{sItems.groupPrice.toFixed(2)}}元</view>
+                                <view class="suitQTY">x{{sItems.quantity}}</view>
+                            </view>
+                            <view class="goodsItem uni-flex" v-for="sItem in sItems.orderDtlDTOS">
+                                <image class="goodsImg" :src="sItem.defaultPic | goodsimgPath(90)" onerror="this.src='img/no_img.jpg'" />
+                                <view class="goodsDetails uni-flex-1">
+                                    <view class="goodsName uni-flex wrap-2">
+                                        <i class="activityIcon" v-if="sItem.itemType == '5'">特价</i>
+                                        <i class="activityIcon" v-if="sItem.activtysSign == 1 || sItem.activtysSign == 5">满减</i>
+                                        <view class="uni-flex-1">{{sItem.brandName ? sItem.brandName : '' + ' ' + sItem.goodsName}}</view>
+                                    </view>
+                                    <view class="goodsSku wrap">{{sItem.specification}}</view>
+                                    <view class="goodsPriQyt uni-flex">
+                                        <view class="goodsPri uni-flex-1 font_color_common" v-if="sItem.sellPrice != null">
+                                            ￥{{sItem.sellPrice | initPrice}}
+                                            <i v-if="sItem.sellPrice.promoPrice != undefined && sItem.sellPrice.promoPrice != null && sItem.sellPrice.promoPrice != '' && sItem.sellPrice.promoPrice != '0'">￥{{sItem.sellPrice.sellPrice}}</i>
+                                        </view>
+                                        <view class="goodsPri uni-flex-1 font_color_common" v-else>暂无报价</view>
+                                        <view class="goodsQty uni-flex-1">x{{sItem.quantity}}</view>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                        <view v-if="od.orderDiscountGroupDtlDTOS != null && od.orderDiscountGroupDtlDTOS.length > 0">
+                            <view class="gift" v-for="(item,index) in od.orderDiscountGroupDtlDTOS != null ? od.orderDiscountGroupDtlDTOS[0] ? od.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO ? od.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO.promotionContentDTOS : [] : [] : []" v-if="item.contentType == 4 || item.contentType == 5 || ((item.contentType == 6 || item.contentType == 8) && item.remainCount != undefined && item.remainCount != null && item.remainCount != '' && item.remainCount*1 > 0)">
+                                <view class="giftCont" v-html="GiftFunc(item, od.orderDiscountGroupDtlDTOS[0] ? od.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO ? od.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO.multiple : '' : '', 'mz')"></view>
+                            </view>
+                        </view>
+                    </view>
+                    <view>
+                        <view class="goodsItem uni-flex" v-for="item in od.orderDtls">
+                            <image class="goodsImg" :src="item.defaultPic | goodsimgPath(90)" onerror="this.src='img/no_img.jpg'" />
+                            <view class="goodsDetails uni-flex-1">
+                                <view class="goodsName uni-flex wrap-2">
+                                    <i class="activityIcon" v-if="item.itemType == '5'">特价</i>
+                                    <i class="activityIcon" v-if="item.activtysSign == 1 || item.activtysSign == 5">满减</i>
+                                    <view class="uni-flex-1">{{item.brandName ? item.brandName : '' + ' ' + item.goodsName}}</view>
+                                </view>
+                                <view class="goodsSku wrap">{{item.specification}}</view>
+                                <view class="goodsPriQyt uni-flex">
+                                    <view class="goodsPri uni-flex-1 font_color_common" v-if="isRedeem">
+                                        {{item.sellPrice.redeemPoint}}积分
+                                    </view>
+                                    <view class="goodsPri uni-flex-1 font_color_common" v-else-if="item.sellPrice != null">
+                                        ￥{{item.sellPrice | initPrice}}
+                                        <i v-if="item.sellPrice.promoPrice != undefined && item.sellPrice.promoPrice != null && item.sellPrice.promoPrice != '' && item.sellPrice.promoPrice != '0'">￥{{item.sellPrice.sellPrice}}</i>
+                                    </view>
+                                    <view class="goodsPri uni-flex-1 font_color_common" v-else>暂无报价</view>
+                                    <view class="goodsQty uni-flex-1">x{{item.quantity}}</view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="goodsSuit" v-for="sItems in od.orderDtlGroupDTOS" v-if="od.orderDtlGroupDTOS != null">
+                            <view class="suitTips uni-flex">
+                                <view class="suitIcon">套餐</view>
+                                <view class="suitMoney uni-flex-1">{{sItems.groupPrice.toFixed(2)}}元</view>
+                                <view class="suitQTY">x{{sItems.quantity}}</view>
+                            </view>
+                            <view class="goodsItem uni-flex" v-for="sItem in sItems.orderDtlDTOS">
+                                <image class="goodsImg" :src="sItem.defaultPic | goodsimgPath(90)" onerror="this.src='img/no_img.jpg'" />
+                                <view class="goodsDetails uni-flex-1">
+                                    <view class="goodsName uni-flex wrap-2">
+                                        <i class="activityIcon" v-if="sItem.itemType == '5'">特价</i>
+                                        <i class="activityIcon" v-if="sItem.activtysSign == 1 || sItem.activtysSign == 5">满减</i>
+                                        <view class="uni-flex-1">{{sItem.brandName ? sItem.brandName : '' + ' ' + sItem.goodsName}}</view>
+                                    </view>
+                                    <view class="goodsSku wrap">{{sItem.specification}}</view>
+                                    <view class="goodsPriQyt uni-flex">
+                                        <view class="goodsPri uni-flex-1 font_color_common" v-if="sItem.sellPrice != null">
+                                            ￥{{sItem.sellPrice | initPrice}}
+                                            <i v-if="sItem.sellPrice.promoPrice != undefined && sItem.sellPrice.promoPrice != null && sItem.sellPrice.promoPrice != '' && sItem.sellPrice.promoPrice != '0'">￥{{sItem.sellPrice.sellPrice}}</i>
+                                        </view>
+                                        <view class="goodsPri uni-flex-1 font_color_common" v-else>暂无报价</view>
+                                        <view class="goodsQty uni-flex-1">x{{sItem.quantity}}</view>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+                    <view v-if="od.orderPromotionDTO != undefined && od.orderPromotionDTO != null && od.orderPromotionDTO.isFixedFlag">
+                        <view class="gift" v-for="(item,index) in od.orderPromotionDTO ? od.orderPromotionDTO.promotionContentDTOS : []" v-if="item.contentType == 4 || item.contentType == 5 || ((item.contentType == 6 || item.contentType == 8) && item.remainCount != undefined && item.remainCount != null && item.remainCount != '' && item.remainCount*1 > 0)">
+                            <view class="giftCont" v-html="GiftFunc(item, od.orderPromotionDTO.multiple, 'zd')"></view>
+                        </view>
+                    </view>
+                    <view v-if="od.couponPromotioinDTOList != null && od.couponPromotioinDTOList.length > 0">
+                        <view v-for="(item1,index1) in od.couponPromotioinDTOList" v-if="item1.canUse == true && item1.canGet == true && item1.check == true">
+                            <view class="gift" style="" v-for="(item,index) in item1.promotionContentDTOS" v-if="item.contentType == 4 || item.contentType == 5 || ((item.contentType == 6 || item.contentType == 8) && item.remainCount != undefined && item.remainCount != null && item.remainCount != '' && item.remainCount*1 > 0)">
+                                <view class="giftCont" v-html="GiftFunc(item, item1.multiple, 'yhq')"></view>
+                            </view>
+                        </view>
+                    </view>
+                    <view class="zpTip" v-if="zpTipFilter(od)">
+                        (注：活动赠品数量有限，送完即止)
+                    </view>
+                </view>
+                <view class="pageLine sendType bg_white uni-flex" style="border-top: 1px solid #F6F6F6;" :style="deliveryType == '1' && orderAddress != '' && orderAddress.supportDeliveryTypes && orderAddress.supportDeliveryTypes.indexOf(deliveryType) == -1 ? 'padding-bottom: 4rpx;' : ''" @click="togglePopup('sendTypePop')">
+                    <view class="plTip">配送方式</view>
+                    <view class="plCont uni-flex-1" :class="deliveryType == '1' && orderAddress != '' && orderAddress.supportDeliveryTypes && orderAddress.supportDeliveryTypes.indexOf(deliveryType) == -1 ? 'font_color_999' : ''">
+                        {{deliveryType == '1' ? '就近急送' : deliveryType == '2' ? '门店自提' : '快递配送'}}<view class="iconfont icon-right"></view>
+                    </view>
+                </view>
+                <view class="font_color_common" style="padding: 0 30rpx 22rpx;" v-if="deliveryType == '1' && orderAddress != '' && orderAddress.supportDeliveryTypes && orderAddress.supportDeliveryTypes.indexOf(deliveryType) == -1">(您选择的配送地址超出就近急送范围，请重新选择)</view>
+                <view class="pageLine sendType bg_white uni-flex" style="display: none; border-bottom: 1px solid #F6F6F6;" v-if="deliveryType == '2'" @click="togglePopup('sendTimePop')">
+                    <view class="plTip">{{deliveryType == '1' ? '送达时间' : deliveryType == '2' ? '自提时间' : '配送时间'}}</view>
+                    <view class="plCont uni-flex-1">
+                        {{takeDT}}<view class="iconfont icon-right"></view>
+                    </view>
+                </view>
+                <view class="pageLine sendType bg_white uni-flex" style="border-top: 1px solid #F6F6F6;" v-if="od.couponPromotioinDTOList != null && !isRedeem" @click="initCoupon(od.couponPromotioinDTOList, od.orderId);">
+                    <view class="plTip uni-flex-1 uni-flex">优惠券<view class="font_color_common uni-flex-1">(已选择{{ couponObj != '' ? couponObj[od.orderId].usedcouponNum : 0 }}张优惠券)</view></view>
+                    <view class="plCont" style="width: 200rpx;">
+                        优惠{{ (couponObj != '' && od ? couponObj[od.orderId].reduceAmount : 0) | tofix2 }}元<view class="iconfont icon-right"></view>
+                    </view>
+                </view>
+            </view>
+        </view>
+        <!-- 商户内容（商品、配送方式、配送时间等）结束 -->
+
+        <!-- 发票开始 -->
+        <view class="pageLine payType bg_white uni-flex" v-if="storeDTO.isInv == 1" @click="togglePopup('receiptPop')">
+            <view class="plTip">发票</view>
+            <view class="plCont uni-flex-1">
+                {{needInvoice == 1 ? '(' + (receiptobj.invoiceType == 1 ? '个人' : '企业') + (receiptobj.invoiceTitleName ? ' - ' + receiptobj.invoiceTitleName : '') + ')' : ''}}<view class="iconfont icon-right"></view>
+            </view>
+        </view>
+        <!-- 发票结束 -->
+
+        <!-- 订单金额信息开始 -->
+        <view class="orderAmount bg_white" :style="isiphoneBt ? 'padding-bottom: 170rpx' : ''">
+            <view class="oaItem uni-flex">
+                商品金额<view class="oaItemCont uni-flex-1 font_color_common">{{isRedeem ? totalNeedPointsAmount + '积分' : '￥' + (totalAmount ? parseFloat(totalAmount).toFixed(2) : '0.00')}}</view>
+            </view>
+            <view class="oaItem uni-flex">
+                配送费<view class="oaItemCont uni-flex-1 font_color_common">+ ￥{{deliveryFeeAmount | tofix2}}</view>
+            </view>
+            <view class="oaItem uni-flex" v-if="recipeFee && !isRedeem">
+                开方费<view class="oaItemCont uni-flex-1 font_color_common">+ ￥{{recipeFee | tofix2}}</view>
+            </view>
+            <view class="oaItem uni-flex" v-if="promoDeliveryFeeAmount && !isRedeem">
+                配送费立减<view class="oaItemCont uni-flex-1 font_color_common">- ￥{{promoDeliveryFeeAmount | tofix2}}</view>
+            </view>
+            <view class="oaItem uni-flex" v-if="actReduceFilter(discountAmount, promoReduceAmount) && !isRedeem">
+                活动立减<view class="oaItemCont uni-flex-1 font_color_common">- ￥{{actReduceFilter(discountAmount, promoReduceAmount)}}</view>
+            </view>
+            <view class="oaItem uni-flex" v-if="couponReduceAmount && !isRedeem">
+                优惠券<view class="oaItemCont uni-flex-1 font_color_common">- ￥{{couponReduceAmount | tofix2}}</view>
+            </view>
+            <view class="oaItem uni-flex" v-if="deductionAmount && !isRedeem">
+                余额/积分抵扣<view class="oaItemCont uni-flex-1 font_color_common">- ￥{{deductionAmount | tofix2}}</view>
+            </view>
+        </view>
+        <!-- 订单金额信息开始 -->
+
+        <!--底部选项卡-->
+        <view class="pageFoot uni-flex bg_white" :style="isiphoneBt ? 'padding-bottom: 40rpx' : ''">
+            <view class="totalConfirm uni-flex-1">
+                <view class="uni-flex">总计：<b class="font_color_common uni-flex-1">¥{{totalPayAmount | tofix2}} <span>{{isRedeem ? ' + ' + totalNeedPointsAmount + '积分': ''}}</span></b></view>
+                <view class="totalOther">
+                    配送费:¥{{getDeliveryFeeAmount(deliveryFeeAmount,promoDeliveryFeeAmount)}}，已优惠:¥{{totalPromoMoneyFilter(promoReduceAmount,couponReduceAmount,discountAmount,promoDeliveryFeeAmount)}}
+                </view>
+            </view>
+            <view class="confirmBtn bg_common font_color_white" @click="submitOrder">提交预订</view>
+        </view>
+        <!--底部选项卡-->
+
+        <!-- popup组件 -->
+        <view class="showLoading" v-show="showLoading == true"></view>
+        <!-- 配送方式开始 -->
+        <uni-popup ref="sendTypePop" type="bottom" @change="popChange">
+            <view class="pagePopup bg_white" :style="isiphoneBt ? 'padding-bottom: 40rpx' : ''">
+                <view class="ppTit">
+                    配送方式<view class="closeBtn iconfont icon-close" @click="popupCancel('sendTypePop')"></view>
+                </view>
+                <scroll-view scroll-y="true" class="ppCont" style="min-height: 88rpx;">
+                    <radio-group @change="radioChange" v-if="storeDTO.deliverModes">
+                        <label class="sendTypeItem uni-flex" v-for="deliver in storeDTO.deliverModes" v-if="deliver != ''" :key="deliver">
+                            <view class="uni-flex-1" :class="deliver == '1' && orderAddress != '' && orderAddress.supportDeliveryTypes && orderAddress.supportDeliveryTypes.indexOf('1') == -1 ? 'font_color_999' : ''">{{deliver == '1' ? ('就近急送' + (orderAddress != '' && orderAddress.supportDeliveryTypes && orderAddress.supportDeliveryTypes.indexOf('1') == -1 ? '(地址超出配送范围)' : '')) : deliver == '2' ? '到店自提' : '快递配送'}}</view>
+                            <view>
+                                <radio :value="deliver" :checked="(deliveryType * 1 == deliver * 1) ? true : false" />
+                            </view>
+                        </label>
+                    </radio-group>
+                </scroll-view>
+            </view>
+        </uni-popup>
+        <!-- 配送方式结束 -->
+        <!-- 自提时间开始 -->
+        <uni-popup ref="sendTimePop" type="bottom" @change="popChange">
+            <view class="pagePopup bg_white" :style="isiphoneBt ? 'padding-bottom: 40rpx' : ''">
+                <view class="ppTit uni-flex" style="text-align: center;">
+                    <view class="stClear" @click="clearDate">清空</view>
+                    <view class="uni-flex-1">配送时间</view>
+                    <view class="stConfirm" @click="confirmDate">确定</view>
+                </view>
+                <view class="ppCont">
+                    <view class="sendDateCont uni-flex">
+                        <scroll-view scroll-y="true" class="sendDateLf">
+                            <view class="dateItem" :class="thisDate == td ? 'curr' : ''" v-for="(td, index) in takeDate"
+                                @click="selectDate(index)">{{td}}</view>
+                        </scroll-view>
+                        <scroll-view scroll-y="true" class="sendDateRg uni-flex-1">
+                            <view class="timeItem" :class="thisTime == tt ? 'font_color_common' : ''"
+                                v-for="(tt, index) in takeTime" @click="selectTime(index)"
+                                v-if="takeTime.length > 0">
+                                <view class="uni-flex">
+                                    <view class="uni-flex-1">{{tt}}</view>
+                                    <i class="iconfont icon-check" v-if="thisTime == tt"></i>
+                                </view>
+                            </view>
+                            <view style="padding-left: 10px; line-height: 40px;" v-if="takeTime == undefined || takeTime == null || takeTime == ''">暂无可选自提时间</view>
+                        </scroll-view>
+                    </view>
+                </view>
+            </view>
+        </uni-popup>
+        <!-- 自提时间结束 -->
+        <!-- 发票开始 -->
+        <uni-popup ref="receiptPop" type="bottom" @change="popChange">
+            <view class="pagePopup bg_white" :style="isiphoneBt ? 'padding-bottom: 40rpx' : ''">
+                <view class="ppTit uni-flex" style="text-align: center;">
+                    发票信息<view class="closeBtn iconfont icon-close" @click="popupCancel('receiptPop')"></view>
+                </view>
+                <view class="ppCont receiptCont">
+                    <view class="receiptType">
+                        <view class="rcTit">发票类型</view>
+                        <view class="rcWrap">
+                            <view class="rtBtn bg_common_light font_color_common border_common">普通发票</view>
+                        </view>
+                    </view>
+                    <view class="receiptHead">
+                        <view class="rcTit">发票抬头</view>
+                        <view class="rcWrap">
+                            <view class="rhSelect">
+                                <view class="rtBtn" :class="selectReceiptType == 'person' ? 'bg_common_light font_color_common border_common' : ''" invoiceType="1" @click="selectReceiptHead('person');">个人</view>
+                                <view class="rtBtn" :class="selectReceiptType == 'company' ? ' bg_common_light font_color_common border_common' : ''" invoiceType="2" @click="selectReceiptHead('company');">企业</view>
+                            </view>
+                            <view class="rhContent">
+                                <view class="rhTxt">
+                                    <input type="text" name="invoiceTitleName" class="receipt-head-input"
+                                        :placeholder="selectReceiptType == 'person' ? '必须填写真实姓名' : '请填写需开具的企业名称'"
+                                        v-model="receiptName">
+                                </view>
+                                <view class="rhTxt" v-show="selectReceiptType == 'company'">
+                                    <input type="text" name="taxPayerNo" v-model="taxPayerNo" class="receipt-head-input"
+                                        placeholder="请输入纳税人识别号或统一社会信用代码">
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+                <view class="receiptConfirm">
+                    <view class="rcBtn bg_common" @click="saveReceipt">确定</view>
+                </view>
+            </view>
+        </uni-popup>
+        <!-- 发票结束 -->
+        <!-- 优惠券开始 -->
+        <uni-popup ref="couponPop" type="bottom" @change="popChange">
+            <view class="pagePopup bg_white couponWrap" :style="isiphoneBt ? 'padding-bottom: 40rpx' : ''">
+                <view class="ppTit uni-flex" style="text-align: center;">
+                    <view class="stClear" @click="clearDate" style="position: absolute; top: 0; left: 0; height: 80rpx; line-height: 80rpx;">券码兑换</view>
+                    <view class="uni-flex-1">优惠券</view>
+                    <view class="closeBtn iconfont icon-close" @click="popupCancel('couponPop')"></view>
+                </view>
+                <view class="couponTabs uni-flex">
+                    <view class="couponTab uni-flex-1" :class="selectCoupontype == 'istrue' ? 'curr' : ''" @click="selectCouponType('istrue');">
+                        <view class="ctItem" :class="selectCoupontype == 'istrue' ? 'border_common_bottom' : ''">可用优惠券（{{ couponList.length }}）</view>
+                    </view>
+                    <view class="couponTab uni-flex-1" :class="selectCoupontype == 'isfalse' ? 'curr' : ''" @click="selectCouponType('isfalse');">
+                        <view class="ctItem" :class="selectCoupontype == 'isfalse' ? 'border_common_bottom' : ''">不可用优惠券（{{ cannotcouponList.length }}）</view>
+                    </view>
+                </view>
+                <view class="couponCanuseTips bg_common_light uni-flex" v-show="selectCoupontype == 'istrue'">共使用优惠券{{ usedcouponNum }}张，共抵用<i>￥{{ reduceAmount | tofix2 }}</i></view>
+                <view class="ppCont">
+                    <scroll-view class="couponCanuse" scroll-y="true" v-show="selectCoupontype == 'istrue'">
+                        <view class="couponList" v-if="couponList != ''">
+                            <checkbox-group>
+                                <view class="couponItem" v-for="couponitem in couponList">
+                                    <label @click="selectCoupon(couponitem.canGet,couponitem.check,couponitem.couponNo,couponitem.orderId)">
+                                        <view>
+                                            <view class="couponItemMain bg_common">
+                                                <view class="couponItemMainP c-i-m-price paddingbottom10" v-if="couponitem.couponContentType == 3">包邮</view>
+                                                <view class="couponItemMainP c-i-m-price paddingbottom10" v-else-if="couponitem.couponContentType == 6">兑换</view>
+                                                <view class="couponItemMainP c-i-m-price" v-else>
+                                                    <view class="c-i-m-priceSpan">{{(couponitem.couponContentType == 1 || couponitem.couponContentType == 7) ? '￥' : ''}}</view>
+                                                    <view style="display: inline;">{{couponitem.couponContentType == 2 ? Math.round(couponitem.couponContent*100)/10 : couponitem.couponContent}}</view>
+                                                    <view class="c-i-m-priceSpan">{{couponitem.couponContentType | couponCont}}</view>
+                                                </view>
+                                            </view>
+                                            <view class="couponItemDetails">
+                                                <view class="couponItemMainP c-i-d-cont">
+                                                    <view class="c-i-d-contSpan bg_common">{{couponitem.couponContentType | coupontypeFunc}}</view>
+                                                    {{couponitem.couponCfgName}}
+                                                </view>
+                                                <view class="couponItemMainP c-i-d-time">{{couponitem.startDate}} ~ {{couponitem.endDate}}</view>
+                                                <view class="couponItemMainP couponNumTips uni-flex" v-if="couponitem.applysCount > 0">
+                                                    已领<view>{{couponitem.applysCount}}</view>张，可用<view>{{couponitem.canUseCount}}</view>张
+                                                </view>
+                                            </view>
+                                        </view>
+                                        <view class="couponItemS">
+                                            <checkbox :value="couponitem.couponId" :checked="couponitem.check" />
+                                        </view>
+                                    </label>
+                                    <view class="cannotselectTips" v-if="!couponitem.canGet">该优惠券不能与已选优惠券同时使用哦！</view>
+                                </view>
+                            </checkbox-group>
+                        </view>
+                        <view class="no-coupon" v-else>
+                            <view class="no-coupon-tips" style="text-align: center;">
+                                <view class="iconfont icon-nocoupon" style="font-size: 132rpx; line-height: 224rpx; color: #CCCCCC;"></view>
+                                <view>抱歉！</view>
+                                <view>您暂无可以使用的优惠券哦！</view>
+                            </view>
+                        </view>
+                    </scroll-view>
+                    <scroll-view class="couponCannotuse" scroll-y="true" v-show="selectCoupontype == 'isfalse'">
+                        <view class="couponList" v-if="cannotcouponList != ''">
+                            <view class="couponItem noselect" v-for="(cannotcouponitem, index) in cannotcouponList">
+                                <view class="couponItemMain" :class="cannotcouponitem.canGet ? 'bg_common' : ''">
+                                    <view class="couponItemMainP c-i-m-price paddingbottom10" v-if="cannotcouponitem.couponContentType == 3">包邮</view>
+                                    <view class="couponItemMainP c-i-m-price paddingbottom10" v-else-if="cannotcouponitem.couponContentType == 6">兑换</view>
+                                    <view class="couponItemMainP c-i-m-price" v-else>
+                                        <view class="c-i-m-priceSpan">{{(cannotcouponitem.couponContentType == 1 || cannotcouponitem.couponContentType == 7) ? '￥' : ''}}</view>
+                                        <view style="display: inline;">{{cannotcouponitem.couponContentType == 2 ? Math.round(cannotcouponitem.couponContent*100)/10 : cannotcouponitem.couponContent}}</view>
+                                        <view class="c-i-m-priceSpan">{{cannotcouponitem.couponContentType | couponCont}}</view>
+                                    </view>
+                                </view>
+                                <view class="couponItemDetails">
+                                    <view class="couponItemMainP c-i-d-cont">
+                                        <view class="c-i-d-contSpan" :class="cannotcouponitem.canGet ? 'bg_common' : ''">{{cannotcouponitem.couponContentType | coupontypeFunc}}</view>
+                                        {{cannotcouponitem.couponCfgName}}
+                                    </view>
+                                    <view class="couponItemMainP c-i-d-time">{{cannotcouponitem.startDate}} ~ {{cannotcouponitem.endDate}}</view>
+                                    <view class="couponItemMainP couponNumTips couponMore uni-flex" :class="canNotIndex == index ? 'showMore' : ''" v-if="cannotcouponitem.applysCount > 0" @click="readCouponInfo(index)">
+                                        <view class="uni-flex-1 uni-flex">已领<view>{{cannotcouponitem.applysCount}}</view>张，可用<view>{{cannotcouponitem.canUseCount}}</view>张</view>
+                                        <view class="iconfont icon-morearrow expand-btn mui-pull-right"></view>
+                                    </view>
+                                </view>
+                                <view class="cannotselectTips">所结算商品中没有符合条件的商品</view>
+                                <view class="coupon-Foot" :class="canNotIndex == index ? 'show' : ''">
+                                    <view class="coupon-Details">
+                                        <view>规则说明：{{cannotcouponitem.conditionMemo | showRules(cannotcouponitem.reachType)}}</view>
+                                        <view v-if="cannotcouponitem.couponCfgDesc != undefined && cannotcouponitem.couponCfgDesc != null && cannotcouponitem.couponCfgDesc != ''">详细信息：{{cannotcouponitem.couponCfgDesc}}</view>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="no-coupon" v-else>
+                            <view class="no-coupon-tips" style="text-align: center;">
+                                <view class="iconfont icon-nocoupon" style="font-size: 132rpx; line-height: 224rpx; color: #CCCCCC;"></view>
+                                <view>抱歉！</view>
+                                <view>您暂无不可以使用的优惠券哦！</view>
+                            </view>
+                        </view>
+                    </scroll-view>
+                </view>
+                <view class="bg_white" style="padding: 20rpx 0;"><div class="couponConfirmBtn bg_common" @click="popupCancel('couponPop')">关闭</div></view>
+            </view>
+        </uni-popup>
+        <!-- 优惠券结束 -->
+        <!-- popup组件 -->
+    </view>
+</template>
+
+
+<script>
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            orderTradeNo: '',
+            orderAddress: '',
+            storeDTO: '',
+            deliveryType: '',
+            takeDT: '',
+            recipeShow: false,
+            showRecipe: false,
+            orderDTO: '',
+            couponList: [], //可用优惠券
+			cannotcouponList: [], //不可用优惠券
+			usedcouponNum: 0, //已领取优惠券
+            reduceAmount: 0, //优惠券优惠money
+            selectCoupontype: 'istrue',
+            couponObj: '',
+            prodQuantity: 0,
+            promoAmount: 0,
+            deliveryFeeAmount: '',
+            recipeFee: '',
+			promoDeliveryFeeAmount: '',
+			promoReduceAmount: '',
+			couponReduceAmount: '',
+			discountAmount: '',
+			totalAmount: '',
+			totalPayAmount: '',
+            totalNeedPointsAmount:'',
+			deductionAmount: '',
+			selectReceiptType: 'person', // 选择发票抬头类型
+            needInvoice: 0,
+            receiptobj: { // 发票信息
+				invoiceType: 1, // 个人/企业，1为个人，2为企业
+				invoiceTitleName: '', // 发票抬头
+				taxPayerNo: '', // 纳税人识别号或统一社会信用代码
+            },
+            receiptName: '',
+            taxPayerNo: '',
+            sysDate: '',
+			takeDate: [],
+			thisDate: '',
+			takeTime: [],
+			thisTime: '',
+			takeDT: '',
+            timeJG: 30,            // 自提时间间隔，分钟
+            canNotIndex: true,
+            recipeToggle: '',
+            pmhArr: [],
+            iCDCodeArr: [],
+            choiceMap: {},
+            recipeId: '',
+            recipeUrls: '',
+            saveRecipeUrls: [],
+            druguser: '',
+            enableNoRecipeSellFlag: '',
+            historyImageArr: [],
+            drugerImgArr:[],
+            diseaseInfos: [],
+            isOrderNeed: '',
+            showLoading: false,
+            isRedeem: ''
+        };
+    },
+    mounted() {
+        let _model_ = this.getStor('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+        }
+    },
+    onLoad(option) {
+        this.orderTradeNo = option.orderNo;
+        this.isOrderNeed = option.isOrderNeed;
+        this.isRedeem = option.isRedeem ? option.isRedeem : '';
+        this.initOrder();
+    },
+    methods: {
+        openAddress(){
+            // 跳转收货地址
+            this.goUrl('addressList', 'mine', 'storeId=' + this.storeDTO.storeId + (this.orderAddress != '' ? '?addressId=' + this.orderAddress.addressId : ''));
+        },
+        openAskInfo(){
+            // 跳转问诊信息
+            this.goUrl('askInfo', 'order', 'storeId=' + this.storeDTO.storeId);
+        },
+        initOrder(addrId, couponSelectNo, couponSelectFlag, orderId){
+            // 初始化订单数据
+            let obj = {};
+            if (addrId != '' && addrId != null && addrId != undefined) {
+				obj.addressId = addrId;
+            }
+            if (this.recipeId != null && this.recipeId != 'null' && this.recipeId != '') {
+				obj.recipeId = this.recipeId;
+			}
+			if (couponSelectNo != undefined && couponSelectNo != null && couponSelectNo != 'null' && couponSelectNo != '') {
+				obj.selectNo = couponSelectNo;
+			}
+			if (couponSelectFlag != undefined && couponSelectFlag != null && couponSelectFlag != 'null' && couponSelectFlag != '') {
+				obj.selectFlag = couponSelectFlag;
+			}
+            obj.orderTradeNo = this.orderTradeNo;
+            this.ebigRequest("/order/preview", obj, true).then((res) => {
+                if (res.orderAddress) {
+                    this.orderAddress = res.orderAddress;
+                }
+                this.sysDate = res.sysDate.replace(new RegExp("-", "gm"), "/");
+                this.storeDTO = res.storeDTO;
+                this.deliveryType = res.orders[0].deliveryType;
+                this.recipeFee = res.recipeAmount ? res.recipeAmount : 0;
+                this.deliveryFeeAmount = res.deliveryFeeAmount;
+                this.prodQuantity = res.prodQuantity;
+                this.promoAmount = res.promoAmount;
+                this.promoDeliveryFeeAmount = res.promoDeliveryFeeAmount;
+                this.promoReduceAmount = res.promoReduceAmount;
+                this.couponReduceAmount = res.couponReduceAmount ? res.couponReduceAmount : 0;
+                this.discountAmount = res.discountAmount ? res.discountAmount : 0;
+                this.totalAmount = res.productMoneyAmount;
+                this.totalPayAmount = res.totalPayAmount;
+                this.totalNeedPointsAmount = res.totalNeedPointsAmount
+                this.deductionAmount = 0;
+                this.enableNoRecipeSellFlag = res.orders[0].enableNoRecipeSellFlag;
+                let couponObj = {};
+                for (let i = 0; i < res.orders.length; i++) {
+                    let item = res.orders[i];
+
+                    /* 订单内商户商品 */
+                    let orderDtls = item.orderDtls;  // 没参与活动的单品
+                    let orderDtlGroupDTOS= item.orderDtlGroupDTOS;  // 没参与活动的套装
+                    let orderDiscountGroupDtlDTOS = item.orderDiscountGroupDtlDTOS != null ? item.orderDiscountGroupDtlDTOS : [];  // 参与活动的商品
+                    if(orderDtls != null){
+                        for (let j = 0; j < orderDtls.length; j++) {
+                            let item1 = orderDtls[j];
+                            if (!this.recipeShow && item1.recipeFlag == 2) {
+                                this.recipeShow = true;
+                            }
+                        }
+                    }
+                    
+                    orderDtlGroupDTOS.map(data => {  // 没参与活动的套装
+                        let orderDtlDTOS = data.orderDtlDTOS;
+                        for(let l = 0; l < orderDtlDTOS.length; l++) {
+                            if(orderDtlDTOS[l].recipeFlag == 2){
+                                this.recipeShow = true;
+                            }
+                        }
+                    })
+                    
+                    orderDiscountGroupDtlDTOS.map(data => {   // 有活动商品(单品,套装)
+                        let orderDTOS = data.orderDTOS;
+                        for (let j = 0; j < orderDTOS.length; j++) {   // 单品
+                            let itemD = orderDTOS[j];
+                            if (!this.recipeShow && itemD.recipeFlag == 2) {
+                                this.recipeShow = true;
+                            }
+                        }
+                        let dorderDtlGroupDTOS= data.orderDtlGroupDTOS;
+                        dorderDtlGroupDTOS.map(data1 => {   // 套装
+                            let orderDtlDTOSD = data1.orderDtlDTOS;
+                            for(let l = 0; l < orderDtlDTOSD.length; l++) {
+                                if(orderDtlDTOSD[l].recipeFlag == 2){
+                                    this.recipeShow = true;
+                                }
+                            }
+                        })
+                    })
+                    /* 订单内商户商品 */
+                    let coupObj = {};
+                    let reduceAmount = 0;
+                    let usedcouponNum = 0;
+                    item.couponPromotioinDTOList.map((coup,index) => {
+                        if (coup.canUse) {
+                            if (coup.check) {
+                                if (coup.reduceAmount != undefined && coup.reduceAmount != null && coup.reduceAmount != '') {
+                                    reduceAmount = reduceAmount + Math.abs(coup.reduceAmount * 1);
+                                }
+                                usedcouponNum = usedcouponNum * 1 + (coup.canUseCount != undefined && coup.canUseCount != null && coup.canUseCount != '' ? coup.canUseCount : 0);
+                            };
+                        }
+                    })
+                    
+                    this.$nextTick(() => {
+                        coupObj.reduceAmount = reduceAmount;
+                        coupObj.usedcouponNum = usedcouponNum;
+                        couponObj[item.orderId] = coupObj;
+                        if(orderId == item.orderId){
+                            this.initCoupon(item.couponPromotioinDTOList, orderId, true);
+                        }
+                    })
+                }
+                
+                this.$nextTick(() => {
+                    this.couponObj = couponObj;
+                })
+                this.orderDTO = res.orders;
+                this.initDate();
+            })
+        },
+        resetOrderFunc(recipeId) {
+            var getorderobj = {};
+            var addrId = this.orderAddress ? this.orderAddress.addressId : '';
+			if (addrId != '' && addrId != null && addrId != undefined) {
+				getorderobj.addressId = addrId;
+			}
+			if (recipeId != null && recipeId != 'null' && recipeId != '') {
+				getorderobj.recipeId = recipeId * 1;
+			}
+			getorderobj.deliveryType = this.deliveryType * 1;
+            getorderobj.orderTradeNo = this.orderTradeNo;
+            this.ebigRequest("/order/getOrderFee", getorderobj, true).then((item) => {
+                if (item.orderAddress) {
+                    this.orderAddress = item.orderAddress;
+                }else{
+                    this.orderAddress = '';
+                    if(this.deliveryType == '1'){
+                        uni.showToast({
+                            title: "抱歉！当前选择地址超出配送范围，请重新选择！",
+                            icon: "none",
+                        });
+                    }
+                }
+
+                this.sysDate = item.sysDate.replace(new RegExp("-", "gm"), "/");
+                this.storeDTO = item.storeDTO;
+                this.recipeFee = item.recipeAmount ? item.recipeAmount : 0;
+                this.deliveryFeeAmount = item.deliveryFeeAmount;
+                this.prodQuantity = item.prodQuantity;
+                this.promoAmount = item.promoAmount;
+                this.promoDeliveryFeeAmount = item.promoDeliveryFeeAmount;
+                this.promoReduceAmount = item.promoReduceAmount;
+                this.couponReduceAmount = item.couponReduceAmount ? item.couponReduceAmount : 0;
+                this.discountAmount = item.discountAmount ? item.discountAmount : 0;
+                this.totalAmount = item.productMoneyAmount;
+                this.totalPayAmount = item.totalPayAmount;
+                this.deductionAmount = 0;
+			})
+		},
+        GiftFunc: function (gift, multiple, type) {
+			let giftHTML = '';
+			let giftNum = gift.content * 1 * (multiple != null ? multiple : 1);
+			if(gift.contentType != 4 && gift.contentType != 5){
+				if(gift.remainCount != null){
+					giftNum = giftNum > gift.remainCount * 1 ? gift.remainCount : giftNum;
+				}
+				// if(gift.stockQty != null){
+				// 	giftNum = giftNum > gift.stockQty * 1 ? gift.stockQty : giftNum;
+				// }
+            }
+            if(giftNum > 0){
+                if(type == 'mz'){
+                    giftHTML = '<div class="uni-flex"><i class="wrap" style="display: inline-block; vertical-align: middle;width: 75px; font-style: normal; color: #f11b1b;">满赠-赠送</i>';
+                }else if(type == 'zd'){
+                    giftHTML = '<div class="uni-flex"><i class="wrap" style="display: inline-block; vertical-align: middle;width: 75px; font-style: normal; color: #f11b1b;">整单-赠送</i>';
+                }else if(type == 'yhq'){
+                    giftHTML = '<div class="uni-flex"><i class="wrap" style="display: inline-block; vertical-align: middle;width: 75px; font-style: normal; color: #f11b1b;">券-赠送</i>';
+                }
+                if (gift.contentType == 4) {
+                    giftHTML = giftHTML + giftNum + '倍积分</div>';
+                } else if (gift.contentType == 5) {
+                    giftHTML = giftHTML + giftNum + '积分</div>';
+                } else if (gift.contentType == 6) {
+                    giftHTML = giftHTML + '<i class="wrap uni-flex-1" style="display: inline-block; vertical-align: middle; font-style: normal;">' + gift.contentName + '</i>' + '<b style="display: inline-block; margin-left: 10px; width: 40px; text-align: right;">x' + giftNum + '</b></div>';
+                } else if (gift.contentType == 8) {
+                    giftHTML = giftHTML + '<i class="wrap uni-flex-1" style="display: inline-block; vertical-align: middle; font-style: normal;">' + gift.contentName + '</i><b style="display: inline-block; margin-left: 10px; width: 40px; text-align: right;">x' + giftNum + '张</b></div>';
+                }
+            }
+			return giftHTML;
+        },
+        zpTipFilter(order){  //判断是否显示活动提示
+			var isTrue = 0;
+            if(order.orderDiscountGroupDtlDTOS != null && order.orderDiscountGroupDtlDTOS.length > 0){
+                for(var i=0;i<order.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO.promotionContentDTOS.length;i++){
+                    let item = order.orderDiscountGroupDtlDTOS[0].itemDiscountOfferPromotionDTO.promotionContentDTOS[i];
+                    if(item.contentType == 4 || item.contentType == 5 || (item.contentType == 6 && ((item.remainCount != undefined && item.remainCount != null && item.remainCount != '' && item.remainCount*1 > 0) || item.remainCount == undefined || item.remainCount == null || item.remainCount == '')) || item.contentType == 8){
+                        isTrue++;
+                    }
+                }
+            }
+            if(order.orderPromotionDTO != undefined && order.orderPromotionDTO != null && order.orderPromotionDTO.isFixedFlag){
+                for(var j=0;j<order.orderPromotionDTO.promotionContentDTOS.length;j++){
+                    let item1 = order.orderPromotionDTO.promotionContentDTOS[j];
+                    if(item1.contentType == 4 || item1.contentType == 5 || (item1.contentType == 6 && ((item1.remainCount != undefined && item1.remainCount != null && item1.remainCount != '' && item1.remainCount*1 > 0) || item1.remainCount == undefined || item1.remainCount == null || item1.remainCount == '')) || item1.contentType == 8){
+                        isTrue++;
+                    }
+                }
+            }
+            if(order.couponPromotioinDTOList != undefined && order.couponPromotioinDTOList != null && order.couponPromotioinDTOList){
+                for(var b=0;b<order.couponPromotioinDTOList.length;b++){
+                    var item2 = order.couponPromotioinDTOList[b];
+                    if(item2.canUse == true && item2.canGet == true && item2.check == true){
+                        for(var j=0;j<item2.promotionContentDTOS.length;j++){
+                            let item3 = item2.promotionContentDTOS[j];
+                            if(item3.contentType == 4 || item3.contentType == 5 || (item3.contentType == 6 && ((item3.remainCount != undefined && item3.remainCount != null && item3.remainCount != '' && item3.remainCount*1 > 0) || item3.remainCount == undefined || item3.remainCount == null || item3.remainCount == '')) || item3.contentType == 8){
+                                isTrue++;
+                            }
+                        }
+                    }
+                }
+            }
+			if(isTrue > 0){
+				return true;
+			}else{
+				return false;
+			}
+        },
+        totalPromoMoneyFilter(promoReduceAmount,couponReduceAmount,discountAmount,promoDeliveryFeeAmount){ //已优惠过滤
+			discountAmount = (discountAmount && discountAmount != '') ? discountAmount.toFixed(2) : 0.00;
+			promoReduceAmount = (promoReduceAmount && promoReduceAmount != '') ? promoReduceAmount.toFixed(2) : 0.00;
+			couponReduceAmount = (couponReduceAmount && couponReduceAmount != '') ? couponReduceAmount.toFixed(2) : 0.00;
+			promoDeliveryFeeAmount = (promoDeliveryFeeAmount && promoDeliveryFeeAmount != '') ? promoDeliveryFeeAmount.toFixed(2) : 0.00;
+			return parseFloat(discountAmount * 1 + promoReduceAmount * 1 + couponReduceAmount * 1 + promoDeliveryFeeAmount * 1).toFixed(2);
+		},		
+		getDeliveryFeeAmount(deliveryFeeAmount,promoDeliveryFeeAmount) { //总配送费过滤
+			deliveryFeeAmount = deliveryFeeAmount ? deliveryFeeAmount.toFixed(2) : 0.00;
+			promoDeliveryFeeAmount = promoDeliveryFeeAmount ? promoDeliveryFeeAmount.toFixed(2) : 0.00;
+			return parseFloat(deliveryFeeAmount * 1 - promoDeliveryFeeAmount * 1).toFixed(2);
+		},
+        actReduceFilter(discountAmount,promoReduceAmount){ //活动立减过滤
+            discountAmount = (discountAmount && discountAmount != '') ? discountAmount.toFixed(2) : 0.00;
+            promoReduceAmount = (promoReduceAmount && promoReduceAmount != '') ? promoReduceAmount.toFixed(2) : 0.00;
+            return parseFloat(discountAmount * 1 + promoReduceAmount * 1).toFixed(2);
+        },
+        radioChange(e){
+            // 更改配送方式
+            if (this.deliveryType * 1 == e.detail.value * 1) {
+				return;
+			}
+            this.deliveryType = e.detail.value;
+            this.resetOrderFunc();
+            this.popupCancel('sendTypePop');
+        },
+        initDate() {      // 初始化日期数组
+			this.takeDate = [];
+			let buzWeeks = this.storeDTO.buzWeeks;
+			let showDate = [];
+			let nowDate = new Date(this.sysDate);
+			let thisWeek = nowDate.getDay() == 0 ? 7 : nowDate.getDay();
+			let l = 0;
+			let k = 0;
+			let thisDate = 0;
+			let isBig = false;
+			for (let i = 0; i < buzWeeks.length; i++) {
+				if (thisWeek <= buzWeeks[i] * 1) {
+					isBig = true;
+					l = i;
+					break;
+				}
+			}
+			if (isBig) {
+				for (let j = 0; j < 7; j++) {
+					if (j == 0) {
+						thisDate = buzWeeks[l] * 1 - thisWeek;
+						l++;
+					} else {
+						if (l < buzWeeks.length) {
+							thisDate = thisDate + buzWeeks[l] * 1 - (l == 0 ? 0 : buzWeeks[l - 1] * 1);
+							l++;
+						} else {
+							l = 0;
+							k++;
+							thisDate = thisDate + buzWeeks[l] * 1 + 7 - buzWeeks[buzWeeks.length - 1] * 1;
+							l++;
+						}
+					}
+					showDate.push(thisDate);
+				}
+			} else {
+				for (let j = 0; j < 7; j++) {
+					if (j == 0) {
+						thisDate = buzWeeks[0] * 1 + 7 - thisWeek;
+						l++;
+					} else {
+						if (l < buzWeeks.length) {
+							thisDate = thisDate + buzWeeks[l] * 1 - (l == 0 ? 0 : buzWeeks[l - 1] * 1);
+							l++;
+						} else {
+							let thisEnd = buzWeeks[l - 1] * 1;
+							l = 0;
+							k++;
+							thisDate = thisDate + buzWeeks[l] * 1 + 7 - thisEnd;
+							l++;
+						}
+					}
+					showDate.push(thisDate);
+				}
+			}
+			for (let i = 0; i < showDate.length; i++) {
+				this.takeDate.push(this.getDay(showDate[i]));
+			}
+			this.thisDate = this.getDay(showDate[0]);
+			this.initTime(0);
+		},
+		getDay(day) {      // 生成日期格式
+			let today = new Date();
+			let targetday_milliseconds = today.getTime() + 1000 * 60 * 60 * 24 * day;
+			today.setTime(targetday_milliseconds); //注意，这行是关键代码
+			let tYear = today.getFullYear();
+			let tMonth = today.getMonth();
+			let tDate = today.getDate();
+			let myddy = today.getDay();//获取存储当前日期
+			let weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+			tMonth = this.doHandleMonth(tMonth + 1);
+			tDate = this.doHandleMonth(tDate);
+			return tMonth + "月" + tDate + '日(' + weekday[myddy] + ')';
+        },
+        doHandleMonth(month) {
+			var m = month;
+			if (month.toString().length == 1) {
+				m = "0" + month;
+			}
+			return m;
+		},
+		selectDate(index) {   // 选中日期
+			this.initTime(index);
+			this.thisDate = this.takeDate[index];
+		},
+		initTime(index) {      // 初始化可选自提时间
+			this.takeTime = [];
+			let nowDate = new Date(new Date(this.sysDate).getTime() + this.storeDTO.prepareBuffTime * 3600000);
+			let thisTime = nowDate.getHours() * 3600 + nowDate.getMinutes() * 60;
+			let timeList = this.getTimeList(24, this.timeJG);
+			let buzTimes = this.storeDTO.buzTimes;
+			buzTimes.map(item => {
+				let firstTime = item.split('-')[0];
+				let firstS = firstTime.split(':')[0] * 3600 + firstTime.split(':')[1] * 60;
+				let endTime = item.split('-')[1];
+				let endS = endTime.split(':')[0] * 3600 + endTime.split(':')[1] * 60;
+				firstS = index > 0 ? firstS : firstS > thisTime ? firstS : thisTime;
+				for (let i = 0; i < timeList.length; i++) {
+					let item = timeList[i].split(':');
+					let itemS = item[0] * 3600 + item[1] * 60;
+					if (firstS <= itemS && endS >= itemS) {
+						if (endS < itemS + 15 * 60) {
+							this.takeTime.push(endTime);
+						} else {
+							this.takeTime.push(timeList[i]);
+						}
+					}
+				}
+			});
+			this.thisTime = this.takeTime[0];
+		},
+		getTimeList(hour, step) {         // 生成时间间隔数组
+			let minutes = 60;
+            let timeArr = [];
+            let hours = hour;
+            let steps = step;
+			for (let i = 0; i < hours; i++) {
+				let str = '';
+				if (i < 10) {
+					str = 0 + '' + i;
+				} else {
+					str = '' + i
+				}
+				for (let j = 0; j < minutes; j++) {
+					if (j % steps == 0) {
+						let s = j < 10 ? ':' + 0 + '' + j : ':' + j;
+						s = str + s;
+						timeArr.push(s)
+					}
+				}
+			}
+			return timeArr;
+		},
+		selectTime(index) {     // 选中时间
+			this.thisTime = this.takeTime[index];
+		},
+		clearDate() {   // 清空自提时间
+			this.takeDT = '';
+			this.popupCancel('sendTimePop');
+		},
+		confirmDate() {
+			if(this.thisTime == undefined || this.thisTime == null || this.thisTime == ''){
+                uni.showToast({
+                    title: "抱歉！您还未选中自提时间",
+                    icon: "none",
+                });
+				return;
+			}
+			this.takeDT = this.thisDate + ' ' + this.thisTime;
+			this.popupCancel('sendTimePop');
+        },
+        selectReceiptHead(receiptheadtype) { // 选择发票抬头
+            this.selectReceiptType = receiptheadtype;
+            if(receiptheadtype == 'person'){
+                this.taxPayerNo = '';
+            }
+		},
+		saveReceipt() { // 保存发票信息
+			this.needInvoice = 1;
+			var receiptobj = {};
+			receiptobj.invoiceType = this.selectReceiptType == 'person' ? 1 : 2;
+			receiptobj.invoiceTitleName = this.receiptName;
+			receiptobj.taxPayerNo = this.taxPayerNo;
+			if (receiptobj.invoiceType == 2 && (receiptobj.taxPayerNo == '' || receiptobj.taxPayerNo == null && receiptobj.taxPayerNo == undefined)) {
+                uni.showToast({
+                    title: "请您填写纳税人识别号或统一社会信用代码！",
+                    icon: "none",
+                });
+				return
+			}
+			this.receiptobj = receiptobj;
+			this.$nextTick(() => {
+				this.$forceUpdate();
+			})
+			this.popupCancel('receiptPop');
+		},
+        initCoupon: function (allCouponList, orderId, type) { // 初始化优惠券列表数据
+            // console.log(allCouponList)
+			var couponlist = [];
+			var cannotcouponlist = [];
+			var usedcouponNum = 0;
+			var reduceAmount = 0;
+			for(var i=0;i<allCouponList.length;i++){
+				var item = allCouponList[i];
+				Object.assign(item, {
+					orderId: orderId,
+				})
+				if (item.canUse) {
+					if (item.check) {
+						if (item.reduceAmount != undefined && item.reduceAmount != null && item.reduceAmount != '') {
+							reduceAmount = reduceAmount + Math.abs(item.reduceAmount * 1);
+						}
+						usedcouponNum = usedcouponNum * 1 + (item.canUseCount != undefined && item.canUseCount != null && item.canUseCount != '' ? item.canUseCount : 0);
+					};
+					couponlist.push(item);
+				} else {
+					cannotcouponlist.push(item);
+				};
+            }
+            this.canNotIndex = true;
+			this.reduceAmount = reduceAmount;
+			this.couponList = couponlist;
+			this.cannotcouponList = cannotcouponlist;
+			this.usedcouponNum = usedcouponNum;
+			this.$forceUpdate();
+			if(!type){
+				this.togglePopup('couponPop')
+			}
+        },
+        selectCouponType(coupontype) { // 选择打开可用或不可用优惠券tab
+			this.selectCoupontype = coupontype;
+        },
+        readCouponInfo(index){   // 不可用优惠券详细信息查看
+            if(index == this.canNotIndex){
+                this.canNotIndex = true;
+            }else{
+                this.canNotIndex = index;
+            }
+        },
+        selectCoupon (canGet, check, couponno, orderId) { // 选择优惠券
+			if (!canGet) {
+                uni.showToast({
+                    title: "不可与已选优惠券或促销活动叠加使用,已更换为当前选中优惠券!",
+                    icon: "none",
+                });
+			}
+            this.$nextTick(() => {
+                this.initOrder('',couponno,!check, orderId);
+            })
+        },
+        submitOrder(){
+            // 提交订单
+            if (this.orderAddress.addressId == '' && this.deliveryType != '2') {
+                uni.showToast({
+                    title: "抱歉！您还没选择收货地址",
+                    icon: "none",
+                });
+				return;
+			}
+			if (this.recipeShow && !this.showRecipe && (this.druguser == undefined || this.druguser == null || this.druguser == '')) {
+                uni.showToast({
+                    title: "抱歉！您还未提交问诊信息",
+                    icon: "none",
+                });
+				return;
+            }
+            var obj = {};
+			obj.orderTradeNo = this.orderTradeNo;
+			obj.deliveryType = this.deliveryType;
+			if(this.deliveryType == '1' && this.orderAddress.supportDeliveryTypes && this.orderAddress.supportDeliveryTypes.indexOf('1') == -1){
+                uni.showToast({
+                    title: "抱歉！您选择的配送地址超出就近急送范围",
+                    icon: "none",
+                });
+				return;
+			}
+			if (this.deliveryType != '2') {
+				obj.addressId = this.orderAddress.addressId;
+			}else if(this.takeDT != ''){
+				var nowTime = new Date();
+				var dtime = nowTime.getFullYear() + '-' + this.takeDT.replace('月', '-') + ':00';
+				dtime = dtime.substring(0, dtime.indexOf('(')) + dtime.substring(dtime.indexOf(')') + 1, dtime.length);
+				obj.deliveryTimeOrder = dtime.replace('日', '');
+			}
+            
+			if (this.showRecipe) {
+				if (this.recipeUrls != undefined && this.recipeUrls != null && this.recipeUrls != '') {
+					obj.recipeUrls = [this.recipeUrls];
+				}
+				if (this.druguser != undefined && this.druguser != null && this.druguser != '') {
+					obj.druguser = this.druguser;
+				}
+			}
+			if (this.needInvoice == 1) {
+				obj.needInvoice = this.needInvoice;
+				obj.invoice = this.needInvoice == 1 ? this.receiptobj : null;
+			}
+            uni.showLoading({
+                title: '努力提交中...',
+                mask: true
+            });
+            let askObj = {
+                orderTradeNo: this.orderTradeNo,
+                drugUserId: this.druguser.userId,
+                diseaseInfos: this.diseaseInfos,
+                picInfos: this.historyImageArr,
+                description: this.druguser.diseases
+            }
+            if(this.recipeToggle == 2){
+                this.doRequest("/recipecenter/lianou/inquiry", askObj, false, 'json').then((res) => {
+                    obj.recipeId = res;
+                    var requestStr = JSON.stringify(obj);
+                    this.ebigRequest("/order/confirm", requestStr, false, 'json').then((data) => {
+                        var times = 1;
+                        var submitOrder = setInterval(() => {
+                            if (times <= 10) {
+                                var checkObj = {};
+                                checkObj.orderTradeNo = data;
+                                checkObj.orderStatus = 1;
+                                this.ebigRequest("/order/syncState", checkObj, false).then((res) => {
+                                    if (res) {
+                                        var getTradeObj = {};
+                                        getTradeObj.orderTradeNo = data;
+                                        this.ebigRequest("/order/getTrade", getTradeObj, false).then((response) => {
+                                            uni.hideLoading();
+                                            clearInterval(submitOrder);
+                                            if (this.isOrderNeed == true || this.isOrderNeed == 'true') {
+                                                uni.showToast({
+                                                    title: "订单提交成功，正在跳转订单详情页！",
+                                                    icon: "none",
+                                                });
+                                                this.replaceUrl('orderDetail', 'order', 'orderNo=' + response.orderNos);
+                                            } else {
+                                                uni.showToast({
+                                                    title: "订单提交成功，正在跳转订单支付页！",
+                                                    icon: "none",
+                                                });
+                                                this.replaceUrl('orderPay', 'order', 'orderNos=' + response.orderNos);
+                                            }
+                                        }).catch(error => {
+                                            uni.hideLoading();
+                                        })
+                                    }
+                                }).catch(error => {
+                                    uni.hideLoading();
+                                })
+                                times++;
+                            } else {
+                                uni.hideLoading();
+                                clearInterval(submitOrder);
+                                uni.showToast({
+                                    title: "订单提交失败，请重试！",
+                                    icon: "none",
+                                });
+                            }
+                        }, 500);
+                    }).catch(error => {
+                        uni.hideLoading();
+                    });
+                }).catch(error => {
+                    uni.hideLoading();
+                });
+            }else{
+                var requestStr = JSON.stringify(obj);
+                this.ebigRequest("/order/confirm", requestStr, false, 'json').then((data) => {
+                    var times = 1;
+                    var submitOrder = setInterval(() => {
+                        if (times <= 10) {
+                            var checkObj = {};
+                            checkObj.orderTradeNo = data;
+                            checkObj.orderStatus = 1;
+                            this.ebigRequest("/order/syncState", checkObj, false).then((res) => {
+                                if (res) {
+                                    var getTradeObj = {};
+                                    getTradeObj.orderTradeNo = data;
+                                    this.ebigRequest("/order/getTrade", getTradeObj, false).then((response) => {
+                                        uni.hideLoading();
+                                        clearInterval(submitOrder);
+                                        if (this.isOrderNeed == true || this.isOrderNeed == 'true') {
+                                            uni.showToast({
+                                                title: "订单提交成功，正在跳转订单详情页！",
+                                                icon: "none",
+                                            });
+                                            this.replaceUrl('orderDetail', 'order', 'orderNo=' + response.orderNos);
+                                        } else {
+                                            uni.showToast({
+                                                title: "订单提交成功，正在跳转订单支付页！",
+                                                icon: "none",
+                                            });
+                                            // #ifdef MP-WEIXIN
+                                            this.replaceUrl('orderPay', 'order', 'orderNos=' + response.orderNos);
+                                            // #endif
+
+                                            // #ifdef H5
+                                            let pagePath = this.getWecharCodeUrl(this.h5APPID, true);
+                                            window.location.replace(pagePath);
+                                            // #endif
+                                        }
+                                    }).catch(error => {
+                                        uni.hideLoading();
+                                    })
+                                }
+                            }).catch(error => {
+                                uni.hideLoading();
+                            })
+                            times++;
+                        } else {
+                            uni.hideLoading();
+                            clearInterval(submitOrder);
+                            uni.showToast({
+                                title: "订单提交失败，请重试！",
+                                icon: "none",
+                            });
+                        }
+                    }, 500);
+                }).catch(error => {
+                    uni.hideLoading();
+                });
+            }
+        },
+        /* 弹出框 start */
+        togglePopup(name) {
+            // 弹出弹出框
+            // if(name == 'sendTypePop'){
+
+            // }
+            this.showLoading = true;
+            this.$refs[name].open();
+        },
+        popupCancel(name) {
+            // 关闭弹出框
+            this.$refs[name].close();
+        },
+        popChange(type){
+            if(type.show){
+                setTimeout(() => {
+                    this.showLoading = false;
+                }, 450)
+            }
+        },
+        /* 弹出框 start */
+    },
+    filters: {
+        tofix2(value) {
+			if (value != undefined && value != null && value != '') {
+				value = parseFloat(value);
+				return value.toFixed(2);
+			} else {
+				return '0.00';
+			};
+		},
+		goodsimgPath (value, num) { // 商品大图
+			if (!value) {
+				return '../../static/image/default/no_img.jpg';
+			} else {
+				return value + '?x-oss-process=image/resize,m_mfit,h_' + num + ',w_' + num;
+			}
+        },
+        initPrice(item){
+            if(item){
+                return (item.promoPrice != '' && item.promoPrice != null && item.promoPrice != undefined && item.promoPrice != '0') ? parseFloat(item.promoPrice).toFixed(2) : (item.sellPrice != '' && item.sellPrice != null && item.sellPrice != undefined) ? parseFloat(item.sellPrice).toFixed(2) : item.sellPrice == 0 ? '0.00' : '暂无报价';
+            }
+        },
+        couponCont(value) {
+			if (value == 2) {
+				return '折';
+			} else if (value == 4) {
+				return '倍';
+			} else if (value == 5) {
+				return '积分';
+			};
+		},
+		coupontypeFunc(value) {
+			if (value == 1 || value == 7) {
+				return '代金券';
+			} else if (value == 2) {
+				return '折扣券';
+			} else if (value == 3) {
+				return '包邮券';
+			} else if (value == 4 || value == 5) {
+				return '积分券';
+			} else if (value == 6) {
+				return '兑换券';
+			};
+        },
+        showRules(value, res) { // 优惠券规则编写
+			if (value) {
+				var rules = value.split(',');
+				if (rules.length > 1) {
+					if (res == 1) { //res = reachtype 满足条件 1：任意满足   2:所有满足
+						var html = '该券只需要'
+						rules.map((item, index) => {
+							if (index == 0) {
+								html += item.substring(0, item.length - 2);
+							} else {
+								html += '，或' + item.substring(0, item.length - 2);
+							}
+						})
+						html += '满足其中一项条件即可使用！';
+						return html;
+					} else {
+						var html = '该券需要'
+						rules.map((item, index) => {
+							if (index == 0) {
+								html += item.substring(0, item.length - 2);
+							} else {
+								html += '，且' + item.substring(0, item.length - 2);
+							}
+						})
+						html += '同时满足方可使用！';
+						return html;
+					}
+				} else {
+					return rules[0];
+				}
+			} else {
+				return '暂无规则内容';
+			}
+		},
+    }
+}
+</script>
+
+<style lang="scss">
+.showLoading {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 100%;
+}
+.iconfont.icon-right {
+    font-weight: 400;
+    color: #999999;
+}
+.address, .storeDTO {
+    position: relative;
+    margin-bottom: 20rpx;
+    padding: 20rpx 30rpx;
+    box-sizing: border-box;
+
+    .addrInfo {
+        padding: 10rpx 0px;
+        font-size: 36rpx;
+        font-weight: 700;
+        line-height: 48rpx;
+    }
+    .userInfo {
+        font-size: 26rpx;
+        line-height: 40rpx;
+    }
+    .iconfont {
+        line-height: 100rpx;
+    }
+    .noAddr {
+        font-size: 30rpx;
+        line-height: 100rpx;
+        color: #999999;
+    }
+    .borderB {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 4rpx;
+        background: url(../../static/image/default/address-border.png) repeat-x;
+        background-size: 160rpx 8rpx;
+    }
+}
+.askInfo {
+    margin-bottom: 20rpx;
+    padding: 22rpx 30rpx;
+    position: relative;
+    background: #FFF4F0;
+    border-top: 1px solid #FFE1B9;
+    border-bottom: 1px solid #FFE1B9;
+
+    .askInfoTxt {
+        font-weight: 700;
+        line-height: 40rpx;
+    }
+    .askInfoDes {
+        line-height: 36rpx;
+        color: #F8B75F;
+    }
+    .askInfoAdd {
+        width: 120rpx;
+        font-size: 28rpx;
+        text-align: right;
+        line-height: 40rpx;
+        color: #F8B75F;
+
+        .iconfont {
+            display: inline-block;
+            vertical-align: middle;
+            color: #F8B75F;
+        }
+    }
+}
+.pageLine {
+    padding: 22rpx 30rpx;
+    border-radius: 10rpx;
+
+    .plTip {
+        width: 120rpx;
+        font-weight: 700;
+        line-height: 44rpx;
+
+        .uni-flex-1 {
+            padding: 0 10rpx;
+            font-size: 24rpx;
+            font-weight: 700;
+        }
+    }
+    .plCont {
+        font-weight: 700;
+        text-align: right;
+        line-height: 44rpx;
+
+        .iconfont {
+            display: inline-block;
+        }
+    }
+}
+.orderDTO {
+    margin: 20rpx 0;
+    border-radius: 10rpx;
+
+    .orderItem {
+        .storeName {
+            padding: 0 0 0 30rpx;
+            height: 88rpx;
+            font-size: 28rpx;
+            font-weight: 700;
+            line-height: 88rpx;
+            color: #555555;
+
+            .iconfont {
+                display: inline-block;
+                padding-right: 10rpx;
+            }
+        }
+        .orderGoods {
+            padding-left: 30rpx;
+
+            .suitTips {
+                padding: 22rpx 30rpx 4rpx 0;
+                font-weight: 700;
+            }
+            .goodsItem {
+                position: relative;
+                padding: 16rpx 30rpx 16rpx 0;
+
+                .goodsImg {
+                    display: block;
+                    margin-right: 20rpx;
+                    width: 180rpx;
+                    height: 180rpx;
+                    box-sizing: border-box;
+                    border: 1px solid #F9F9F9;
+                }
+                .goodsName {
+                    margin-bottom: 10rpx;
+                    height: 80rpx;
+                    font-weight: 700;
+                    line-height: 36rpx;
+                    color: #333333;
+
+                    .activityIcon {
+                        padding: 1px 12rpx;
+                        margin-right: 10rpx;
+                        width: 64rpx;
+                        height: 36rpx;
+                        font-size: 20rpx;
+                        line-height: 32rpx;
+                        vertical-align: top;
+                        color: #FFFFFF;
+                        background: red;
+                        border-radius: 60rpx;
+                        box-sizing: border-box;
+                    }
+                }
+                .goodsSku {
+                    margin-bottom: 6rpx;
+                    width: 100%;
+                    height: 42rpx;
+                    font-size: 24rpx;
+                    line-height: 40rpx;
+                    color: #999999;
+                }
+                .goodsPri {
+                    font-size: 36rpx;
+                    font-weight: 700;
+
+                    i {
+                        display: inline;
+                        padding-left: 10rpx;
+                        font-size: 26rpx;
+                        text-decoration: line-through;
+                        color: #999999;
+                    }
+                }
+                .goodsQty {
+                    font-size: 24rpx;
+                    text-align: right;
+                }
+            }
+            .gift {
+                padding: 22rpx 30rpx 4rpx 0;
+                text-align: left;
+
+                .giftCont {
+                    height: 40rpx;
+                    line-height: 40rpx;
+                }
+            }
+            .zpTip {
+                padding-bottom: 20rpx;
+                font-size: 24rpx;
+                line-height: 48rpx;
+                color: red;
+            }
+        }
+    }
+}
+.orderAmount {
+    margin-top: 20rpx;
+    padding: 22rpx 30rpx 120rpx 30rpx;
+    border-radius: 10rpx 10rpx 0 0;
+
+    .oaItem {
+        padding: 10rpx 0;
+        line-height: 40rpx;
+
+        .oaItemCont {
+            font-weight: 700;
+            text-align: right;
+        }
+    }
+}
+.pageFoot {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 99;
+    -webkit-box-shadow: 0px -4rpx 30rpx -6rpx rgba(0,0,0,.3);
+    box-shadow: 0px -4rpx 30rpx -6rpx rgba(0,0,0,.3);
+
+    .totalConfirm {
+        padding: 16rpx 0 0 30rpx;
+        line-height: 1.3em;
+
+        b {
+            font-size: 36rpx;
+            font-weight: 700;
+        }
+    }
+    .confirmBtn {
+        margin-left: 20rpx;
+        height: 100rpx;
+        width: 220rpx;
+        text-align: center;
+        line-height: 100rpx;
+    }
+}
+.pagePopup {
+    .ppTit {
+        position: relative;
+        padding-left: 30rpx;
+        height: 80rpx;
+        line-height: 80rpx;
+        font-size: 28rpx;
+        background: #F6F6F6;
+
+        .closeBtn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80rpx;
+            height: 80rpx;
+            font-size: 52rpx;
+            font-weight: 400;
+            text-align: center;
+            line-height: 76rpx;
+            color: #999999;
+        }
+    }
+    .ppCont {
+        overflow-y: scroll;
+        min-height: 230rpx;
+        max-height: 800rpx;
+    }
+}
+.sendTypeItem {
+    padding: 20rpx 30rpx;
+}
+.stClear, .stConfirm {
+    width: 140rpx;
+    text-align: center;
+}
+.sendDateCont {
+    .sendDateLf {
+        width: 230rpx;
+        height: 630rpx;
+
+        .dateItem {
+            height: 90rpx;
+            font-size: 26rpx;
+            text-align: center;
+            line-height: 90rpx;
+            background: #EEEEEE;
+        }.curr {
+            background: #FFFFFF;
+        }
+    }
+    .sendDateRg {
+        height: 630rpx;
+
+        .timeItem {
+            position: relative;
+            padding-left: 40rpx;
+            height: 90rpx;
+            font-size: 26rpx;
+            text-align: left;
+            text-indent: 30rpx;
+            line-height: 90rpx;
+
+            .iconfont {
+                width: 90rpx;
+            }
+        }
+    }
+}
+.receiptCont {
+    position: relative;
+
+    .rcTit {
+        height: 60rpx;
+        font-size: 28rpx;
+        font-weight: 700;
+        text-align: left;
+        line-height: 60rpx;
+        text-indent: 30rpx;
+    }
+    .rcWrap {
+        padding: 8rpx 30rpx 30rpx;
+
+        .rhContent {
+            padding-top: 30rpx;
+
+            .rhTxt {
+                margin-bottom: 20rpx;
+                padding: 20rpx 32rpx;
+                line-height: 40rpx;
+                background: #F6F6F6;
+                border-radius: 80rpx;
+
+                input {
+                    height: 40rpx;
+                    line-height: 40rpx;
+                    font-size: 28rpx;
+                }
+            }
+        }
+    }
+    .rtBtn {
+        display: inline-block;
+        margin-right: 20rpx;
+        padding: 8rpx 28rpx;
+        font-size: 28rpx;
+        color: #333333;
+        background: #FFFFFF;
+        border: 1px solid #EFEFEF;
+        border-radius: 40rpx;
+    }
+}
+.receiptConfirm {
+    padding: 20rpx;
+
+    .rcBtn {
+        margin: 0 auto;
+        width: 540rpx;
+        height: 80rpx;
+        font-size: 28rpx;
+        text-align: center;
+        line-height: 80rpx;
+        color: #FFFFFF;
+        border-radius: 80rpx;
+    }
+}
+.couponWrap {
+    .couponTabs {
+        height: 88rpx;
+        font-size: 28rpx;
+        text-align: center;
+        line-height: 88rpx;
+
+        .couponTab {
+            .ctItem {
+                display: inline-table;
+                padding: 0 20rpx;
+                height: 76rpx;
+                font-weight: 700;
+            }
+        }.curr {
+            .ctItem {
+                border-bottom: 4rpx solid;
+            }
+        }
+    }
+    .couponCanuseTips {
+        padding: 0 20rpx;
+        height: 68rpx;
+        font-size: 24rpx;
+        line-height: 68rpx;
+        text-align: left;
+    }
+    .couponCanuse {
+        height: 366px;
+    }
+    .couponList {
+        padding: 20rpx;
+
+        .couponItem {
+            position: relative;
+            margin-bottom: 16rpx;
+            min-height: 220rpx;
+            box-sizing: border-box;
+
+            label {
+                box-sizing: border-box;
+            }
+            .couponItemS {
+                position: absolute;
+                top: 50%;
+                right: 0;
+                margin-top: -24rpx;
+                box-sizing: border-box;
+            }
+            .couponItemMain {
+                position: absolute;
+                top: 0;
+                left: 0;
+                padding: 60rpx 10rpx 0;
+                width: 220rpx;
+                height: 220rpx;
+                box-sizing: border-box;
+
+                .couponItemMainP {
+                    font-size: 24rpx;
+                    text-align: center;
+                    color: #FFFFFF;
+                }.c-i-m-price {
+                    font-size: 68rpx;
+
+                    .c-i-m-priceSpan {
+                        display: inline;
+                        font-size: 28rpx;
+                    }
+                }
+            }
+            .couponItemDetails {
+                margin-left: 220rpx;
+                padding: 12rpx 36px 12rpx 20rpx;
+                height: 220rpx;
+                text-align: left;
+                font-size: 26rpx;
+                border: 1px solid #F6F6F6;
+                border-left: none;
+                box-sizing: border-box;
+
+                .c-i-d-cont {
+                    overflow: hidden;
+                    display: -webkit-box;
+                    height: 80rpx;
+                    font-size: 26rpx;
+                    font-weight: 700;
+                    line-height: 40rpx;
+                    text-overflow: ellipsis;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    color: #000000;
+
+                    .c-i-d-contSpan {
+                        display: inline;
+                        margin-right: 6rpx;
+                        padding: 4rpx 16rpx;
+                        width: 60rpx;
+                        font-size: 20rpx;
+                        color: #FFFFFF;
+                        border-radius: 50rpx;
+                    }
+                }
+                .c-i-d-time {
+                    padding-top: 8rpx;
+                    font-size: 24rpx;
+                    color: #444444;
+                    line-height: 40rpx;
+                }
+                .couponNumTips {
+                    padding-top: 24rpx;
+                    font-size: 26rpx;
+                    color: #000000;
+                }
+            }
+        }.noselect {
+            box-shadow: 0 10rpx 42rpx -8rpx rgba(0,0,0,.1);
+
+            .couponItemMain {
+                background: #CCCCCC;
+            }
+
+            .couponItemDetails {
+                padding: 12rpx 20rpx;
+
+                .c-i-d-cont {
+                    color: #BBBBBB;
+
+                    .c-i-d-contSpan {
+                        background: #CCCCCC;
+                    }
+                }
+                .c-i-d-time {
+                    color: #BBBBBB;
+                }
+            }
+            .cannotselectTips {
+                padding: 10rpx 16rpx;
+                font-size: 24rpx;
+                text-align: left;
+                border: 1px solid #F6F6F6;
+                border-top: none;
+            }
+        }
+    }
+    .paddingbottom10 {
+        padding-bottom: 20rpx;
+    }
+    .couponCannotuse {
+        height: 800rpx;
+
+        .couponItemMain {
+            padding-top: 92rpx;
+            height: 220rpx;
+        }
+        .couponItemDetails {
+            padding: 12rpx 0 0;
+            height: 220rpx;
+
+            .c-i-d-cont {
+                padding: 0 20rpx;
+            }
+            .c-i-d-time {
+                padding: 12rpx 20rpx 8rpx;
+                border-bottom: 1px dashed #EEEEEE;
+            }
+
+            .couponMore {
+                padding: 0 20rpx !important;
+                height: 64rpx;
+                line-height: 64rpx;
+
+                .iconfont {
+                    font-size: 28rpx;
+                    color: #BBBBBB;
+                    -ms-transform: rotate(-90deg); 	/* IE 9 */
+                    -moz-transform: rotate(-90deg); 	/* Firefox */
+                    -webkit-transform: rotate(-90deg); /* Safari and Chrome */
+                    -o-transform: rotate(-90deg); 	/* Opera */
+                    transform: rotate(-90deg);
+                    -moz-transition: transform 450ms; /* Firefox 4 */
+                    -webkit-transition: transform 450ms; /* Safari and Chrome */
+                    -o-transition: transform 450ms; /* Opera */
+                    transition: transform 450ms;
+                }
+            }.showMore .iconfont {
+                -ms-transform: rotate(0deg); 	/* IE 9 */
+                -moz-transform: rotate(0deg); 	/* Firefox */
+                -webkit-transform: rotate(0deg); /* Safari and Chrome */
+                -o-transform: rotate(0deg); 	/* Opera */
+                transform: rotate(0deg);
+                -moz-transition: transform 450ms; /* Firefox 4 */
+                -webkit-transition: transform 450ms; /* Safari and Chrome */
+                -o-transition: transform 450ms; /* Opera */
+                transition: transform 450ms;
+            }
+        }
+    }
+    .coupon-Foot {
+        overflow: hidden;
+        width: 100%;
+        height: 0;
+    }.show {
+        height: 160rpx;
+        -moz-transition: height 450ms; /* Firefox 4 */
+        -webkit-transition: height 450ms; /* Safari and Chrome */
+        -o-transition: height 450ms; /* Opera */
+        transition: height 450ms;
+    }
+    .coupon-Details {
+        overflow-y: scroll;
+        position: relative !important;
+        margin: 20rpx 24rpx;
+        height: 120rpx;
+        width: auto;
+        font-size: 24rpx;
+    }
+    .coupon-Details p {
+        font-size: 24rpx;
+        text-align: left;
+        line-height: 40rpx;
+        color: #000000;
+    }
+    .couponConfirmBtn {
+        margin: 0 auto;
+        width: 540rpx;
+        height: 80rpx;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 80rpx;
+        color: #FFFFFF;
+        border-radius: 80rpx;
+    }
+}
+
+</style>

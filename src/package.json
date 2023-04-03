@@ -1,0 +1,36 @@
+{
+    "uni-app": {
+        "scripts": {
+            "dev-weixin": {
+                "title":"小程序开发环境",
+                "BROWSER":"",
+                "env": {
+                    "UNI_PLATFORM": "mp-weixin"
+                },
+                "define": {
+                    "DEV-WEIXIN": true
+                }
+            },
+            "test-weixin": {
+                "title":"小程序测试环境",
+                "BROWSER":"",
+                "env": {
+                    "UNI_PLATFORM": "mp-weixin"
+                },
+                "define": {
+                    "TEST-WEIXIN": true
+                }
+            },
+            "pro-weixin": {
+                "title":"小程序正式环境",
+                "BROWSER":"",
+                "env": {
+                    "UNI_PLATFORM": "mp-weixin"
+                },
+                "define": {
+                    "PRO-WEIXIN": true
+                }
+            }
+        }
+    }
+}

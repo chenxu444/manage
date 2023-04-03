@@ -1,0 +1,323 @@
+<template>
+    <view id="page" style="width: 100%;height: 100%;">
+        <view class="shareInfo uni-flex" v-if="urlParams">
+            <image class="shareImg" :src="headImgUrl" />
+            <view class="shareTips uni-flex-1">{{idName}}邀请你成为分销商</view>
+        </view>
+        <view class="main-wrap">
+            <div class="content_txt">线上分销商中心</div>
+            <div class="content_txt2">成为分销商</div>
+            <!-- content -- start -->
+            <view class="content-wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx;' : ''">
+                <view class="banner-img">
+                    <image class="img" lazy-load="true" mode="scaleToFill" src="http://mall.yaoduo.net/web-omall/img/default/shareBg.png"></image> 
+                </view>
+                <view class="btn-become tc bg_common font_color_white" @click="becomeClick" :style="isiphoneBt ? 'bottom: 60rpx;' : ''">成为分销商</view>
+            </view>
+            <!-- content -- end -->
+        </view>
+        <!-- 输入邀请码弹窗 -- start -->
+        <uni-popup ref="popup" :animation="true">
+            <view class="dia-wrap bg_white">
+                <view class="tit">邀请码</view>
+                <view class="dia-input">
+                    <input class="input" type="text" v-model="code" :disabled="urlParams?true:false" placeholder="请输入邀请码">
+                </view>
+                <view class="btn-sure tc bg_common font_color_white" @click="becomeSure">确定</view>
+            </view>
+        </uni-popup>
+        <!-- 输入邀请码弹窗 -- end -->
+    </view>
+</template>
+
+<script>
+export default {
+    components:{
+        
+    },
+    data() {
+        return {
+            isiphoneBt: false,
+            isNotCode: true,
+            headImgUrl: '',
+            idName: '',
+            code: '', // 邀请码
+            urlParams: '',
+            distributorId: '',
+        }
+    },
+    onLoad(option) {
+        if(option.shareDistributorId){
+            this.distributorId = option.shareDistributorId
+                ? option.shareDistributorId
+                : "";
+                uni.setStorageSync("shareDistributorId", this.distributorId);
+
+            this.nowShareUrl = this.nowShareUrl + (this.distributorId ? '?shareDistributorId=' + this.distributorId : '');
+            if(option.urlParams){
+                this.urlParams = option.urlParams;
+                this.$nextTick(res=>{
+                    this.code = this.urlParams.code;
+                })
+                this.idName = this.urlParams.idName;
+                this.headImgUrl = this.urlParams.headImgUrl;
+            }
+        }else{
+            var obj = {};
+            obj.key = option.scene;
+            this.ebigRequest("/wechat/" + uni.getAccountInfoSync().miniProgram.appId + "/getRequestParam", obj, false).then((data) => {
+                var scene = data.scene;
+                var sceneArr = scene.split('&');
+                for(var i = 0; i < sceneArr.length; i++){
+                    var item = sceneArr[i];
+                    if(item.indexOf('shareDistributorId') != -1){
+                        this.distributorId = item.substring(item.indexOf('=') + 1, item.length);
+                    }
+                    if(item.indexOf('urlParams') != -1){
+                        this.urlParams = item.substring(item.indexOf('=') + 1, item.length);
+                    }
+                    if(item.indexOf('code') != -1){
+                        this.code = item.substring(item.indexOf('=') + 1, item.length);
+                    }
+                    if(item.indexOf('idName') != -1){
+                        this.idName = item.substring(item.indexOf('=') + 1, item.length);
+                    }
+                    if(item.indexOf('headImgUrl') != -1){
+                        this.headImgUrl = item.substring(item.indexOf('=') + 1, item.length);
+                    }
+                }
+            }).catch(err => {
+
+            });
+        }
+    },
+    onShow() {
+    },
+    mounted(){
+        let _model_ = uni.getStorageSync("_model_");
+        if (_model_.indexOf("iPhone X") != -1 || _model_.indexOf("iPhone XR") != -1 || _model_.indexOf("iPhone XS") != -1 || _model_.indexOf("iPhone XS Max") != -1 || _model_.indexOf("iPhone 11") != -1 || _model_.indexOf("iPhone 11 Pro") != -1 || _model_.indexOf("iPhone 11 Pro Max") != -1) {
+            this.isiphoneBt = true;
+        }
+    },
+    methods: { 
+        becomeClick: function() { //点击成为推广员
+            if(this.code != '' && this.idName != ''){
+                this.becomeSure();
+            }else{
+                this.$refs.popup.open();
+            }
+        },
+        // 验证是否是分销员
+        becomeSure: function() { //确定
+            if(this.code != ''){
+                if(this.isNotCode){
+                    this.$refs.popup.close();
+                }
+                let obj = {};
+                obj.code = this.code;
+                this.ebigRequest("/distributor/create", obj, true, 'post', '', true, true).then((data) => {
+                    if (data.code >= 2000 && data.code <= 2100) {
+                        if (data.code >= 2000 && data.code <= 2100 && !showAlert) {
+                            uni.showModal({
+                                title: '温馨提示',
+                                content: '登录已失效，请重新登录',
+                                showCancel: false,
+                                success: res1 => {
+                                    uni.navigateTo({
+                                        url: '/mine/pages/login/login?returnUrl=true'
+                                    });
+                                }
+                            });
+                            return;
+                        }
+                    }else if(data.success){
+                        if(data.data){
+                            uni.showModal({
+                                title: "温馨提示",
+                                content: "恭喜您成为分销员，立即进入分销员个人中心",
+                                showCancel: false,
+                                success: (res1) => {
+                                    if (res1.confirm) {
+                                        this.toPage('promotionCenter');
+                                    }
+                                },
+                            });
+                        }else{
+                            uni.showModal({
+                                title: "温馨提示",
+                                content: "抱歉！您输入的邀请码有误~",
+                                showCancel: false,
+                                success: (res1) => {
+                                    
+                                },
+                            });
+                        }
+                    }else if(data.code == 1000){
+                        uni.showModal({
+                            title: "温馨提示",
+                            content: "抱歉！您输入的邀请码有误~",
+                            showCancel: false,
+                            success: (res1) => {
+                                5001
+                            },
+                        });
+                    }else if(data.code == 2101){
+                        uni.showModal({
+                            title: "温馨提示",
+                            content: "尊敬的会员您好，请绑定手机号~",
+                            showCancel: false,
+                            complete: (res1) => {
+                                uni.navigateTo({
+                                    url: '/mine/pages/bindMobile/bindMobile?returnUrl=true',
+                                });
+                            },
+                        });
+                    }else if(data.code == 5001){
+                        uni.showModal({
+                            title: "温馨提示",
+                            content: "您已是分销员，即将进入分销中心",
+                            showCancel: false,
+                            complete: (res1) => {
+                                this.toPage('promotionCenter');
+                            },
+                        });
+                    }else{
+                        uni.showModal({
+                            title: "温馨提示",
+                            content: data.errorMsg,
+                            showCancel: false,
+                            success: (res1) => {
+                                
+                            },
+                        });
+                    }
+                }).catch(err => {
+                    this.code = this.urlParams || '';
+                })
+                
+            }else{
+                uni.showToast({
+                    title: '请先输入邀请码！',
+                    icon: "none",
+                })
+                return;
+            }
+        },
+        toPage: function(url, item) { //跳转分销内页面
+            this.replaceUrl(url, 'distribution', item);
+        }
+    }
+}
+</script>
+
+<style lang="scss">
+page {
+    width: 100%;
+    height: 100%;
+    background-color: #FFFFFF;
+}
+.shareInfo {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 999;
+    width: 100%;
+    height: 100rpx;
+    font-size: 30rpx;
+    line-height: 100rpx;
+    background: #FFFFFF;
+    border-bottom: 1rpx solid #EEEEEE;
+
+    .shareImg {
+        overflow: hidden;
+        display: block;
+        margin: 10rpx 20rpx 0;
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 80rpx;
+    }
+}
+.content_txt {
+    position: absolute;
+    top: 350rpx;
+    width: 100%;
+    text-align: center;
+    font-size: 60rpx;
+    letter-spacing: 4rpx;
+    color: rgb(156, 121, 5);
+    font-weight: 700;
+    z-index: 4;
+}
+.content_txt2 {
+    position: absolute;
+    top: 550rpx;
+    left: 50%;
+    width: 360rpx;
+    transform: translateX(-50%);
+    text-align: center;
+    font-size: 60rpx;
+    letter-spacing: 4rpx;
+    color: #FFFFFF;
+    background-color: rgb(156, 121, 5);
+    font-weight: 700;
+    z-index: 4;
+}
+.main-wrap {
+    width: 100%;
+    height: 100%;
+    // content
+    .content-wrap {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        box-sizing: border-box;
+        .banner-img {
+            width: 100%;
+            height: 100%;
+            padding-bottom: 88rpx;
+            box-sizing: border-box;
+            .img {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        .btn-become {
+            width: 100%;
+            height: 88rpx;
+            line-height: 88rpx;
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            z-index: 1;
+            margin: auto;
+        }
+    }
+}
+.dia-wrap {
+    width: 560rpx;
+    padding: 20rpx 40rpx;
+    box-sizing: border-box;
+    .tit {
+        line-height: 64rpx;
+    }
+    .dia-input {
+        margin-top: 10rpx;
+        height: 72rpx;
+        border: 2rpx solid #CCCCCC;
+        box-sizing: border-box;
+        .input {
+            width: 100%;
+            height: 100%;
+            padding: 0 20rpx;
+            box-sizing: border-box;
+        }
+    }
+    .btn-sure {
+        line-height: 64rpx;
+        margin-top: 30rpx;
+    }
+}
+
+</style>

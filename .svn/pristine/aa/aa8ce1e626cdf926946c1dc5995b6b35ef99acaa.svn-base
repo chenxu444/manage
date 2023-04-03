@@ -1,0 +1,277 @@
+<template>
+    <view class="page">
+        <!-- 搜索 -->
+        <view class="search_wrap bg_common uni-flex">
+            <!-- #ifdef H5 -->
+            <view class="goBack iconfont icon-left font_color_white" @click="goBack"></view>
+            <!-- #endif -->
+            <input confirm-type="search" class="search_ipt bg_white uni-flex-1"  placeholder="请输入搜索关键字" v-model="keyWord" @confirm="keydown" />
+            <view class="icon_search ">
+                <span class="iconfont icon-search icon font_color_white " @click="getrecipeList('refresh')"></span>
+            </view>
+        </view>
+        <view class="recipeList">
+            <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="94" :absolute="94" @refresh="onPulldownReresh">
+                <view>
+                    <view v-for="(product,index) in recipeList" :key="index">
+                        <view class="uni-flex recipe_item" @click="openDetail(product)">
+                            <img :src="product.recipeUrl" class="recipe_img">
+                            <view class="uni-flex-1">
+                                <view class="uni-flex">
+                                    <view class="top_btn1">电子处方</view>
+                                    <view class="top_btn2"  v-show="product.expire == true || product.expire == 'true'">过期</view>
+                                    <view class="hospital">{{ product.hospital }}</view>
+                                </view>
+                                <view class="detail">
+                                    <view class="person">开方人：{{ product.doctorName }}</view>
+                                    <view>诊断：{{ product.diagName }}</view>
+                                </view>
+                                <view class="time font_color_999">{{ product.recipeCreDate }}</view>
+                            </view>
+                        </view>
+                        <view class="uni-flex btn_wrap">
+                            <view class="uni-flex-1 foot_btn font_color_white bg_common" @tap="recipelApply(product.recipeId)">申请续方</view>
+                            <view class="uni-flex-1 foot_btn font_color_white bg_common" @tap="recipelDelete(product.recipeId)">删除</view>
+                        </view>
+                    </view>
+                </view>
+                <uni-load-more :status="status" :content-text="contentText" />
+            </uni-pulldown-refresh>
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            keyWord:'',
+            pageNo: 1,
+            pageSize: 15,
+            recipeList:[],
+            
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad() {
+        this.getrecipeList('refresh');
+    },
+    onReachBottom() {
+        if (this.status != "noMore" && this.status != "loading") {
+            //上滑加载
+            this.getrecipeList("add");
+        }
+    },
+    methods:{
+        getrecipeList(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let params = {
+                queryWord:this.keyWord,
+                pageNo: 1,
+                pageSize: 15
+            }
+            this.ebigRequest("/recipe/myList", params, true).then(res=>{
+                if(type == 'refresh'){
+                    this.recipeList = [];
+                }
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                if (res.length < this.pageSize) this.noMore = true;
+                this.recipeList = [...this.recipeList,...res];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.recipeList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.recipeList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getrecipeList("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getrecipeList("refresh");
+        },
+        openDetail(product){
+            uni.setStorageSync('_recipeUrlDetailPage_', product.recipeUrl);
+            this.goUrl('recipeDetail', 'mine', 'recipeId='+product.recipeId)
+        },
+        recipelApply(recipeId){ //申请续方
+			let obj = {};
+            obj.recipeId = recipeId;
+            this.ebigRequest("/recipe/createOrder", obj, true).then(res=>{
+                if (res) {
+                    this.goUrl('orderConfirm', 'order', 'orderNo='+res)
+				} 
+            })
+        },
+        recipelDelete(recipeId){ //删除处方
+            uni.showModal({
+                title:'温馨提示',
+                content:'确认删除该处方？',
+                success:res => {
+                    if(res.confirm){
+                        let obj = {};
+					    obj.recipeId = recipeId;
+                        this.ebigRequest("/recipe/delete", obj, true).then(res=>{
+                            uni.showToast({
+                                title:'已删除',
+                                duration:1000,
+                                icon:'none'
+                            })
+                            this.keyWord = ''
+                            this.getrecipeList('refresh');
+                        })
+                    }
+                }
+            })
+		},
+        keydown(){
+            this.getrecipeList('refresh')
+        },
+        goBack() {
+            history.go(-1);
+        },
+    },
+}
+</script>
+
+<style>
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+/* 顶部搜索 */
+.search_wrap {
+    position: fixed;
+    /* #ifdef MP-WEIXIN */
+    top: 0;
+    /* #endif */
+    /* #ifdef H5 */
+    /* top: 88rpx; */
+    /* #endif */
+    z-index: 999;
+    padding: 20rpx 30rpx;
+    width: 100%;
+    border-bottom: 1px solid rgba(228, 228, 228, 1);
+    box-sizing: border-box;
+}
+.search_ipt {
+    border-radius: 30rpx;
+    height: 56rpx;
+    padding-left: 40rpx;
+    width: 100%;
+    font-size: 28rpx;
+}
+.icon_search {
+    width: 100rpx;
+    height: 56rpx;
+    text-align: center;
+    line-height: 56rpx;
+}
+.icon {
+    font-size: 50rpx;
+}
+.search_text {
+    color: #999999;
+    font-size: 28rpx;
+    margin-left: 10rpx;
+}
+.recipe_item {
+    padding: 20rpx 20rpx 0;
+    background-color: #FFFFFF;
+}
+.recipe_img {
+    width: 180rpx;
+    height: 220rpx;
+}
+.foot_btn {
+    text-align: center;
+    height: 80rpx;
+    line-height: 80rpx;
+}
+.foot_btn:first-child {
+    border-right: 1px solid #EFEFF4;
+}
+.top_btn1 {
+    padding: 10rpx;
+    border: 1px solid #999999;
+    border-radius: 26rpx;
+    margin-left: 20rpx;
+    margin-right: 10rpx;
+    font-size: 24rpx;
+}
+.top_btn2 {
+    padding: 10rpx;
+    border: 1px solid red;
+    border-radius: 26rpx;
+    color: red;
+    margin: 0 10rpx;
+    font-size: 24rpx;
+}
+.hospital {
+    line-height: 60rpx;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.detail {
+    margin: 20rpx 10rpx 20rpx 20rpx;
+}
+.person {
+    margin-bottom: 10rpx;
+}
+.time {
+    margin: 20rpx 10rpx 20rpx 20rpx;
+}
+.ties {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 600;
+    padding: 20rpx;
+}
+
+.goBack {
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+}
+
+</style>

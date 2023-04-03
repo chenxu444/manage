@@ -1,0 +1,206 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+let pageUrl, _model_;
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            distributorId: '',
+            nowShareUrl: '/pages/index/index',
+            storeId: '',
+            urlStoreId: '',
+        }
+    },
+    onLoad(option) {
+        pageUrl = this.baseUrl + 'miniIndex.html';
+        _model_ = this.getStor('_model_');
+        this.urlStoreId = option.storeId || '';
+        this.storeId = option.storeId != null && option.storeId != '' ? option.storeId : this.getStor('_storeId_') ? this.getStor('_storeId_') : this.getStor('_defaultStoreId_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+        if(option.scene){
+            this.doRequest("/wechatcenter/qrcode/v1/scene/" + option.scene, {}, false, 'get').then((data) => {
+                var scene = data.scene;
+                var sceneArr = scene ? scene.split('&') : [];
+                for(var i = 0; i < sceneArr.length; i++){
+                    var item = sceneArr[i];
+                    if(item.indexOf('shareDistributorId') != -1){
+                        this.distributorId = item.substring(item.indexOf('=') + 1, item.length);
+                        this.setStor("shareDistributorId", this.distributorId);
+                    }else if(item.indexOf('url') != -1){
+                        pageUrl = decodeURIComponent(item.substring(item.indexOf('=') + 1, item.length));
+                    }
+                }
+            })
+        }else{
+            if(option.url){
+                pageUrl = decodeURIComponent(option.url);
+            }
+            this.distributorId = option.shareDistributorId
+                ? option.shareDistributorId
+                : this.getStor("shareDistributorId") != null
+                ? this.getStor("shareDistributorId")
+                : "";
+            this.setStor("shareDistributorId", this.distributorId);
+        }
+
+        this.$nextTick(() => {
+            this.$setStoreId(this.storeId);
+            let isLogin = this.getStor("isLogin");
+            let _mobile_ = this.getStor('_mobile_');
+            // #ifdef MP-WEIXIN
+            this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+            // #endif
+
+            // #ifdef H5
+            let u =  navigator.userAgent;
+            let isWx = /wxwork/i.test(u) || /MicroMessenger/i.test(navigator.userAgent);
+            let isWxWork = /wxwork/i.test(u) && /MicroMessenger/i.test(navigator.userAgent);
+            if(isWx || isWxWork){
+                this.configWechat().then(res => {
+                    this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+                })
+            }else{
+                this.pageUrl = pageUrl;
+            }
+            // #endif
+        })
+    },
+    onShow(){
+        
+    },
+    onShareAppMessage(res) {
+        //分享到微信好友
+        return {
+            title: this.getStor("_shareTitle_"),
+            content: this.shareContent,
+            imageUrl: this.getStor("_shareLogo_"),
+            path: this.nowShareUrl,
+            success: (data) => {
+                uni.showToast({
+                title: "分享成功!",
+                icon: "none",
+                });
+            },
+            fail: (err) => {
+                uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+                });
+            },
+        };
+    },
+    onShareTimeline() {
+        return {
+            title: this.getStor("_shareTitle_"),
+            content: this.shareContent,
+            imageUrl: this.getStor("_shareLogo_"),
+            path: this.nowShareUrl,
+            success: (data) => {
+                uni.showToast({
+                title: "分享成功!",
+                icon: "none",
+                });
+            },
+            fail: (err) => {
+                uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+                });
+            },
+        };
+    },
+    methods: {
+        getPosition(pageUrl, isLogin, _mobile_, _model_){
+            this.storeId = this.storeId || this.getStor('_defaultStoreId_');
+            if(!this.urlStoreId){
+                this.catchPosition().then((res) => {
+                    // let initStoreTime = this.getStor("_initStoreTime_");
+                    // if (!initStoreTime || (initStoreTime && initStoreTime * 1 - new Date().getTime() > 3600000)) {
+                        var obj = {
+                            consignorId: this.getStor('_defaultConsignorId_'),
+                            storeId: this.storeId,
+                            latitude: res.latitude,
+                            longitude: res.longitude,
+                        };
+                        this.ebigRequest("/store/the-nearest", obj, false, "post", '', true, true).then((response) => {
+                            var data = response.data;
+                            if(data){
+                                this.setStor("_initStoreTime_", new Date().getTime());
+                                this.setStor('_storeId_', data.storeId);
+                                var nowUrl = data.storePageId ? (this.baseUrl + data.storePageId + '.html') : pageUrl;
+                                this.storeId = data.storeId;
+                                this.pageUrl = nowUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                            }else{
+                                this.pageUrl = pageUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                            }
+                            this.$nextTick(() => {
+                                if (this.getStor("isDistributorId")) {
+                                    this.nowShareUrl = this.nowShareUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&url=' + encodeURIComponent(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                                }
+                                this.$forceUpdate();
+                                this.setStor('_storeId_', this.storeId);
+                            })
+                        }).catch(() => {
+                            this.pageUrl = pageUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                            this.$nextTick(() => {
+                                if (this.getStor("isDistributorId")) {
+                                    this.nowShareUrl = this.nowShareUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&url=' + encodeURIComponent(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                                }
+                                this.$forceUpdate();
+                                this.setStor('_storeId_', this.storeId);
+                            })
+                        })
+                    // }else{
+                    //     this.pageUrl = pageUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                    //     this.$nextTick(() => {
+                    //         if (this.getStor("isDistributorId")) {
+                    //             this.nowShareUrl = this.nowShareUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&url=' + encodeURIComponent(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                    //         }
+                    //         this.$forceUpdate();
+                    //         this.setStor('_storeId_', this.storeId);
+                    //     })
+                    // }
+                }).catch(err => {
+                    this.setStor('_getLocation_', false);
+                    this.pageUrl = pageUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                    this.$nextTick(() => {
+                        if (this.getStor("isDistributorId")) {
+                            this.nowShareUrl = this.nowShareUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&url=' + encodeURIComponent(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                        }
+                        this.$forceUpdate();
+                        this.setStor('_storeId_', this.storeId);
+                    })
+                })
+            }else{
+                this.setStor('_getLocation_', false);
+                this.pageUrl = pageUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&isiphoneBt=' + this.isiphoneBt + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                this.$nextTick(() => {
+                    if (this.getStor("isDistributorId")) {
+                        this.nowShareUrl = this.nowShareUrl + '?storeId=' + this.storeId + '&consignorId=' + this.getStor('_defaultConsignorId_') + '&url=' + encodeURIComponent(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                    }
+                    this.$forceUpdate();
+                    this.setStor('_storeId_', this.storeId);
+                })
+            }
+        },
+        message(event){
+            console.log(event.detail.data);
+        },
+    }
+}
+</script>

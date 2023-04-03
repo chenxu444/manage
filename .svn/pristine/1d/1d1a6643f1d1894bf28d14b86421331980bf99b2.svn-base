@@ -1,0 +1,506 @@
+{
+	"pages": [
+		// pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages 18023900946
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "广药集团广州医药大药房"
+			}
+		},
+		{
+			"path": "pages/contact/contact",
+			"style": {
+				"navigationBarTitleText": "确认开启客服"
+			}
+		},
+		{
+			"path": "pages/store/store",
+			"style": {
+				"navigationBarTitleText": "门店列表"
+			}
+		},
+		{
+			"path": "pages/goodsSort/goodsSort",
+			"style": {
+				"navigationBarTitleText": "商品分类"
+			}
+		},
+		{
+			"path": "pages/goodsList/goodsList",
+			"style": {
+				"navigationBarTitleText": "分类商品"
+			}
+		},
+		{
+			"path": "pages/searchPage/searchPage",
+			"style": {
+				"navigationBarTitleText": "商品搜索"
+			}
+		},
+		{
+			"path": "pages/list/list",
+			"style": {
+				"navigationBarTitleText": "商品列表"
+			}
+		},
+		{
+			"path": "pages/detail/detail",
+			"style": {
+				"navigationBarTitleText": "商品详情"
+			}
+		},
+		{
+			"path": "pages/cart/cart",
+			"style": {
+				"navigationBarTitleText": "需求清单"
+			}
+		},
+		{
+			"path": "pages/myHistory/myHistory",
+			"style": {
+				"navigationBarTitleText": "我的足迹"
+			}
+		},
+		{
+			"path": "pages/myCollect/myCollect",
+			"style": {
+				"navigationBarTitleText": "我的收藏"
+			}
+		},
+		{
+			"path": "pages/webviewPage/webviewPage",
+			"style": {
+				"navigationBarTitleText": "webviewPage"
+			}
+		},
+		{
+			"path": "pages/diseaseArea/diseaseArea",
+			"style": {
+				"navigationBarTitleText": "慢病专区"
+			}
+		}
+	],
+	"subPackages": [
+		{
+			"root": "mine",
+			"pages": [
+				{
+					"path": "pages/login/login",
+					"style": {
+						"navigationBarTitleText": "登录授权"
+					}
+				},
+				{
+					"path": "pages/bindMobile/bindMobile",
+					"style": {
+						"navigationBarTitleText": "手机登录"
+					}
+				},
+				{
+					"path": "pages/loginInfo/loginInfo",
+					"style": {
+						"navigationBarTitleText": "知情同意书"
+					}
+				},
+				{
+					"path": "pages/registerInfo/registerInfo",
+					"style": {
+						"navigationBarTitleText": "会员注册授权协议"
+					}
+				},
+				{
+					"path": "pages/myCenter/myCenter",
+					"style": {
+						"navigationBarTitleText": "个人中心"
+					}
+				},
+				{
+					"path": "pages/memberInfo/memberInfo",
+					"style": {
+						"navigationBarTitleText": "会员资料"
+					}
+				},
+				{
+					"path": "pages/addressList/addressList",
+					"style": {
+						"navigationBarTitleText": "收货地址"
+					}
+				},
+				{
+					"path": "pages/setAddress/setAddress",
+					"style": {
+						"navigationBarTitleText": "修改收货地址"
+					}
+				},
+				{
+					"path": "pages/drugUsers/drugUsers",
+					"style": {
+						"navigationBarTitleText": "用药人"
+					}
+				},
+				{
+					"path": "pages/setDrugUsers/setDrugUsers",
+					"style": {
+						"navigationBarTitleText": "用药人信息"
+					}
+				},
+				{
+					"path": "pages/myPoint/myPoint",
+					"style": {
+						"navigationBarTitleText": "我的积分"
+					}
+				},
+				{
+					"path": "pages/customerService/customerService",
+					"style": {
+						"navigationBarTitleText": "客户服务"
+					}
+				},
+				{
+					"path": "pages/feedBack/feedBack",
+					"style": {
+						"navigationBarTitleText": "意见反馈"
+					}
+				},
+				{
+					"path": "pages/service/service",
+					"style": {
+						"navigationBarTitleText": "客服咨询"
+					}
+				},
+				{
+					"path": "pages/orderComplain/orderComplain",
+					"style": {
+						"navigationBarTitleText": "订单投诉"
+					}
+				},
+				{
+					"path": "pages/orderComplain/choiceOrder",
+					"style": {
+						"navigationBarTitleText": "选择投诉订单"
+					}
+				},
+				{
+					"path": "pages/information/information",
+					"style": {
+						"navigationBarTitleText": "健康资讯"
+					}
+				},
+				{
+					"path": "pages/informationDetail/informationDetail",
+					"style": {
+						"navigationBarTitleText": "资讯详情"
+					}
+				},
+				{
+					"path": "pages/recipelList/recipelList",
+					"style": {
+						"navigationBarTitleText": "我的处方"
+					}
+				},
+				{
+					"path": "pages/recipeDetail/recipeDetail",
+					"style": {
+						"navigationBarTitleText": "处方详情"
+					}
+				}
+			]
+		},
+		{
+			"root": "order",
+			"pages": [
+				{
+					"path": "pages/orderConfirm/orderConfirm",
+					"style": {
+						"navigationBarTitleText": "需求提交"
+					}
+				},
+				{
+					"path": "pages/askInfo/askInfo",
+					"style": {
+						"navigationBarTitleText": "处方单信息"
+					}
+				},
+				{
+					"path": "pages/knowPage/knowPage",
+					"style": {
+						"navigationBarTitleText": "知情同意书"
+					}
+				},
+				{
+					"path": "pages/orderPay/orderPay",
+					"style": {
+						"navigationBarTitleText": "订单支付"
+					}
+				},
+				{
+					"path": "pages/orderSuccess/orderSuccess",
+					"style": {
+						"navigationBarTitleText": "支付反馈"
+					}
+				},
+				{
+					"path": "pages/orderList/orderList",
+					"style": {
+						"navigationBarTitleText": "订单列表"
+					}
+				},
+				{
+					"path": "pages/orderDetail/orderDetail",
+					"style": {
+						"navigationBarTitleText": "订单详情"
+					}
+				},
+				{
+					"path": "pages/Logistics/Logistics",
+					"style": {
+						"navigationBarTitleText": "物流跟踪"
+					}
+				},
+				{
+					"path": "pages/afterSaleList/afterSaleList",
+					"style": {
+						"navigationBarTitleText": "售后服务"
+					}
+				}
+				// ,
+				// {
+				// 	"path": "pages/returnGoods/returnGoods",
+				// 	"style": {
+				// 		"navigationBarTitleText": "售后服务"
+				// 	}
+				// }
+			]
+		},
+		{
+			"root": "activity",
+			"pages": [
+				{
+					"path": "pages/dailyBargain/dailyBargain",
+					"style": {
+						"navigationBarTitleText": "每日特惠"
+					}
+				},
+				{
+					"path": "pages/bargainSeckill/bargainSeckill",
+					"style": {
+						"navigationBarTitleText": "限时抢购"
+					}
+				},
+				{
+					"path": "pages/myCoupon/myCoupon",
+					"style": {
+						"navigationBarTitleText": "我的优惠券"
+					}
+				},
+				{
+					"path": "pages/integralShop/integralShop",
+					"style": {
+						"navigationBarTitleText": "积分商城"
+					}
+				},
+				{
+					"path": "pages/couponCenter/couponCenter",
+					"style": {
+						"navigationBarTitleText": "领券中心"
+					}
+				},
+				{
+					"path": "pages/exchangeCoupon/exchangeCoupon",
+					"style": {
+						"navigationBarTitleText": "兑换优惠券"
+					}
+				},
+				{
+					"path": "pages/exchangeCouponSuccess/exchangeCouponSuccess",
+					"style": {
+						"navigationBarTitleText": "兑换优惠券成功"
+					}
+				},
+				{
+					"path": "pages/sharingInstructions/sharingInstructions",
+					"style": {
+						"navigationBarTitleText": "分享有礼"
+					}
+				},
+				{
+					"path": "pages/sign/sign",
+					"style": {
+						"navigationBarTitleText": "签到有礼"
+					}
+				},
+				{
+					"path": "pages/activePage/activePage",
+					"style": {
+						"navigationBarTitleText": "活动专区"
+					}
+				}
+			]
+		},
+		{
+			"root": "appoint",
+			"pages": [
+				{
+					"path": "pages/appointIndex/appointIndex",
+					"style": {
+						"navigationBarTitleText": "预约首页"
+					}
+				},
+				{
+					"path": "pages/appointExplanation/appointExplanation",
+					"style": {
+						"navigationBarTitleText": "预约说明"
+					}
+				},
+				{
+					"path": "pages/appointMake/appointMake",
+					"style": {
+						"navigationBarTitleText": "预约信息"
+					}
+				},
+				{
+					"path": "pages/appointResult/appointResult",
+					"style": {
+						"navigationBarTitleText": "预约信息"
+					}
+				},
+				{
+					"path": "pages/appointList/appointList",
+					"style": {
+						"navigationBarTitleText": "我的预约"
+					}
+				}
+			]
+		},
+		{
+			"root": "distribution",
+			"pages": [
+				{
+					"path": "pages/promotionCenter/promotionCenter",
+					"style": {
+						"navigationBarTitleText": "推广中心"
+					}
+				},
+				{
+					"path": "pages/activeZone/activeZone",
+					"style": {
+						"navigationBarTitleText": "活动专场"
+					}
+				},
+				{
+					"path": "pages/applyInfo/applyInfo",
+					"style": {
+						"navigationBarTitleText": "填写资料"
+					}
+				},
+				{
+					"path": "pages/activeGoods/activeGoods",
+					"style": {
+						"navigationBarTitleText": "活动专场"
+					}
+				},
+				{
+					"path": "pages/becomeGuide/becomeGuide",
+					"style": {
+						"navigationBarTitleText": "成为推广员"
+					}
+				},
+				{
+					"path": "pages/promotionShare/promotionShare",
+					"style": {
+						"navigationBarTitleText": "邀请好友"
+					}
+				},
+				{
+					"path": "pages/list/list",
+					"style": {
+						"navigationBarTitleText": "推广商品列表"
+					}
+				},
+				{
+					"path": "pages/promotionOrderList/promotionOrderList",
+					"style": {
+						"navigationBarTitleText": "订单列表"
+					}
+				},
+				{
+					"path": "pages/promotionOrderDetail/promotionOrderDetail",
+					"style": {
+						"navigationBarTitleText": "订单详情"
+					}
+				},
+				{
+					"path": "pages/promotionDetail/promotionDetail",
+					"style": {
+						"navigationBarTitleText": "收益明细"
+					}
+				},
+				{
+					"path": "pages/cashOut/cashOut",
+					"style": {
+						"navigationBarTitleText": "提现"
+					}
+				},
+				{
+					"path": "pages/commissionExplain/commissionExplain",
+					"style": {
+						"navigationBarTitleText": "佣金说明"
+					}
+				},
+				{
+					"path": "pages/guideMan/guideMan",
+					"style": {
+						"navigationBarTitleText": "我的导购员"
+					}
+				},
+				{
+					"path": "pages/guideManDetail/guideManDetail",
+					"style": {
+						"navigationBarTitleText": "导购员信息"
+					}
+				},
+				{
+					"path": "pages/myCustomer/myCustomer",
+					"style": {
+						"navigationBarTitleText": "我的顾客"
+					}
+				},
+				{
+					"path": "pages/customerInfo/customerInfo",
+					"style": {
+						"navigationBarTitleText": "顾客详情"
+					}
+				}
+			]
+		}
+	],
+	"preloadRule": {
+        "mine/pages/myCenter/myCenter": {
+            "network": "all",
+            "packages": ["__APP__", "activity", "order"]
+		},
+		"mine/pages/login/login": {
+            "network": "all",
+            "packages": ["__APP__", "activity", "order"]
+		},
+		"mine/pages/bindMobile/bindMobile": {
+            "network": "all",
+            "packages": ["__APP__", "activity", "order"]
+        }
+    },
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "广药集团广州医药大药房",
+		"navigationBarBackgroundColor": "#007BC8",
+		"backgroundColor": "#F8F8F8",
+		"backgroundColorTop": "#F4F5F6",
+		"backgroundColorBottom": "#F4F5F6",
+		"app-plus": {
+			"background": "#F4F5F6"
+		}
+		// #ifndef MP-WEIXIN
+		,"navigationStyle": "custom"
+		// #endif
+	}
+	
+}

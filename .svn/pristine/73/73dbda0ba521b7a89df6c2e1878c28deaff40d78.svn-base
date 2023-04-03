@@ -1,0 +1,104 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            distributorId: '',
+            nowShareUrl: '/pages/index/index',
+        }
+    },
+    onLoad(option) {
+        let pageUrl = this.baseUrl + 'miniIndex.html';
+        let isLogin = uni.getStorageSync("isLogin");
+        let _mobile_ = uni.getStorageSync('_mobile_');
+        let _model_ = uni.getStorageSync('_model_');
+        let storeId = option.storeId != null && option.storeId != '' ? option.storeId : uni.getStorageSync('_storeId_') ? uni.getStorageSync('_storeId_') : this._storeId_;
+        let consignorId = option.consignorId != null && option.consignorId != '' ? option.consignorId : this._consignorId_;
+        uni.setStorageSync('_storeId_', storeId);
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+        if(option.url){
+            pageUrl = this.decode64(option.url);
+        }else{
+            pageUrl = pageUrl + '?consignorId=' + consignorId + '&storeId=' + storeId;
+        }
+        // #ifdef MP-WEIXIN
+        this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+        // #endif
+
+        // #ifdef H5
+        this.configWechat().then(res => {
+            this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+        })
+        // #endif
+
+        this.distributorId = option.shareDistributorId
+            ? option.shareDistributorId
+            : uni.getStorageSync("shareDistributorId") != null
+            ? uni.getStorageSync("shareDistributorId")
+            : "";
+        uni.setStorageSync("shareDistributorId", this.distributorId);
+
+        if (uni.getStorageSync("_isDistributorId_") != null) {
+            this.nowShareUrl = this.nowShareUrl + '?url=' + this.encode64(pageUrl) + (uni.getStorageSync("_isDistributorId_") != null ? "&shareDistributorId=" + uni.getStorageSync("_isDistributorId_") : '');
+        }
+        this.$setStoreId(storeId);
+    },
+    methods: {
+        getPosition(pageUrl, isLogin, _mobile_, _model_){
+            if(pageUrl.indexOf('miniIndex.html') != -1){
+                this.catchPosition().then((res) => {
+                    this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'isiphoneBt=' + this.isiphoneBt) + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false);
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                }).catch(err => {
+                    uni.setStorageSync('_getLocation_', false);
+                    this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'isiphoneBt=' + this.isiphoneBt) + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false);
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                })
+            }else{
+                this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'isiphoneBt=' + this.isiphoneBt) + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false);
+            }
+            this.$nextTick(() => {
+                this.$forceUpdate();
+            })
+        },
+        message(event){
+            console.log(event.detail.data);
+        },
+        resetPage(){
+            if(this.pageUrl.indexOf('miniIndex.html') != -1){
+                this.catchPosition().then((res) => {
+                    this.pageUrl = this.pageUrl + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + '&nowTime=' + new Date().getTime();
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                }).catch(err => {
+                    uni.setStorageSync('_getLocation_', false);
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                })
+            }
+        }
+    }
+}
+</script>

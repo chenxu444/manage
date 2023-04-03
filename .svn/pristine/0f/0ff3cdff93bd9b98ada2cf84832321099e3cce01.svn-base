@@ -1,0 +1,81 @@
+<template>
+    <view id="page" style="width: 100%;">
+        <view class="main-wrap">
+            <!-- content -- start -->
+            <view class="content-wrap">
+                <view class="des-wrap">
+                    <view class="tit">预估收入</view>
+                    <view class="des">预计该推广订单产生的购买返利，金额仅作为参考，不作为实际返利金额。</view>
+                </view>
+                <view class="des-wrap">
+                    <view class="tit">可提现余额</view>
+                    <view class="des">可提现余额是指目前账户里的可以提现的金额，包含已经成交的订单返利，并减去您已经提现的金额。</view>
+                </view>
+                <view class="des-wrap">
+                    <view class="tit">退款之后产生的返利结算</view>
+                    <view class="des">1、未发货产生退款的预估返利不进行结算；</view>
+                    <view class="des">2、已发货的订单，非平台原因产生退款的预估返利不进行结算。</view>
+                </view>
+                <view class="des-wrap">
+                    <view class="tit">提现规则</view>
+                    <view class="des">订单确认收货15天后，该订单进行结算，实际结算返利将会去除掉退货商品返利。</view>
+                </view>
+                <view class="des-wrap">
+                    <view class="tit">提现</view>
+                    <view class="des">支持随时提现到银行卡，极速到账。</view>
+                </view>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    components:{
+        
+    },
+    data() {
+        return {
+            
+        }
+    },
+    onLoad(option) {
+        
+    },
+    onShow() {
+        
+    },
+    methods: { 
+        
+    }
+}
+</script>
+
+<style lang="scss">
+page{
+    width: 100%;
+    background-color: #FFFFFF;
+}
+.main-wrap{
+    width: 100%;
+    position: relative;
+    // content
+    .content-wrap{
+        width: 100%;
+        padding: 0 40rpx;
+        box-sizing: border-box;
+        .des-wrap{
+            padding-top: 40rpx;
+            box-sizing: border-box;
+            .tit{
+                font-weight: 700;
+                color: #000;
+            }
+            .des{
+
+            }
+        }
+    }
+}
+</style>

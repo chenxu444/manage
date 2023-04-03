@@ -1,0 +1,232 @@
+<template>
+  <div class="addAddress">
+    <uni-swipe-action>
+      <uni-swipe-action-item
+        class="addressItem"
+        :right-options="item.options"
+        @click="onClick($event, item.userId)"
+        v-for="(item, index) in content"
+        :key="index"
+      >
+        <div class="address border_bottom_1" @click="choose(item.userId)">
+          <div class="userinfo uni-flex uni-flex-j">
+            <span
+              >{{ item.userName }} {{ item.gender == 1 ? '男' : '女'}}
+              {{ item.age }}</span
+            >
+          </div>
+          <div class="font_color_000">
+            <span class="choose" v-if="item.isDefault">默认</span>
+            <span>身份证号码：{{item.idCard}}</span>
+          </div>
+        </div>
+        <div class="iconfont icon-edit font_color_999 icon border_bottom_1" @click="toEdit(index)"></div>
+      </uni-swipe-action-item>
+    </uni-swipe-action>
+    <button class="btn_bg font_color_white addBtn" @click="addDruger">新增用药人</button>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      content: "",
+      storeId:'',
+      options: [
+        {
+          text: "设为默认",
+          style: {
+            backgroundColor: "#c7c7cc",
+          },
+        },
+        {
+          text: "删除",
+          style: {
+            backgroundColor: "#dd524d",
+          },
+        },
+      ],
+    };
+  },
+
+  methods: {
+    // 右侧滑块点击
+    onClick(e, userId) {
+      console.log(e);
+      let params = {
+        drugUserid:userId,
+      };
+      if (e.content.text == "设为默认") {
+        // 设置默认
+        this.ebigRequest("/druguser/markDefault", params, true).then(
+          (res) => {
+              this.getDruger();
+          }
+        );
+      } else {
+        // 删除
+        this.ebigRequest("/druguser/delete", params, true).then((res) => {
+          if (res) {
+            uni.showToast({
+              title: "删除成功",
+              icon: "none",
+              duration: 1000,
+            });
+          }
+          this.content.filter((item, index) => {
+            if (item.userId == userId) {
+              this.content.splice(index, 1);
+            }
+          });
+        });
+      }
+    },
+    // 获取a用药人列表
+    getDruger() {
+      let params = {
+        storeid: this.storeId,
+      };
+      this.ebigRequest("/druguser/list", params, true).then((res) => {
+        this.content = res;
+        this.content.map((item, index) => {
+          if (item.isDefault) {
+            var wrap = JSON.stringify(this.options[1]);
+            item.options = [JSON.parse(wrap)];
+            this.content.splice(index, 1);
+            this.content.unshift(item);
+            console.log(item);
+          } else {
+            item.options = this.options;
+          }
+        });
+        console.log(this.content);
+      });
+    },
+    // 选择用药人
+    choose(userId){
+      if(this.storeId != ''){
+        let pages = getCurrentPages();//当前页
+        let beforePage = pages[pages.length - 2];//上个页面
+        console.log(beforePage);
+        beforePage.$vm.initOrder(userId);
+        uni.navigateBack({
+            delta: 1
+        });
+      }
+    },
+    // 新增用药人
+    addDruger(){
+      this.goUrl('setDrugUsers', 'mine');
+    },
+    // 编辑用药人
+    toEdit(editIndex){
+      this.goUrl('setDrugUsers', 'mine', 'editIndex=' + editIndex);
+    }
+  },
+  onShow() {
+    uni.removeStorageSync('editDruguser')
+  },
+  onLoad(options){
+    if(options.storeId != undefined){
+      this.storeId = options.storeId;
+    }
+    this.getDruger();
+  }
+};
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+    padding-bottom: 100rpx;
+}
+.border_bottom_1 {
+    border-bottom: 1px solid #EFEFF4;
+}
+.addAddress {
+    position: relative;
+    padding: 0 10rpx;
+}
+.addressItem {
+    overflow: hidden;
+    display: block;
+    margin-top: 20rpx;
+    border-radius: 16rpx;
+}
+.address {
+    width: 100%;
+    background-color: #FFFFFF;
+    padding: 30rpx;
+}
+.userinfo {
+    font-size: 30rpx;
+    color: #000000;
+    font-weight: 700;
+    align-items: center;
+}
+.icon {
+    width: 120rpx;
+    line-height: 120rpx;
+    font-size: 40rpx;
+    background-color: #FFFFFF;
+}
+.choose {
+    color: #006390;
+    background-color: #DFF5FF;
+    font-size: 24rpx;
+    padding: 10rpx;
+    text-align: center;
+    margin-right: 20rpx;
+}
+.addBtn {
+    height: 100rpx;
+    line-height: 100rpx;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: unset;
+}
+/* 新增编辑 */
+.add_item {
+    align-items: center;
+    height: 100rpx;
+    line-height: 100rpx;
+    position: relative;
+    padding: 0 30rpx;
+}
+.add_left {
+    width: 204rpx;
+}
+.ipt_icon {
+    position: absolute;
+    right: 30rpx;
+    width: 32rpx;
+    height: 32rpx;
+    border-radius: 50%;
+    line-height: 32rpx;
+    color: #FFFFFF;
+    font-size: 24rpx;
+    text-align: center;
+    background-color: #999999;
+    z-index: 111;
+}
+.add_input {
+    height: 100%;
+}
+.uni-input {
+    padding: unset;
+}
+/* #ifdef MP-WEIXIN */
+.radio .wx-radio-input.wx-radio-input-checked {
+    background: #EE231E;
+    border: 1px solid #EE231E;
+}
+/* #endif */
+.radio {
+    padding-right: 40rpx;
+}
+
+
+</style>

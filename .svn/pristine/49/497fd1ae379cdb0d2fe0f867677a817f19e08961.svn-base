@@ -1,0 +1,568 @@
+<template>
+    <view class="askInfoPage">
+        <view class="mod-patient bg_white">
+            <view class="mod-patient-tit">
+                <span class="star">*</span>
+                <span>请选择用药人</span>
+            </view>
+            <view class="patient-list clearfix">
+                <view class="patient-item fl"
+                    :class="selectUserId ? (selectUserId == ul.userId ? 'font_color_common border_common bg_common_light' : '') : ul.isDefault == 1 ? 'font_color_common border_common bg_common_light' : ''"
+                    :style="(index + 1) % 3 == 0 ? 'margin-right: 0;' : ''"
+                    v-for="(ul, index) in content" v-if="content != ''">
+                    <view class="patientItemCont" @click="selectUser(index)">
+                        <view class="div patient-name">{{ul.userName}}</view>
+                        <view class="div">{{ul.gender == 1 ? '男' : '女'}} {{ul.age ? ul.age + '岁' : ''}}</view>
+                        <view class="div">{{ul.mobile | hideMobile}}</view>
+                    </view>
+                    <i class="iconfont icon-edit editUser" @click="editDrugUser(index)"></i>
+                </view>
+            </view>
+            <view class="patient-add" @click="addDrugUser">
+                <span class="patient-add-icon">+</span>
+                <span class="patient-add-txt">新建用药人</span>
+            </view>
+        </view>
+
+        <view class="main-content bg_white" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+            <!-- 复诊开方内容开始 -->
+            <view class="visit-wrap">
+                <view class="mod-disease">
+                    <view class="tit">
+                        <span class="star">*</span>
+                        <span>请记录线下确诊得相关疾病</span>
+                        <span class="remark">（用于辅助医生诊断）</span>
+                    </view>
+                    <view class="disease-list">
+                        <textarea :disable-default-padding="true" placeholder="请输入您的相关疾病史，如有无肝肾异常，过敏史，妊娠等" name="pastHistory"
+                            v-model="pastHistory" v-show="!showPicker"></textarea>
+                        <view class="item-textarea" v-show="showPicker">{{pastHistory ? pastHistory : ''}}</view>
+                    </view>
+                </view>
+                <view class="mod-records">
+                    <view class="tit">
+                        <span>上传复诊凭证</span>
+                        <span class="remark">（线下就诊的历史处方/病例/出入院记录）</span>
+                    </view>
+                    <view class="records-add clearfix">
+                        <view class="records-ask-icon img-add-box font_color_common border_common bg_common_light" @click="choiceImage">
+                            <i class="iconfont icon-camera"></i>
+                            <span>上传<br>处方图片</span>
+                        </view>
+                        <view v-if="showEntry === true" class="records-ask-icon font_color_common border_common bg_common_light" @click="askOther" style="display: none;">
+                            <i class="iconfont icon-askDoc"></i>
+                            <span>去互联网医院问诊</span>
+                        </view>
+                    </view>
+                    <view class="historyPhotos">
+                        <view class="tit">历史处方</view>
+                        <view class="historyPhotosList clearfix">
+                            <view class="img-box records-img" :class="selectImageIndex == index ? 'border_common' : ''" :recipeId="hi.recipeId" v-for="(hi, index) in historyImage" v-if="historyImage.length > 0" @click="selectImage(hi.recipeUrl, index)">
+                                <span><image mode="aspectFit" class="askPhotoItem" :src="hi.recipeUrl" /></span>
+                                <b class="iconfont icon-selectImg font_color_common" v-if="selectImageIndex == index"></b>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            <!-- 复诊开方内容结束 -->
+        </view>
+
+        <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+            <button class="bg_common font_color_white" @click="saveAskInfo">保存</button>
+        </view>
+        <uni-previewImage ref="previewImage" :opacity="1" :circular="true" :reduction="true" :imgs="historyImageArr" @close="closePreviewImage"></uni-previewImage>
+    </view>
+</template>
+
+
+<script>
+let pages = '';//当前页
+let beforePage = '';//上个页面
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            isIphone: false,
+            recipeId: '',
+            content: '',
+            druguser: '',
+            selectUserId: '',
+            pastHistory: '',
+            orderTradeNo: '',
+            recipeUrls: '',
+            showEntry: true, //显示互联网医院入口
+            historyImage: [],
+            selectImageIndex: -1,
+            saveRecipeUrls: [],
+            enableNoRecipeSellFlag: '',
+            historyImageArr: [],
+            
+            repiceDate: '', //是否从互联网医院回来的时间
+            showPicker: false,
+        };
+    },
+    onLoad(option) {
+        pages = getCurrentPages();//当前页
+        beforePage = pages[pages.length - 2];//上个页面
+        this.orderTradeNo = beforePage.$vm.orderTradeNo;
+        this.enableNoRecipeSellFlag = beforePage.$vm.enableNoRecipeSellFlag;
+        this.saveRecipeUrls = beforePage.$vm.saveRecipeUrls ? beforePage.$vm.saveRecipeUrls : [];
+        this.recipeUrls = beforePage.$vm.recipeUrls ? beforePage.$vm.recipeUrls : '';
+        this.recipeId = beforePage.$vm.recipeId ? beforePage.$vm.recipeId : '';
+        this.druguser = beforePage.$vm.druguser ? beforePage.$vm.druguser : '';
+        if(this.druguser != ''){
+            this.selectUserId = this.druguser.userId;
+            this.pastHistory = this.druguser.diseases;
+        }
+        this.getDruger();
+        this.initAllPhotos();
+    },
+    onShow() {
+        if(this.repiceDate != ''){
+            this.initPhoto(this.repiceDate);
+        }
+    },
+    mounted() {
+        let _model_ = uni.getStorageSync('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+        }
+        if(_model_.indexOf('iPhone') != -1){
+            this.isIphone = true;
+        }
+    },
+    methods: {
+        getDruger(){
+            // 初始化用药人
+            this.ebigRequest("/druguser/list", {}, true).then((res) => {
+                for(let i = 0; i < res.length; i++){
+                    let user = res[i];
+                    if(this.selectUserId){
+                        if(this.selectUserId == user.userId){
+                            res.splice(i, 1);
+                            res.unshift(user);
+                            break;
+                        }
+                    }else{
+                        if(user.isDefault == 1){
+                            res.splice(i, 1);
+                            res.unshift(user);
+                            this.selectUserId = user.userId;
+                            this.druguser = user;
+                            this.pastHistory = user.diseases;
+                            break;
+                        }
+                    }
+                }
+                this.content = res;
+            })
+        },
+        selectUser(index) {
+            // 选择用药人
+            this.selectUserId = this.content[index].userId;
+            this.pastHistory = this.content[index].diseases;
+            this.druguser = this.content[index];
+        },
+        addDrugUser(){
+            // 新增用药人
+            this.goUrl('setDrugUsers', 'mine');
+        },
+        editDrugUser(index){
+            // 修改用药人
+            this.goUrl('setDrugUsers', 'mine', 'editIndex=' + index);
+        },
+        askOther(){
+            // 互联网问诊
+            if(this.selectUserId == undefined || this.selectUserId == null || this.selectUserId == ''){
+                uni.showToast({
+                    title: "抱歉！您还未选择用药人",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.pastHistory == undefined || this.pastHistory == null || this.pastHistory == ''){
+                uni.showToast({
+                    title: "抱歉！您还未填写确诊的相关疾病",
+                    icon: "none",
+                });
+                return;
+            }
+
+            uni.showModal({
+                title: '温馨提示',
+                content: '您好！您现在正前往互联网医院问诊，需收取处方服务费1.5元，是否继续前往？',
+                success: res1 => {
+                    if (res1.confirm) {
+                        var obj = {
+                            orderTradeNo: this.orderTradeNo,
+                            drugUserId: this.selectUserId,
+                            pastHistory: this.pastHistory,
+                            returnUrl: '../askInfo/askInfo',
+                            consultMode: '2'
+                        }
+                        this.ebigRequest("/doctor/mini_index", obj, true).then((res) => {
+                            uni.navigateToMiniProgram({
+                                appId: res.appId,
+                                path: res.url,
+                                success: (res1) => { // 打开成功
+                                    let nowDate = new Date(res.ts * 1);
+                                    let nDate = nowDate.getFullYear() + '-' +
+                                        (nowDate.getMonth() < 9 ? '0' + (nowDate.getMonth() + 1) : nowDate.getMonth() + 1) + '-' +
+                                        (nowDate.getDate() < 10 ? '0' + nowDate.getDate() : nowDate.getDate()) + ' ' +
+                                        (nowDate.getHours() < 10 ? '0' + nowDate.getHours() : nowDate.getHours()) + ':' +
+                                        (nowDate.getMinutes() < 10 ? '0' + nowDate.getMinutes() : nowDate.getMinutes()) + ':' +
+                                        (nowDate.getSeconds() < 10 ? '0' + nowDate.getSeconds() : nowDate.getSeconds());
+                                    this.repiceDate = nDate;
+                                },
+                                fail: err => {
+                                    this.repiceDate = '';
+                                    console.log('-------------------------');
+                                    console.log(err);
+                                    console.log('-------------------------');
+                                }
+                            });
+                        });
+                    } else if (res1.cancel) {
+                        console.log('用户点击取消');
+                    }
+                }
+            });
+        },
+        choiceImage(){
+            // 调用本地相册或相机
+            uni.chooseImage({
+                count: 1, //默认9
+                success: res => {
+                    this.pathToBase64(res.tempFilePaths[0]).then(path => {
+                        uni.showLoading({
+                            title: '努力上传中...',
+                            mask: true
+                        });
+                        let image = path.substr(22);
+                        uni.request({
+                            url: this.base + '/attach/upload',
+                            data: {data: image},
+                            header: {'content-type': 'application/x-www-form-urlencoded;'},
+                            method: 'POST',
+                            dataType: 'json',
+                            withCredentials: true, // 携带跨域cookie
+                            success: data => {
+                                let imgObj = {
+                                    recipeUrl: this.base + '/attach/download?attachId=' + data.data,
+                                    recipeId: '',
+                                }
+                                this.historyImage.unshift(imgObj);
+                                this.saveRecipeUrls.unshift(imgObj);
+                                this.recipeUrls = this.base + '/attach/download?attachId=' + data.data;
+                                this.selectImageIndex = 0;
+                            },
+                            complete: () => {
+                                uni.hideLoading();
+                            }
+                        })
+                    }).catch(error => {
+                        console.error(error)
+                    })
+                    
+                }
+            });
+        },
+        selectImage(url, index){
+            // 选中照片
+            var historyImageArr = [];
+            for(var i = 0; i < this.historyImage.length; i++){
+                historyImageArr.push(this.historyImage[i].recipeUrl);
+            }
+            this.recipeUrls = url;
+            this.recipeId = this.historyImage[index].recipeId;
+            this.historyImageArr = historyImageArr;
+            this.selectImageIndex = index;
+            this.$nextTick(() => {
+                if(this.isIphone){
+                    uni.previewImage({
+                        urls: this.historyImageArr,
+                        current: url,
+                    });
+                }else{
+                    this.showPicker = true;
+                    this.$refs.previewImage.open(url); // 传入当前选中的图片地址或序号
+                }
+            })
+        },
+        closePreviewImage(){
+            this.showPicker = false;
+        },
+        initPhoto(nDate) {
+            // 获取当前互联网医院问诊处方照片
+            this.ebigRequest("/recipe/list", {start: nDate}, false).then((res) => {
+                if(res.length > 0){
+                    this.repiceDate = '';
+                    this.recipeId = res[0].recipeId;
+                    this.historyImage.unshift(res[0]);
+                    this.saveRecipeUrls.unshift(res[0]);
+                    this.recipeUrls = res[0].recipeUrl;
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                }else{
+                    this.initPhoto(nDate);
+                }
+            })
+        },
+        initAllPhotos() {
+            // 初始化处方照片历史
+            this.ebigRequest("/recipe/historyList", {}, true).then((res) => {
+                if(res != null && res.length > 0){
+                    for(var i = 0; i < res.length; i++){
+                        if(res[i].recipeId == this.recipeId){
+                            this.recipeUrls = res[i].recipeUrl;
+                        }
+                        this.historyImage.push(res[i]);
+                        if(i == res.length && this.saveRecipeUrls.length > 0){
+                            for(var j = 0; j < this.saveRecipeUrls.length; j++){
+                                if(this.recipeUrls == this.saveRecipeUrls[j].recipeUrl){
+                                    this.selectImageIndex = this.saveRecipeUrls.length - j - 1;
+                                }
+                                this.historyImage.unshift(this.saveRecipeUrls[j]);
+                            }
+                        }
+                    }
+                }else{
+                    if(this.saveRecipeUrls.length > 0){
+                        for(var j = 0; j < this.saveRecipeUrls.length; j++){
+                            if(this.recipeUrls == this.saveRecipeUrls[j].recipeUrl){
+                                this.selectImageIndex = this.saveRecipeUrls.length - j - 1;
+                            }
+                            this.historyImage.unshift(this.saveRecipeUrls[j]);
+                        }
+                    }
+                }
+            })
+        },
+        saveAskInfo(){
+            // 保存问诊信息
+            if(!this.druguser){
+                uni.showToast({
+                    title: "抱歉！您还未选择用药人",
+                    icon: "none",
+                });
+                return;
+            }
+            if(!this.pastHistory){
+                uni.showToast({
+                        title: "抱歉！您还未填写确诊的相关疾病",
+                        icon: "none",
+                    });
+                return;
+            }
+            if(!this.enableNoRecipeSellFlag){
+               if(!this.recipeUrls) {
+                    uni.showToast({
+                        title: "抱歉！您还未选中处方图片",
+                        icon: "none",
+                    });
+                    return;
+                }
+            }
+            this.druguser.diseases = this.pastHistory;
+            beforePage.$vm.saveRecipeUrls = this.saveRecipeUrls;
+            beforePage.$vm.recipeUrls = this.recipeUrls;
+            beforePage.$vm.recipeId = this.recipeId;
+            beforePage.$vm.druguser = this.druguser;
+            beforePage.$vm.showRecipe = true;
+            this.$nextTick(() => {
+                uni.navigateBack({
+                    delta: 1
+                });
+            })
+        }
+    },
+    filters: {
+        hideMobile(val) {
+            if (val) {
+                return val.substr(0, 3) + '****' + val.substr(7, 11);
+            } else {
+                return '--';
+            }
+        }
+    }
+}
+</script>
+
+<style lang="scss">
+
+.mod-patient {
+    padding: 20rpx 28rpx 0;
+    margin-bottom: 20rpx;
+    border-bottom: 1px solid #EEEEEE;
+
+    .mod-patient-tit {
+        font-size: 28rpx;
+        padding-bottom: 10rpx;
+    }
+
+    .patient-item {
+        position: relative;
+        margin: 0 2% 16rpx 0;
+        padding: 20rpx;
+        width: 32%;
+        height: 160rpx;
+        border: 1px solid #DDDDDD;
+        border-radius: 10rpx;
+        box-sizing: border-box;
+
+        .div {
+            font-size: 26rpx;
+            line-height: 32rpx;
+        }.patient-name {
+            padding-bottom: 20rpx;
+            font-size: 30rpx;
+        }
+        .editUser {
+            position: absolute;
+            top: 10rpx;
+            right: 10rpx;
+            font-size: 40rpx;
+            line-height: 40rpx;
+        }
+    }
+    .patient-add {
+        width: 50%;
+        margin: 30rpx auto;
+        text-align: center;
+
+        .patient-add-icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10rpx;
+            width: 48rpx;
+            font-size: 36rpx;
+            text-align: center;
+            line-height: 48rpx;
+            color: #FFFFFF;
+            background: #F42611;
+            border-radius: 50%;
+        }
+        .patient-add-txt {
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 48rpx;
+            font-size: 30rpx;
+        }
+    }
+}
+.star {
+    color: red;
+}
+.remark {
+    font-size: 24rpx;
+    color: #CCCCCC;
+}
+.main-content {
+    padding: 24rpx 30rpx 120rpx;
+    font-size: 28rpx;
+
+    .mod-disease {
+        margin-bottom: 20rpx;
+        border-bottom: 1px solid #EEEEEE;
+
+        .disease-list {
+            margin-top: 20rpx;
+            font-size: 24rpx;
+            overflow: hidden;
+            clear: both;
+
+            textarea, .item-textarea {
+                padding: 10rpx 16rpx;
+                width: 100%;
+                height: 100px;
+                box-sizing: border-box;
+            }
+        }
+    }
+    .mod-records {
+        margin-bottom: 20rpx;
+        padding-bottom: 20rpx;
+
+        .records-add-icon {
+            float: left;
+            width: 128rpx;
+            height: 128rpx;
+            line-height: 128rpx;
+            margin: 20rpx 0;
+            font-size: 84rpx;
+            text-align: center;
+            border: 1px dashed #CCCCCC;
+            position: relative;
+            color: #CCCCCC;
+        }
+        .records-ask-icon {
+            float: left;
+            margin: 20rpx;
+            width: 128rpx;
+            height: 128rpx;
+            font-size: 20rpx;
+            text-align: center;
+            border: 1px dashed;
+            position: relative;
+
+            i {
+                display: block;
+                font-size: 60rpx;
+                line-height: 74rpx;
+            }
+            span {
+                display: block;
+                margin: 0 14rpx;
+                line-height: 24rpx;
+            }
+        }
+        .historyPhotos {
+            .records-img {
+                position: relative;
+                float: left;
+                margin: 20rpx 20rpx 0 0;
+                width: 128rpx;
+                height: 128rpx;
+                border: 1px solid #CCCCCC;
+
+                i {
+                    position: absolute;
+                    top: -16rpx;
+                    right: -16rpx;
+                    line-height: 40rpx;
+                }
+                b {
+                    position: absolute;
+                    right: 0;
+                    bottom: 0;
+                    font-size: 44rpx;
+                    line-height: 44rpx;
+                }
+                .askPhotoItem {
+                    width: 100%;
+                    height: 100%;
+                }
+            }
+        }
+    }
+}
+.btn_wrap {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    line-height: 80rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+    font-size: 36rpx;
+    background: #F2F2F2;
+
+    button {
+        border-radius: 80rpx;
+    }
+}
+
+</style>

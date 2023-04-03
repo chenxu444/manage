@@ -1,0 +1,669 @@
+<template>
+    <view class="setDrugUserPage">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="编辑用药人"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="su_form bg_white" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>真实姓名</view>
+                <input name="linkname" v-model="userName" class="item-input uni-flex-1" type="text" :adjust-position="true" placeholder="请输入真实姓名" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>手机号码</view>
+                <input name="linkname" v-model="mobile" :maxlength="11" class="item-input uni-flex-1" type="number" :adjust-position="true" placeholder="请输入手机号码" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>身份证号</view>
+                <input name="linkname" v-model="idCard" :maxlength="18" @input="changeIdCard" class="item-input uni-flex-1" type="idcard" :adjust-position="true" placeholder="请输入身份证号" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>出生年月</view>
+                <input name="linkname" v-model="birthDate" class="item-input uni-flex-1" type="text" disabled="true" :adjust-position="true" placeholder="请选择出生年月" @click="openDateFunc()" />
+                <w-picker mode="date" startYear="1920" :endYear="endYear" :defaultVal="defualtDay" :current="false" @confirm="onDateConfirm" :disabledAfter="true" ref="dateTime" themeColor="#f00"></w-picker>
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>年龄</view>
+                <input name="linkname" v-model="age" class="item-input uni-flex-1" type="text" disabled="true" :adjust-position="true" placeholder="请输入年龄" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>体重（kg）</view>
+                <input name="linkname" v-model="weight" class="item-input uni-flex-1" type="digit" :adjust-position="true" placeholder="请输入体重" @input="handleInput" @blur="handleInput" />
+            </view>
+            <view class="mode-item mod-linkname uni-flex">
+                <view class="item_label"><span>*</span>性别</view>
+                <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'gender')">
+                    <label style="padding-right: 20rpx;">
+                        <radio value="1" :checked="gender == '1'" />男
+                    </label>
+                    <label>
+                        <radio value="2" :checked="gender == '2'" />女
+                    </label>
+                </radio-group>
+            </view>
+            <view class="mode-item mod-linkname">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>肝功能</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'liverType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="liverType == '1'" />异常
+                        </label>
+                        <label>
+                            <radio value="0" :checked="liverType == '0'" />正常
+                        </label>
+                    </radio-group>
+                </view>
+                <textarea placeholder="请描述您的肝功能异常情况" class="areaTxt" v-model="liver" v-show="liverType == 1"></textarea>
+            </view>
+            <view class="mode-item mod-linkname">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>肾功能</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'renalType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="renalType == '1'" />异常
+                        </label>
+                        <label>
+                            <radio value="0" :checked="renalType == '0'" />正常
+                        </label>
+                    </radio-group>
+                </view>
+                <textarea placeholder="请描述您的肾功能异常情况" class="areaTxt" v-model="renal" v-show="renalType == 1"></textarea>
+            </view>
+            <view class="mode-item mod-linkname">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>过敏史</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'amhType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="amhType == '1'" />有
+                        </label>
+                        <label>
+                            <radio value="0" :checked="amhType == '0'" />无
+                        </label>
+                    </radio-group>
+                </view>
+                <textarea placeholder="您对什么过敏" class="areaTxt" v-model="amh" v-show="amhType == 1"></textarea>
+            </view>
+            <view class="mode-item mod-linkname ">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>其他病史</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'pmhType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="pmhType == '1'" />有
+                        </label>
+                        <label>
+                            <radio value="0" :checked="pmhType == '0'" />无
+                        </label>
+                    </radio-group>
+                </view>
+                <view class="pmh_choose uni-flex" v-show="pmhType == 1">
+                    <view class="pmh_item" :class="selectPmh.indexOf(pa) != -1 ? 'border_common font_color_common' : ''" @click="choiceFunc(pa, 'pmhType')" v-for="pa in pmhArr">{{ pa }}</view>
+                    <view class="pmh_item" @click="openChageM('pmhType')">+</view>
+                </view>
+            </view>
+            <view class="mode-item mod-linkname ">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>家族病史</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap" @change="radioChange($event,'fmhType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="fmhType == '1'" />有
+                        </label>
+                        <label>
+                            <radio value="0" :checked="fmhType == '0'" />无
+                        </label>
+                    </radio-group>
+                </view>
+                <view class="pmh_choose uni-flex" v-show="fmhType == 1">
+                    <view class="pmh_item" :class="selectFmh.indexOf(fa) != -1 ? 'border_common font_color_common' : ''" @click="choiceFunc(fa, 'fmhType')" v-for="fa in fmhArr">{{ fa }}</view>
+                    <view class="pmh_item" @click="openChageM('fmhType')">+</view>
+                </view>
+            </view>
+            <view class="mode-item mod-linkname ">
+                <view class="uni-flex">
+                    <view class="item_label font_weight"><span>*</span>妊娠哺乳</view>
+                    <radio-group class="item-input uni-flex uni-flex-1 radio_wrap nurseType" @change="radioChange($event,'nurseType')">
+                        <label style="padding-right: 20rpx;">
+                            <radio value="1" :checked="nurseType == '1'" />是
+                        </label>
+                        <label>
+                            <radio value="0" :checked="nurseType == '0'" />否
+                        </label>
+                    </radio-group>
+                </view>
+                <view class="pmh_choose uni-flex" v-show="nurseType == 1">
+                    <view class="nurse_item" :class="na === nurse ? 'border_common font_color_common' : ''" @click="choiceFunc(na, 'nurseType')" v-for="na in nurseArr">{{ na }}</view>
+                </view>
+            </view>
+            <view class="mode-item mod-addr uni-flex" style="display: none; border: none;">
+                <view class="item_label uni-flex-1" style="line-height: 32px;">是否默认(默认使用该用药人)</view>
+                <view class="input_addr" style="width: 50px; text-align: center;">
+                    <switch
+                        :checked="isDefault == 1 ? true : false"
+                        :color="baseColor"
+                        style="transform: scale(0.7, 0.7)"
+                        @change="switchChange"
+                    />
+                </view>
+            </view>
+        </view>
+        <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+            <button class="bg_common font_color_white" @click="saveUser">保存</button>
+        </view>
+
+        <uni-popup ref="popup">
+            <view class="dialog">
+                <view class="dialogTitle">病史内容</view>
+                <view class="dialogTxt">请输入{{showType == 'fmhType' ? '家族病史' : '其他病史'}}内容</view>
+                <input type="text" class="cancelIpt" v-model="changeTxt" />
+                <view class="uni-flex">
+                <button class="uni-flex-1 dialogBtn" @click="dialogButton(true)">
+                    确定
+                </button>
+                <button class="uni-flex-1 dialogBtn" @click="dialogButton(false)">
+                    取消
+                </button>
+                </view>
+            </view>
+        </uni-popup>
+    </view>
+</template>
+
+
+<script>
+let pages = '';//当前页
+let beforePage = '';//上个页面
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            userId: '',
+            userName: '',
+            mobile: '',
+            gender: 1,
+            idCard: '',
+            birthDate: '',
+            age: '',
+            isDefault: false,
+            endYear: '',
+            defualtDay: '',
+            liverType: '',
+            liver: '',
+            renalType: '',
+            renal: '',
+            weight: '',
+
+            amh: '',
+            amhType: '',
+
+            pmhType: '',
+            pmhArr: ['高血压', '心肌梗塞', '哮喘'],
+            selectPmh: [],
+
+            fmhType: '',
+            fmhArr: ['高血压', '心肌梗塞', '哮喘'],
+            selectFmh: [],
+
+            nurseType: '',
+            nurse: '',
+            nurseArr: ['备孕中', '怀孕中', '正在哺乳'],
+            showType: '',
+            changeTxt: '',
+            isEdit: false,
+        };
+    },
+    onLoad(option) {
+        let nowDate = new Date();
+        let year = nowDate.getFullYear();
+        let month = nowDate.getMonth() + 1;
+        let day = nowDate.getDate();
+        let defualtDay = [];
+        this.endYear = year;
+        defualtDay.push(year + "");
+        defualtDay.push(month < 10 ? "0" + month : month + "");
+        defualtDay.push(day < 10 ? "0" + day : day + "");
+        this.defualtDay = defualtDay;
+
+        pages = getCurrentPages(); //当前页面栈
+        beforePage = pages[pages.length - 2];//上个页面
+        if(option.editIndex != undefined && option.editIndex != null && option.editIndex != ''){
+            this.isEdit = true;
+            if (pages.length > 1) {
+                let userObj = beforePage.$vm.content[option.editIndex];
+                console.log(userObj);
+                this.userId = userObj.userId;
+                this.userName = userObj.userName;
+                this.mobile = userObj.mobile;
+                this.idCard = userObj.idCard;
+                this.gender = userObj.gender;
+                this.birthDate = userObj.birthDate;
+                this.age = userObj.age;
+                this.liverType = userObj.liverType === 0 || userObj.liverType === 1 ? userObj.liverType + '' : '';
+                this.liver = userObj.liver;
+                this.renalType = userObj.renalType === 0 || userObj.renalType === 1 ? userObj.renalType + '' : '';
+                this.renal = userObj.renal;
+                this.amhType = userObj.amhType === 0 || userObj.amhType === 1 ? userObj.amhType + '' : '';
+                this.amh = userObj.amh;
+                this.fmhType = userObj.fmhType === 0 || userObj.fmhType === 1 ? userObj.fmhType + '' : '';
+                this.selectFmh = userObj.fmh ? userObj.fmh.split(',') : [];
+                for(let i = 0; i < this.selectFmh.length; i++){
+                    if(this.fmhArr.indexOf(this.selectFmh[i]) == -1) {
+                        this.fmhArr.push(this.selectFmh[i]);
+                    }
+                }
+                
+                this.pmhType = userObj.pmhType === 0 || userObj.pmhType === 1 ? userObj.pmhType + '' : '';
+                this.selectPmh = userObj.pmh ? userObj.pmh.split(',') : [];
+                for(let i = 0; i < this.selectPmh.length; i++){
+                    if(this.pmhArr.indexOf(this.selectPmh[i]) == -1) {
+                        this.pmhArr.push(this.selectPmh[i]);
+                    }
+                }
+                
+                this.nurseType = userObj.nurseType === 0 || userObj.nurseType === 1 ? userObj.nurseType + '' : '';
+                this.nurse = userObj.nurse;
+                this.weight = userObj.weight;
+            }
+        }
+    },
+    onUnload() {
+        beforePage.$vm.getDruger();
+        if(beforePage.route == 'order/pages/askInfo/askInfo' && beforePage.$vm.toggle == 2 && this.isEdit){
+            beforePage.$vm.druguser.liverType = this.liverType;
+            beforePage.$vm.initDisease();
+        }
+    },
+    mounted() {
+        let _model_ = this.getStor('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+    },
+    methods: {
+        openDateFunc() {
+            // 打开日期窗口
+            this.$refs["dateTime"].show();
+        },
+        changeIdCard() {
+            // 改变身份证号
+            if(this.idCard.length == 18){
+                this.birthDate = this.getBirth(this.idCard);
+                this.age = this.GetAge(this.birthDate);
+            }else{
+                this.birthDate = '';
+                this.age = '';
+            }
+        },
+        getBirth(idcard) {
+            // 根据身份证获取生日
+            console.log(idcard);
+            let reg = /^[0-9]d{17}([0-9]|x|X)$/;
+            if (reg.test(idcard)) {
+                this.$message.error('身份证不合法!');
+                return;
+            }
+            let year = idcard.substr(6, 4);
+            let month = idcard.substr(10, 2);
+            let day = idcard.substr(12, 2);
+            let defualtDay = [];
+            defualtDay.push(year + "");
+            defualtDay.push(month < 10 ? "0" + month : month + "");
+            defualtDay.push(day < 10 ? "0" + day : day + "");
+            this.defualtDay = defualtDay;
+            return year + '-' + month + '-' + day;
+        },
+        onDateConfirm(date) {
+            // 修改出生年月
+            this.birthDate = date.result;
+            this.GetAge(this.birthDate);
+        },
+        GetAge(strBirthday){       
+            // 格式化岁数
+            let returnAge,
+                strBirthdayArr=strBirthday.split("-"),
+                birthYear = strBirthdayArr[0],
+                birthMonth = strBirthdayArr[1],
+                birthDay = strBirthdayArr[2],  
+                d = new Date(),
+                nowYear = d.getFullYear(),
+                nowMonth = d.getMonth() + 1,
+                nowDay = d.getDate();   
+            if(nowYear == birthYear){
+                returnAge = 0;//同年 则为0周岁
+            }
+            else{
+                let ageDiff = nowYear - birthYear ; //年之差
+                if(ageDiff > 0){
+                    if(nowMonth == birthMonth) {
+                        let dayDiff = nowDay - birthDay;//日之差
+                        if(dayDiff < 0) {
+                            returnAge = ageDiff - 1;
+                        }else {
+                            returnAge = ageDiff;
+                        }
+                    }else {
+                        let monthDiff = nowMonth - birthMonth;//月之差
+                        if(monthDiff < 0) {
+                            returnAge = ageDiff - 1;
+                        }
+                        else {
+                            returnAge = ageDiff ;
+                        }
+                    }
+                }else {
+                    returnAge = -1;//返回-1 表示出生日期输入错误 晚于今天
+                }
+            } 
+            return returnAge;//返回周岁年龄
+        },
+        radioChange(e,type){
+            // 修改性别
+            if(type=='gender'){
+                this.gender = e.detail.value;
+            }
+            // 修改肝健康
+            if(type=='liverType'){
+                this.liverType = e.detail.value;
+            }
+            // renalType 肾功能异常0无1有
+            if(type=='renalType'){
+                this.renalType = e.detail.value;
+            }
+            if(type=='amhType'){
+                this.amhType = e.detail.value;
+                if(this.amhType == 0){
+                    this.amh = '';
+                }
+            }
+            if(type=='pmhType'){
+                this.pmhType = e.detail.value;
+                if(this.pmhType == 0){
+                    this.selectPmh = [];
+                }
+            }
+            if(type=='fmhType'){
+                this.fmhType = e.detail.value;
+                if(this.fmhType == 0){
+                    this.selectFmh = [];
+                }
+            }
+            if(type=='nurseType'){
+                this.nurseType = e.detail.value;
+                if(this.nurseType == 0){
+                    this.nurse = '';
+                }
+            }
+        },
+        choiceFunc(e, type){
+            // 其他病史
+            if(type == 'pmhType'){
+                if(this.selectPmh.indexOf(e) != -1){
+                    this.selectPmh.splice(this.selectPmh.indexOf(e), 1);
+                }else{
+                    this.selectPmh.push(e);
+                }
+            }else if(type == 'fmhType'){
+                if(this.selectFmh.indexOf(e) != -1){
+                    this.selectFmh.splice(this.selectFmh.indexOf(e), 1);
+                }else{
+                    this.selectFmh.push(e);
+                }
+            }else if(type == 'nurseType'){
+                this.nurse = e;
+            }
+        },
+        switchChange(e) {
+            // 修改默认
+            this.isDefault = e.detail.value;
+        },
+        saveUser(){
+            // 保存用药人
+            let saveobj = {};
+            if(this.userId){
+                saveobj.userId = this.userId;
+            }
+
+            if(this.userName == undefined || this.userName == null || this.userName == ''){
+                uni.showToast({
+                    title: "抱歉！您还未填写真实姓名",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.userName = this.userName;
+            
+            if(this.mobile == undefined || this.mobile == null || this.mobile == '' || this.mobile.substring(0, 1) != '1' && this.mobile.length != 11){
+                uni.showToast({
+                    title: "请您填写正确的手机号码",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.mobile = this.mobile;
+
+            if(this.idCard == undefined || this.idCard == null || this.idCard == '' || !this.isIDcard(this.idCard)){
+                uni.showToast({
+                    title: "请您填写正确的身份证号码",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.idCard = this.idCard;
+
+            saveobj.birthDate = this.birthDate;
+            saveobj.gender = Number(this.gender);
+            saveobj.age = this.age;
+
+            /* 是否设置默认地址 */
+            saveobj.isDefault = 1;
+            /* 是否设置默认地址 */
+            if(this.weight == null || this.weight == ''){
+                uni.showToast({
+                    title: "您还维护体重信息",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.liverType == '' || (this.liverType == '1' && (this.liver == null || this.liver == '' ))){
+                uni.showToast({
+                    title: "您还没维护肝功能异常情况",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.renalType == '' || (this.renalType == '1' && (this.renal == null || this.renal == ''))){
+                uni.showToast({
+                    title: "您还没维护肾功能异常情况",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.amhType == '' || (this.amhType == '1' && (this.amh == null || this.amh == ''))){
+                uni.showToast({
+                    title: "您还没维护过敏史",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.pmhType == '' || (this.pmhType == '1' && this.selectPmh.length == 0)){
+                uni.showToast({
+                    title: "您还没维护其他病史信息",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.fmhType == '' || (this.fmhType == '1' && this.selectFmh == 0)){
+                uni.showToast({
+                    title: "您还没维护家族病史信息",
+                    icon: "none",
+                });
+                return;
+            }
+            if(this.nurseType == '' || (this.nurseType == '1' && (this.nurse == null || this.nurse == ''))){
+                uni.showToast({
+                    title: "您还没维护妊娠哺乳信息",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.liverType = Number(this.liverType);
+            saveobj.liver = this.liver;
+            saveobj.renalType = Number(this.renalType);
+            saveobj.renal = this.renal;
+            saveobj.amhType = Number(this.amhType);
+            saveobj.amh = this.amh;
+            saveobj.pmhType = Number(this.pmhType);
+            saveobj.pmh = this.selectPmh.join(',');
+            saveobj.fmhType = Number(this.fmhType);
+            saveobj.fmh = this.selectFmh.join(',');
+            saveobj.nurseType = Number(this.nurseType);
+            saveobj.nurse = this.nurse;
+            saveobj.weight = this.weight;
+
+            this.doRequest("/usercenter/druguser/update", saveobj, true, 'json').then((res) => {
+                uni.showToast({
+                    title: "用药人保存成功！",
+                    icon: "none",
+                });
+                this.$nextTick(() => {
+                    setTimeout(() => {
+                        uni.navigateBack({
+                            delta: 1,
+                        });
+                    }, 300)
+                })
+            })
+        },
+        openChageM(type){
+            this.showType = type;
+            this.$refs.popup.open();
+        },
+        // 模态框按钮事件
+        dialogButton(boolean) {
+            if (boolean) {
+                if(this.showType == 'pmhType'){
+                    this.selectPmh.push(this.changeTxt);
+                    this.pmhArr.push(this.changeTxt);
+                    this.pmh = JSON.parse(JSON.stringify(this.changeTxt));
+                }else{
+                    this.selectFmh.push(this.changeTxt);
+                    this.fmhArr.push(this.changeTxt)
+                    this.fmh = JSON.parse(JSON.stringify(this.changeTxt));
+                }
+            }
+            this.changeTxt = '';
+            this.$refs.popup.close();
+        },
+        handleInput(e) {
+            this.weight = e.detail.value.replace(/[^\d]/g, "");
+            this.$forceUpdate();
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+
+.su_form {
+    display: block;
+    padding: 20rpx 0 120rpx 20rpx;
+    box-sizing: border-box;
+
+    .mode-item {
+        line-height: 60rpx;
+        padding: 20rpx;
+        width: 100%;
+        box-sizing: border-box;
+        border-bottom: 1px solid #F6F6F6;
+        .font_weight {
+            font-weight: 600;
+        }
+        .radio_wrap {
+            justify-content: flex-end;
+        }
+        .pmh_choose {
+            flex-wrap: wrap;
+            line-height: 50rpx;
+            .pmh_item {
+                padding: 8rpx 30rpx;
+                border: 1px solid #E0D6D6;
+                border-radius: 12rpx;
+                margin-right: 16rpx;
+                margin-top: 14rpx;
+            }
+            .nurse_item {
+                padding: 8rpx 30rpx;
+                border: 1px solid #E0D6D6;
+                border-radius: 40rpx;
+                margin-right: 16rpx;
+                margin-top: 14rpx;
+            }
+        }
+
+        .areaTxt {
+            width: calc(100% - 20rpx);
+            height: 100rpx;
+            border: 2rpx solid #E2E2E2;
+            line-height: 40rpx;
+            padding: 10rpx;
+            margin: 10rpx 0;
+        }
+        .item_label {
+            width: 140rpx;
+            line-height: 60rpx;
+
+            span {
+                color: red;
+            }
+        }
+        .item-input {
+            width: 100%;
+            height: 60rpx;
+            line-height: 60rpx;
+            padding: 0 16rpx;
+            box-sizing: border-box;
+            font-size: 28rpx;
+        }
+    }
+}
+.btn_wrap {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 99;
+    line-height: 80rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+    font-size: 36rpx;
+    background: #F2F2F2;
+
+    button {
+        border-radius: 80rpx;
+    }
+}
+/* 弹出框 */
+.dialog {
+    width: 560rpx;
+    background-color: #FFFFFF;
+    border-radius: 20rpx;
+}
+.cancelIpt {
+    margin: 30rpx auto;
+    padding: 10rpx;
+    width: 80%;
+    border: 1rpx solid #CCCCCC;
+}
+.dialogBtn {
+    border-radius: unset !important;
+}
+.dialogTitle {
+    font-weight: 700;
+    padding: 20rpx 0;
+    font-size: 36rpx;
+    text-align: center;
+}
+.dialogTxt {
+    text-align: center;
+}
+
+</style>

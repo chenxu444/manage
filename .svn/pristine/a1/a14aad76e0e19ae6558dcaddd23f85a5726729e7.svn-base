@@ -1,0 +1,183 @@
+<template>
+  <div>
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar
+      fixed
+      status-bar
+      left-icon="back"
+      title="售后服务"
+    ></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="after_sale">
+      <div
+        class="goods_item bg_white"
+        v-for="(row, rindex) in afterSalList"
+        :key="rindex"
+      >
+        <div class="num border_bottom_1">
+          <span>编号：{{ row.afterSaleNo }}</span>
+          <span class="font_color_common"
+            >（{{ row.afterSalStatus | statusFilter }}）</span
+          >
+        </div>
+        <div v-for="(goods, gindex) in row.orderAfterSaleDtls" :key="gindex">
+          <div class="uni-flex border_bottom_1">
+            <img class="goods_img" :src="goods.defaultPic" alt="暂无图片" />
+            <div class="goods_name uni-flex-1">
+              {{ goods.goodsName + goods.specification }}
+              <div class="font_color_999">￥11</div>
+            </div>
+            <span class="count font_color_999">x{{ goods.goodsQty }}</span>
+          </div>
+        </div>
+        <div class="goods_status uni-flex">
+          <div class="uni-flex-1">
+            退款状态：<span class="font_color_common">{{
+              row.payStatus | paystatusFilter
+            }}</span>
+          </div>
+          <span class="total_price font_color_999"
+            >金额：￥{{ row.refundMoney | refundMoneyFilter }}</span
+          >
+        </div>
+      </div>
+      <div class="noMore" v-show="bottom">没有更多数据了</div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      pageNo: 1,
+      pageSize: 15,
+      afterSalList: [],
+      bottom: false,
+    };
+  },
+  methods: {
+    getAfterSaleList() {
+      let params = {
+        pageNo: this.pageNo,
+        pageSize: this.pageSize,
+      };
+      this.ebigRequest("/aftersale/list", params, true).then((res) => {
+        console.log(res);
+        if (res) {
+          this.afterSalList = [...this.afterSalList, ...res];
+        }
+        if (res == null || res.length < this.pageSize) {
+          console.log(1);
+          this.bottom = true;
+        }
+      });
+    },
+  },
+  filters: {
+    // 退货状态过滤
+    statusFilter: function (status) {
+      var name = "";
+      if (status == "0") {
+        name = "已取消";
+      } else if (status == "1") {
+        name = "待处理";
+      } else if (status == "2") {
+        name = "已确认";
+      } else if (status == "3") {
+        name = "退货失败";
+      } else if (status == "4") {
+        name = "退货入库成功";
+      } else if (status == "5") {
+        name = "生成退款单";
+      } else if (status == "6") {
+        name = "已退款";
+      }
+      return name;
+    },
+    // z支付状态过滤
+    paystatusFilter: function (status) {
+      var name = "初始状态";
+      if (status == "1") {
+        name = "待支付";
+      } else if (status == "2") {
+        name = "已支付";
+      } else if (status == "3") {
+        name = "部分支付";
+      } else if (status == "4") {
+        name = "待退款";
+      } else if (status == "5") {
+        name = "已退款";
+      } else if (status == "6") {
+        name = "部分退款";
+      }
+      return name;
+    },
+    refundMoneyFilter: function (refundMoney) {
+      if (
+        refundMoney == undefined ||
+        refundMoney == "" ||
+        refundMoney == null
+      ) {
+        return 0;
+      } else {
+        return parseFloat(refundMoney).toFixed(2);
+      }
+    },
+  },
+  onReachBottom() {
+    if (this.bottom) {
+      return false;
+    } else {
+      this.pageNo++;
+      this.getAfterSaleList();
+    }
+  },
+  onLoad() {
+    this.getAfterSaleList();
+  },
+};
+</script>
+
+<style>
+page {
+  background-color: #efeff4;
+}
+.border_bottom_1 {
+  border-bottom: 1px solid #e7e7e7;
+}
+.after_sale {
+  padding: 20rpx;
+}
+.goods_item {
+  box-shadow: 0 1px 4rpx rgba(0, 0, 0, 0.3);
+  border-radius: 4rpx;
+  margin-bottom: 40rpx;
+}
+.num {
+  padding: 20rpx;
+}
+.goods_img {
+  padding: 20rpx;
+  width: 136rpx;
+  height: 136rpx;
+}
+.goods_name {
+  padding: 20rpx 10rpx;
+}
+.goods_status {
+  padding: 20rpx;
+}
+.total_price {
+  text-align: right;
+  width: 300rpx;
+}
+.count {
+  line-height: 136rpx;
+}
+.noMore {
+  text-align: center;
+  font-size: 30rpx;
+  color: #666666;
+}
+</style>

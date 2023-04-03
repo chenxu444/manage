@@ -1,0 +1,73 @@
+<template>
+    <view>
+        <view class="pageBg"></view>
+        <view class="askContact">
+            <view class="content">是否打开客服？</view>
+            <view class="uni-flex btns">
+                <button class="uni-flex-1">取消</button>
+                <button class="uni-flex-1" open-type="contact">打开</button>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script>
+export default {
+    methods: {
+        goBack(){
+            uni.navigateBack({
+                delta: 1,
+            });
+        }
+    }
+}
+</script>
+
+<style lang="scss">
+.pageBg {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9;
+    background: rgba(153, 144, 144, 0.6)
+}
+.askContact {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 10;
+    margin: -400rpx 0 0 -300rpx;
+    width: 600rpx;
+    height: 300rpx;
+    background: #FFFFFF;
+    border-radius: 10rpx;
+
+    .content {
+        height: 220rpx;
+        font-size: 40rpx;
+        text-align: center;
+        line-height: 220rpx;
+    }
+    .btns {
+        height: 80rpx;
+        border-top: 1rpx solid #EEEEEE;
+        box-sizing: border-box;
+        button{
+            border-right: 1rpx solid #EEEEEE;
+            border-radius: 0;
+            &.button-hover {
+                background: none;
+            }
+            &:last-child {
+                border-right: 0;
+            }
+            &::after {
+                border: none;
+                border-radius: 0;
+            }
+        }
+    }
+}
+</style>

@@ -1,0 +1,306 @@
+/* uni自带 */
+uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked {
+    color: #007BC8 !important;
+}
+uni-button[type=primary] {
+    background-color: #007BC8;
+}
+
+/*每个页面公共css */
+/* CSS Document */
+.uni-radio-input-checked {
+    background: #007BC8 !important;
+    border: solid 1px #007BC8 !important;
+}
+.uni-modal__btn_primary {
+    color: #007BC8 !important;
+}
+/*头部背景颜色*/
+.header_bg {
+    background: #007BC8 !important;
+}
+
+.header_bg_light {
+    background: #F0FAFF !important;
+}
+
+/*脚部背景颜色*/
+.footer_bg {
+    background: #007BC8 !important;
+}
+
+/*字体颜色*/
+.font_color_common {
+    color: #007BC8 !important;
+}
+
+.font_color_common_light {
+    color: #F0FAFF !important;
+}
+
+.font_color_icon {
+    color: #007BC8 !important;
+}
+
+.font_color_icon_light {
+    color: #F0FAFF !important;
+}
+
+.font_color_white {
+    color: #FFFFFF !important;
+}
+
+.font_color_666 {
+    color: #666666 !important;
+}
+
+.font_color_999 {
+    color: #999999 !important;
+}
+
+.font_color_333 {
+    color: #333333 !important;
+}
+
+.font_color_000 {
+    color: #000000 !important;
+}
+
+.font_color_red {
+    color: red !important;
+}
+
+/*按钮背景颜色*/
+.btn_bg {
+    background: #007BC8 !important;
+}
+
+.btn_bg_light {
+    background: #F0FAFF !important;
+}
+
+/*背景颜色*/
+.bg_common {
+    background: #007BC8 !important;
+}
+
+.bg_common_light {
+    background: #F0FAFF !important;
+}
+
+.bg_white {
+    background: #FFFFFF !important;
+}
+
+.bg_black {
+    background: #000000 !important;
+    -webkit-opacity: .7;
+    -moz-opacity: .7;
+    -o-opacity: .7;
+    opacity: .7;
+}
+
+.bg_red {
+    background: red !important;
+}
+
+.bg_999 {
+    background: #999999 !important;
+}
+
+.bg_eee {
+    background: #EEEEEE !important;
+}
+
+.bg_aaa {
+    background: #AAAAAA !important;
+}
+
+.bg_f6 {
+    background: #F6F6F6 !important;
+}
+.bg_f9 {
+    background: #F9F9F9 !important;
+}
+
+.bg_000opa {
+    background: #000000;
+    -webkit-opacity: .7;
+    -moz-opacity: .7;
+    -o-opacity: .7;
+    opacity: .7;
+}
+
+/*弹出框背景颜色*/
+.modal-inner {
+    color: #007BC8 !important;
+}
+
+.modal-button {
+    color: #FFFFFF !important;
+    background: #F0FAFF !important;
+}
+
+/*三角形背景颜色*/
+.three_bg_left {
+    content: '';
+    display: block;
+    border-top-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+    border-right-color: #F0FAFF;
+}
+
+.three_bg_right {
+    content: '';
+    display: block;
+    border-top-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+    border-left-color: #F0FAFF;
+}
+
+.three_bg_top {
+    content: '';
+    display: block;
+    border-left-color: #FFFFFF;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #F0FAFF;
+}
+
+.three_bg_bottom {
+    content: '';
+    display: block;
+    border-left-color: -color#FFFFFF;
+    border-right-color: #FFFFFF;
+    border-top-color: #F0FAFF;
+}
+
+/*边框颜色*/
+.border_common {
+    border-color: #007BC8 !important;
+}
+
+.border_common_top {
+    border-top-color: #007BC8 !important;
+}
+
+.border_common_bottom {
+    border-bottom-color: #007BC8 !important;
+}
+
+.border_common_left {
+    border-left-color: #007BC8 !important;
+}
+
+.border_common_right {
+    border-right-color: #007BC8 !important;
+}
+
+.border_common_light {
+    border-color: #F0FAFF !important;
+}
+
+.border_common_top_light {
+    border-top-color: #F0FAFF !important;
+}
+
+.border_common_bottom_light {
+    border-bottom-color: #F0FAFF !important;
+}
+
+.border_common_left_light {
+    border-left-color: #F0FAFF !important;
+}
+
+.border_common_right_light {
+    border-right-color: #F0FAFF !important;
+}
+
+.border_white_top {
+    border-top-color: #FFFFFF !important;
+}
+
+.border_white_bottom {
+    border-bottom-color: #FFFFFF !important;
+}
+
+.border_white_left {
+    border-left-color: #FFFFFF !important;
+}
+
+.border_white_right {
+    border-right-color: #FFFFFF !important;
+}
+
+.border_red_top {
+    border-top-color: red !important;
+}
+
+.border_red_bottom {
+    border-bottom-color: red !important;
+}
+
+.border_red_left {
+    border-left-color: red !important;
+}
+
+.border_red_right {
+    border-right-color: red !important;
+}
+
+input.modal-text-input {
+    border-color: #007BC8 !important;
+}
+
+/*遮罩层颜色*/
+
+/*勾选选择*/
+label.label-checkbox input[type='checkbox']:checked + .item-media i.icon-form-checkbox, label.label-checkbox input[type='radio']:checked + .item-media i.icon-form-checkbox {
+    background: #F0FAFF !important;
+}
+
+/*选中状态*/
+.active_color {
+    color: #FFFFFF !important;
+    background: #007BC8 !important;
+}
+
+.active_color_light {
+    color: #FFFFFF !important;
+    background: #F0FAFF !important;
+}
+
+.footer_active {
+    color: #007BC8 !important;
+}
+
+.footer_active_light {
+    color: #F0FAFF !important;
+}
+
+.active_font {
+    color: #007BC8 !important;
+}
+
+.active_font_light {
+    color: #F0FAFF !important;
+}
+
+.active_bg {
+    background: #007BC8 !important;
+}
+
+.active_bg_light {
+    background: #F0FAFF !important;
+}
+
+.active_border {
+    border: 1px solid #007BC8 !important;
+}
+
+.active_border_light {
+    border: 1px solid #F0FAFF !important;
+}
+
+.uni-badge--primary {
+    background-color: #007BC8 !important;
+}

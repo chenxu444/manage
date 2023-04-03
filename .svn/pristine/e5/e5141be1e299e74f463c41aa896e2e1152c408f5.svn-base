@@ -1,0 +1,285 @@
+<template>
+  <div class="goods_sort" :style="isiphoneBt ? 'padding-bottom: 80px;' : ''">
+    <!-- 底部导航 -- start -->
+    <uni-nav-bar :pageActive="2"></uni-nav-bar>
+    <!-- 底部导航 -- end -->
+    <!-- 搜索 -->
+    <view class="search-wrap bg_common">
+      <view
+        class="s-input"
+        @click="goUrl('searchPage', '', 'storeId=' + storeId)"
+      >
+        <input
+          type="text"
+          placeholder="搜索药品、品牌、症状"
+          v-model="queryWord"
+          disabled
+        />
+        <icon class="searchIcon" type="search" size="18" />
+      </view>
+    </view>
+    <!-- 内容区域 -->
+    <div class="content uni-flex">
+      <!-- 左侧导航 -->
+      <scroll-view class="left" scroll-y>
+        <div v-if="leftNav">
+          <view
+            class="left_item"
+            :class="isActive == item.goodsTypeId ? 'active_item' : ''"
+            v-for="item in leftNav"
+            :key="item.goodsTypeId"
+            @click="toggleNav(item.goodsTypeId)"
+          >
+            {{ item.goodsTypeName }}
+          </view>
+        </div>
+      </scroll-view>
+      <!-- 右侧内容 -->
+      <scroll-view class="uni-flex-1" scroll-y>
+        <div v-if="rightcontent">
+          <view class="right uni-flex">
+            <view
+              class="right_item"
+              v-for="(item, index) in rightcontent"
+              :key="index"
+              @click="
+                goUrl(
+                  'list',
+                  '',
+                  'storeId=' + item.storeId + '&goodsTypeNo=' + item.goodsTypeNo
+                )
+              "
+            >
+              <img
+                :src="item.icon || '../../static/image/default/no_img.jpg'"
+                class="goods_img"
+              />
+              {{ item.goodsTypeName }}
+            </view>
+          </view>
+        </div>
+      </scroll-view>
+      <!-- <text v-if="secondData.length===0">暂无数据</text> -->
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      isiphoneBt: false,
+      allObj: {},
+      leftNav: [],
+      rightcontent: [],
+      isActive: "",
+      storeId: "",
+      distributorId: "",
+      nowShareUrl: "/pages/goodsSort/goodsSort",
+    };
+  },
+  onShareAppMessage(res) {
+    //分享到微信好友
+    return {
+      title: uni.getStorageSync("_shareTitle_"),
+      content: this.shareContent,
+      imageUrl: uni.getStorageSync("_shareLogo_"),
+      path: this.nowShareUrl,
+      success: (data) => {
+        uni.showToast({
+          title: "分享成功!",
+          icon: "none",
+        });
+      },
+      fail: (err) => {
+        uni.showToast({
+          title: "分享失败!",
+          icon: "none",
+        });
+      },
+    };
+  },
+  onShareTimeline() {
+    return {
+      title: uni.getStorageSync("_shareTitle_"),
+      content: this.shareContent,
+      imageUrl: uni.getStorageSync("_shareLogo_"),
+      path: this.nowShareUrl,
+      success: (data) => {
+        uni.showToast({
+          title: "分享成功!",
+          icon: "none",
+        });
+      },
+      fail: (err) => {
+        uni.showToast({
+          title: "分享失败!",
+          icon: "none",
+        });
+      },
+    };
+  },
+  onLoad(options) {
+    this.storeId = options.storeId ? options.storeId : this._storeId_;
+    this.distributorId = options.shareDistributorId
+      ? options.shareDistributorId
+      : uni.getStorageSync("shareDistributorId") != null
+      ? uni.getStorageSync("shareDistributorId")
+      : "";
+    uni.setStorageSync("shareDistributorId", this.distributorId);
+    if (uni.getStorageSync("_isDistributorId_") != null) {
+      this.nowShareUrl =
+        this.nowShareUrl +
+        (uni.getStorageSync("_isDistributorId_") != null
+          ? (this.nowShareUrl.indexOf("?") ? "&" : "?") +
+            "shareDistributorId=" +
+            uni.getStorageSync("_isDistributorId_")
+          : "");
+    }
+    this.getCategory();
+  },
+  mounted() {
+    let _model_ = uni.getStorageSync("_model_");
+    if (
+      _model_.indexOf("iPhone X") != -1 ||
+      _model_.indexOf("iPhone XR") != -1 ||
+      _model_.indexOf("iPhone XS") != -1 ||
+      _model_.indexOf("iPhone XS Max") != -1 ||
+      _model_.indexOf("iPhone 11") != -1 ||
+      _model_.indexOf("iPhone 11 Pro") != -1 ||
+      _model_.indexOf("iPhone 11 Pro Max") != -1
+    ) {
+      this.isiphoneBt = true;
+      this.$emit("update:isiphoneBt", true);
+    }
+  },
+  methods: {
+    toggleNav(goodsTypeId) {
+      this.isActive = goodsTypeId;
+      this.getContent();
+    },
+    // 获取左侧导航
+    getCategory() {
+      let params = {
+        storeId: this.storeId,
+        parentId: -1,
+      };
+      this.ebigRequest("/store/getGoodstypes", params, true).then((res) => {
+        if (res.length) {
+          this.leftNav = res;
+          this.isActive = res[0].goodsTypeId;
+          this.getContent();
+        } else {
+          uni.showToast({
+            title: "暂无更多分类",
+            icon: "none",
+          });
+        }
+      });
+    },
+    // 获取右侧内容
+    getContent() {
+      if (this.allObj[this.isActive] != undefined) {
+        this.rightcontent = this.allObj[this.isActive];
+      } else {
+        let params = {
+          storeId: this.storeId,
+          parentId: this.isActive,
+        };
+        this.ebigRequest("/store/getGoodstypes", params, true).then((res) => {
+          if (res) {
+            this.rightcontent = res;
+            this.allObj[this.isActive] = res;
+          }
+        });
+      }
+    },
+  },
+};
+</script>
+
+<style>
+page {
+  height: 100%;
+  background-color: #ffffff;
+}
+.goods_sort {
+  padding-bottom: 50px;
+  height: 100%;
+  box-sizing: border-box;
+}
+/* 搜索 start */
+.search-wrap {
+  padding: 20rpx 30rpx;
+  width: 100%;
+  border-bottom: 1px solid rgba(228, 228, 228, 1);
+  box-sizing: border-box;
+}
+.s-input {
+  position: relative;
+  padding-left: 68rpx;
+  width: 100%;
+  height: 68rpx;
+  background: #ececec;
+  border-radius: 80rpx;
+  box-sizing: border-box;
+}
+.s-input input {
+  width: 100%;
+  height: 100%;
+  line-height: 68rpx;
+  font-size: 30rpx;
+  color: #949494;
+}
+.s-input .searchIcon {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 68rpx;
+  font-size: 36rpx;
+  text-align: center;
+  line-height: 80rpx;
+  color: #bbb2b2;
+}
+/* 搜索 end */
+/* 左侧导航 */
+.content {
+  display: flex;
+  height: calc(100% - 110rpx);
+}
+.left {
+  width: 186rpx;
+  height: 100%;
+  border-right: 1px solid #d7d7d7;
+  font-size: 30rpx;
+  box-sizing: content-box;
+  text-align: center;
+}
+.left_item {
+  padding: 32rpx 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.active_item {
+  background-color: #f2f2f2;
+  font-size: 26rpx;
+  color: #1e1e1e;
+  font-weight: 700;
+}
+/* 右侧内容 */
+.right {
+  flex-wrap: wrap;
+}
+.right_item {
+  box-sizing: border-box;
+  width: 33%;
+  padding: 20rpx;
+  text-align: center;
+}
+.goods_img {
+  width: 100%;
+  height: 140rpx;
+}
+</style>

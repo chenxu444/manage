@@ -1,0 +1,212 @@
+<template>
+  <div class="login">
+    <div class="img_wrap">
+      <img :src="logoImg" class="imglogo" />
+      <img :src="comImg" class="imglogo" style="margin-top: 20rpx; height: 50rpx;" />
+    </div>
+    <div class="wrap">
+      <button
+        class="login_btn font_color_white bg_common"
+        open-type="getPhoneNumber"
+        @getphonenumber="getPhoneNumber"
+        lang="zh_CN"
+      >
+        微信授权
+      </button>
+    </div>
+    <div class="point">
+      <checkbox :checked="isAgree" @click="check"></checkbox>
+      <span>我已阅读</span>
+      <span
+        class="font_color_common"
+        @click.stop="goUrl('loginInfo', 'mine')"
+        >《知情同意书》</span
+      >
+      <span>和</span>
+      <span
+        class="font_color_common"
+        @click.stop="goUrl('registerInfo', 'mine')"
+        >《会员注册授权协议》</span
+      >
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      isAgree: false,
+      isLogin: false,
+      isBack: false,
+      logoImg: this.baseUrl + "img/common/logo_1.png",
+      comImg: this.baseUrl + "img/common/com_1.png",
+      sessionkey: "",
+      appid: '',
+    };
+  },
+  onLoad(option) {
+    this.isBack = option.returnUrl != undefined ? true : false;
+    uni.login({
+      provider: "weixin",
+      success: (res) => {
+        this.appid = uni.getAccountInfoSync().miniProgram.appId;
+        this.ebigRequest(
+          "/wechat/" + this.appid + "/jscode2session",
+          { jscode: res.code },
+          false,
+          "post",
+          "",
+          true,
+          true
+        ).then((response) => {
+          uni.setStorageSync("__openid__", response.value.openid);
+          this.sessionkey = response.value.session_key;
+        });
+      },
+    });
+  },
+  methods: {
+    check() {
+      this.isAgree = !this.isAgree;
+    },
+    getPhoneNumber(e) {
+      // 授权登录
+      if (!this.isAgree) {
+        uni.showToast({
+          title: "请先阅读并勾选内容",
+          position: "bottom",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
+      if (
+        this.sessionkey == undefined ||
+        this.sessionkey == null ||
+        this.sessionkey == ""
+      ) {
+        uni.showModal({
+          title: "温馨提示",
+          content: "获取手机号失败，请重试~",
+          showCancel: false,
+          success: (res1) => {
+            uni.login({
+              provider: "weixin",
+              success: (res) => {
+                this.ebigRequest(
+                  "/wechat/" + this.appid + "/jscode2session",
+                  { jscode: res.code },
+                  false,
+                  "post",
+                  "",
+                  true,
+                  true
+                ).then((response) => {
+                  uni.setStorageSync("__openid__", response.value.openid);
+                  this.sessionkey = response.value.session_key;
+                });
+              },
+            });
+          },
+        });
+      } else {
+        this.loginFunc(e);
+      }
+    },
+    loginFunc(e) {
+      if (e.detail.errMsg == "getPhoneNumber:ok") {
+        //允许授权
+        var openId = uni.getStorageSync("__openid__");
+        var params = {
+          encryptdata: e.detail.encryptedData,
+          ivdata: e.detail.iv,
+          sessionkey: this.sessionkey,
+        };
+
+        this.ebigRequest(
+          "/wechat/decrypt",
+          params,
+          false,
+          "post",
+          "",
+          false,
+          true
+        ).then((data) => {
+          if (typeof data.value == "string") {
+            data = JSON.parse(data.value);
+          }
+          if (data.phoneNumber == undefined) {
+            uni.showToast({
+              title: "获取手机失败，请重新进入页面",
+              position: "bottom",
+              icon: "none",
+              duration: 2000,
+            });
+          }
+          console.log(data);
+          var obj = {
+            mobile: data.phoneNumber,
+            // mobile: '13480210550',
+            smsCode: "9999",
+            openId: openId,
+            storeId: "",
+          };
+          this.ebigRequest("/login/mobile", obj, true).then((res) => {
+            uni.setStorageSync("isLogin", true);
+            uni.setStorageSync("_mobile_", obj.mobile);
+            uni.setStorageSync("__encryptdata__", obj.encryptdata);
+            uni.setStorageSync("__ivdata__", obj.ivdata);
+            uni.setStorageSync("__memberid__", res.principal.user_id);
+
+            if (this.isBack) {
+              setTimeout(() => {
+                uni.navigateBack({
+                  delta: 1,
+                });
+              }, 100);
+            } else {
+              uni.redirectTo({
+                url: "/pages/myCenter/myCenter",
+              });
+            }
+          });
+        });
+      }
+    },
+  },
+};
+</script>
+
+<style>
+page {
+  height: 100%;
+  background-color: #ffffff;
+}
+.img_wrap {
+  width: 320rpx;
+  margin: 100rpx auto;
+}
+.imglogo {
+  display: block;
+  margin: 0 auto;
+  width: 320rpx;
+  height: 320rpx;
+}
+.login {
+  height: 100%;
+}
+.wrap {
+  padding: 0 40rpx;
+}
+.point {
+  padding: 0 40rpx;
+  margin-top: 40rpx;
+}
+.login_btn {
+  border-radius: unset;
+}
+.txt {
+  text-decoration: underline;
+}
+</style>

@@ -1,0 +1,205 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+let pageUrl, _model_;
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            distributorId: '',
+            nowShareUrl: '/pages/index/index',
+            storeId: '',
+        }
+    },
+    onLoad(option) {
+        pageUrl = this.baseUrl + 'miniIndex.html';
+        _model_ = this.getStor('_model_');
+        this.storeId = option.storeId != null && option.storeId != '' ? option.storeId : this.getStor('_defaultStoreId_');
+        let consignorId = option.consignorId != null && option.consignorId != '' ? option.consignorId : this.getStor('_defaultConsignorId_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+        if(option.url){
+            pageUrl = this.decode64(option.url);
+        }else{
+            pageUrl = pageUrl + '?consignorId=' + consignorId;
+        }
+        if(option.scene){
+            this.doRequest("/wechatcenter/qrcode/v1/scene/" + option.scene, {}, false, 'get').then((data) => {
+                var scene = data.scene;
+                var sceneArr = scene ? scene.split('&') : [];
+                for(var i = 0; i < sceneArr.length; i++){
+                    var item = sceneArr[i];
+                    if(item.indexOf('shareDistributorId') != -1){
+                        this.distributorId = item.substring(item.indexOf('=') + 1, item.length);
+                        this.setStor("shareDistributorId", this.distributorId);
+                    }
+                }
+            })
+        }else{
+            this.distributorId = option.shareDistributorId
+                ? option.shareDistributorId
+                : this.getStor("shareDistributorId") != null
+                ? this.getStor("shareDistributorId")
+                : "";
+            this.setStor("shareDistributorId", this.distributorId);
+        }
+
+        this.$nextTick(() => {
+            this.$setStoreId(this.storeId);
+        })
+    },
+    onShow(){
+        let isLogin = this.getStor("isLogin");
+        let _mobile_ = this.getStor('_mobile_');
+        // #ifdef MP-WEIXIN
+        this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+        // #endif
+
+        // #ifdef H5
+        let u =  navigator.userAgent;
+        let isWx = /wxwork/i.test(u) || /MicroMessenger/i.test(navigator.userAgent);
+        let isWxWork = /wxwork/i.test(u) && /MicroMessenger/i.test(navigator.userAgent);
+        if(isWx || isWxWork){
+            this.configWechat().then(res => {
+                this.getPosition(pageUrl, isLogin, _mobile_, _model_);
+            })
+        }else{
+            this.pageUrl = pageUrl;
+        }
+        // #endif
+    },
+    onShareAppMessage(res) {
+        //分享到微信好友
+        return {
+            title: this.getStor("_shareTitle_"),
+            content: this.shareContent,
+            imageUrl: this.getStor("_shareLogo_"),
+            path: this.nowShareUrl,
+            success: (data) => {
+                uni.showToast({
+                title: "分享成功!",
+                icon: "none",
+                });
+            },
+            fail: (err) => {
+                uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+                });
+            },
+        };
+    },
+    onShareTimeline() {
+        return {
+            title: this.getStor("_shareTitle_"),
+            content: this.shareContent,
+            imageUrl: this.getStor("_shareLogo_"),
+            path: this.nowShareUrl,
+            success: (data) => {
+                uni.showToast({
+                title: "分享成功!",
+                icon: "none",
+                });
+            },
+            fail: (err) => {
+                uni.showToast({
+                title: "分享失败!",
+                icon: "none",
+                });
+            },
+        };
+    },
+    methods: {
+        getPosition(pageUrl, isLogin, _mobile_, _model_){
+            if(pageUrl.indexOf('miniIndex.html') != -1){
+                if(pageUrl.indexOf('?storeId=') != -1){
+                    var firstUrl = pageUrl.substring(0, pageUrl.indexOf('?'));
+                    var lastUrl = pageUrl.substring(pageUrl.indexOf('&') + 1, pageUrl.length);
+                    pageUrl = firstUrl + '?' + lastUrl;
+                }else if(pageUrl.indexOf('&storeId=') != -1){
+                    var firstUrl = pageUrl.substring(0, pageUrl.indexOf('&'));
+                    var secondUrl = pageUrl.substring(pageUrl.indexOf('&storeId=') + 9, pageUrl.length);
+                    var lastUrl = secondUrl.indexOf('&') != -1 ? secondUrl.substring(secondUrl.indexOf('&') + 1, secondUrl.length) : '';
+                    pageUrl = firstUrl + '&' + lastUrl;
+                }
+                this.catchPosition().then((res) => {
+                    let initStoreTime = this.getStor("_initStoreTime_");
+                    if (!initStoreTime || (initStoreTime && initStoreTime * 1 > 3600000)) {
+                        var obj = {
+                            consignorId: this.getStor('_defaultConsignorId_'),
+                            storeId: this.getStor('_defaultStoreId_'),
+                            latitude: res.latitude,
+                            longitude: res.longitude
+                        };
+                        this.ebigRequest("/store/the-nearest", obj, false, "post", "", true).then((data) => {
+                            this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'storeId=' + (data.data && data.data.storeId ? data.data.storeId : this.storeId) + '&isiphoneBt=' + this.isiphoneBt) + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                            this.$nextTick(() => {
+                                if (this.getStor("isDistributorId")) {
+                                    this.nowShareUrl = this.nowShareUrl + '?url=' + this.encode64(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                                }
+                                this.$forceUpdate();
+                            })
+                        }).catch(() => {
+                            this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'storeId=' + this.getStor('_defaultStoreId_') + '&isiphoneBt=' + this.isiphoneBt) + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                            this.$nextTick(() => {
+                                if (this.getStor("isDistributorId")) {
+                                    this.nowShareUrl = this.nowShareUrl + '?url=' + this.encode64(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                                }
+                                this.$forceUpdate();
+                            })
+                        })
+                    }
+                }).catch(err => {
+                    this.setStor('_getLocation_', false);
+                    this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'storeId=' + this.storeId + '&isiphoneBt=' + this.isiphoneBt) + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                    this.$nextTick(() => {
+                        if (this.getStor("isDistributorId")) {
+                            this.nowShareUrl = this.nowShareUrl + '?url=' + this.encode64(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                        }
+                        this.$forceUpdate();
+                    })
+                })
+            }else{
+                this.pageUrl = pageUrl + ((pageUrl.indexOf('.html?') > -1 ? '&' : '?') + 'storeId=' + this.storeId + '&isiphoneBt=' + this.isiphoneBt) + (_mobile_ ? '&_mobile_=' + _mobile_ : '') + '&isLogin=' + (isLogin == 'true' || isLogin == true ? true : false) + (this.getStor("isDistributorId") ? "&isDistributorId=" + this.getStor("isDistributorId") : '');
+                this.$nextTick(() => {
+                    if (this.getStor("isDistributorId")) {
+                        this.nowShareUrl = this.nowShareUrl + '?url=' + this.encode64(pageUrl) + (this.getStor("isDistributorId") ? "&shareDistributorId=" + this.getStor("isDistributorId") : '');
+                    }
+                    this.$forceUpdate();
+                })
+            }
+        },
+        message(event){
+            console.log(event.detail.data);
+        },
+        resetPage(){
+            if(this.pageUrl.indexOf('miniIndex.html') != -1){
+                this.catchPosition().then((res) => {
+                    this.pageUrl = this.pageUrl + '&nowLat=' + res.latitude + '&nowLng=' + res.longitude + '&nowTime=' + new Date().getTime();
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                }).catch(err => {
+                    this.setStor('_getLocation_', false);
+                    this.$nextTick(() => {
+                        this.$forceUpdate();
+                    })
+                })
+            }
+        }
+    }
+}
+</script>

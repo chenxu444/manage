@@ -1,0 +1,264 @@
+<template>
+  <div class="login">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar
+      fixed
+      status-bar
+      left-icon="back"
+      title="登录授权"
+    ></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="img_wrap">
+      <img :src="logoImg" class="imglogo" />
+      <img
+        :src="comImg"
+        class="imglogo"
+        style="margin-top: 20rpx; height: 50rpx"
+      />
+    </div>
+    <div class="wrap">
+      <!-- #ifdef MP-WEIXIN -->
+      <button
+        class="login_btn font_color_white bg_common"
+        open-type="getPhoneNumber"
+        @getphonenumber="getPhoneNumber"
+        lang="zh_CN"
+      >
+        微信授权
+      </button>
+      <!-- #endif -->
+      <!-- #ifdef H5 -->
+      <button class="login_btn font_color_white bg_common" @click="goLogin">
+        微信授权
+      </button>
+      <!-- #endif -->
+      <span
+        class="font_color_common"
+        style="
+          display: block;
+          margin-top: 40rpx;
+          width: 100%;
+          text-align: right;
+          text-decoration: underline;
+        "
+        @click.stop="goUrl('bindMobile', 'mine')"
+        >手机号码登录 ></span
+      >
+    </div>
+    <div class="point">
+      <checkbox :checked="isAgree" @click="check"></checkbox>
+      <span>我已阅读</span>
+      <span class="font_color_common" @click.stop="goUrl('loginInfo', 'mine')"
+        >《知情同意书》</span
+      >
+      <span>和</span>
+      <span
+        class="font_color_common"
+        @click.stop="goUrl('registerInfo', 'mine')"
+        >《会员注册授权协议》</span
+      >
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      isAgree: false,
+      isLogin: false,
+      isBack: false,
+      logoImg: this.baseUrl + "img/common/logo_1.png",
+      comImg: this.baseUrl + "img/common/com_1.png",
+      sessionkey: "",
+      appid: this.getStor("_appid_"),
+    };
+  },
+  onLoad(option) {
+    this.isBack = option.returnUrl;
+    this.$nextTick(() => {
+      uni.login({
+        provider: "weixin",
+        success: (res) => {
+          this.doRequest(
+            "/wechatcenter/wechat/v1/" + this.appid + "/jscode2session",
+            { jscode: res.code },
+            true,
+            "post"
+          ).then((response) => {
+            this.setStor("__openid__", response.openid);
+            this.sessionkey = response.session_key;
+          });
+        },
+      });
+    });
+  },
+  methods: {
+    check() {
+      this.isAgree = !this.isAgree;
+    },
+    getPhoneNumber(e) {
+      // 授权登录
+      if (!this.isAgree) {
+        uni.showToast({
+          title: "请先阅读并勾选内容",
+          position: "bottom",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
+      if (
+        this.sessionkey == undefined ||
+        this.sessionkey == null ||
+        this.sessionkey == ""
+      ) {
+        uni.showModal({
+          title: "温馨提示",
+          content: "获取手机号失败，请重试~",
+          showCancel: false,
+          success: (res1) => {
+            uni.login({
+              provider: "weixin",
+              success: (res) => {
+                this.doRequest(
+                  "/wechatcenter/wechat/v1/" + this.appid + "/jscode2session",
+                  { jscode: res.code },
+                  true,
+                  "post"
+                ).then((response) => {
+                  this.setStor("__openid__", response.openid);
+                  this.sessionkey = response.session_key;
+                });
+              },
+            });
+          },
+        });
+      } else {
+        this.loginFunc(e);
+      }
+    },
+    loginFunc(e) {
+      if (e.detail.errMsg == "getPhoneNumber:ok") {
+        //允许授权
+        var openId = this.getStor("__openid__");
+        var params = {
+          encryptdata: e.detail.encryptedData,
+          ivdata: e.detail.iv,
+          sessionkey: this.sessionkey,
+        };
+
+        this.doRequest("/wechatcenter/decrypt", params, true, "get").then(
+          (data) => {
+            let distributorId = this.getStor("shareDistributorId")
+              ? this.getStor("shareDistributorId")
+              : "";
+            var obj = {
+              mobile: data.phoneNumber,
+              smsCode: "9999",
+              distributorId: distributorId,
+              storeId: this._storeId_,
+              consignorId: this.getStor("_defaultConsignorId_"),
+              openId: openId,
+              appId: this.getStor("_appid_"),
+            };
+            this.doRequest("/usercenter/member/login/mobile", obj, true).then(
+              (res) => {
+                this.setStor("isLogin", true);
+                this.setStor("_mobile_", obj.mobile);
+                this.setStor("_token", res.token);
+                this.setStor("__memberid__", res.userId);
+
+                //判断用户是否需要实名
+                this.doRequest(
+                  "/usercenter/member/requireRealName",
+                  {},
+                  true,
+                  "get"
+                ).then((data) => {
+                  this.setStor("_noMobile_", "");
+                  this.setStor("_loginMobile_", obj.mobile);
+                  if (data) {
+                    uni.showModal({
+                      title: "温馨提示",
+                      content: "您还未完善用户资料哦!请先去完善资料",
+                      showCancel: false,
+                      success: (res1) => {
+                        this.replaceUrl("memberInfo", "mine");
+                      },
+                    });
+                  } else {
+                    if (this.isBack == 'index') {
+                      setTimeout(() => {
+                        this.resetUrl('index');
+                      });
+                    } else if (this.isBack == 'activePage') {
+                      setTimeout(() => {
+                        this.replaceUrl('activePage');
+                      });
+                    } else if(this.isBack == true || this.isBack == 'true') {
+                      setTimeout(() => {
+                        uni.navigateBack({
+                          delta: 1,
+                        });
+                      });
+                    }else{
+                      this.replaceUrl('myCenter', 'mine')
+                    }
+                  }
+                });
+              }
+            );
+          }
+        );
+      }
+    },
+    goLogin() {
+      if (!this.isAgree) {
+        uni.showToast({
+          title: "请先阅读并勾选内容",
+          position: "bottom",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
+      let url = this.getWecharCodeUrl(this.h5APPID);
+      window.location.replace(url);
+    },
+  },
+};
+</script>
+
+<style>
+page {
+  height: 100%;
+  background-color: #ffffff;
+}
+.img_wrap {
+  width: 320rpx;
+  margin: 100rpx auto;
+}
+.imglogo {
+  display: block;
+  margin: 0 auto;
+  width: 320rpx;
+  height: 320rpx;
+}
+.login {
+  height: 100%;
+}
+.wrap {
+  padding: 0 40rpx;
+}
+.point {
+  padding: 0 40rpx;
+  margin-top: 40rpx;
+}
+.login_btn {
+  border-radius: unset;
+}
+.txt {
+  text-decoration: underline;
+}
+</style>

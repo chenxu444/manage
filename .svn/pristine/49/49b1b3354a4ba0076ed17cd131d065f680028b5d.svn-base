@@ -1,0 +1,222 @@
+<template>
+    <view class="page">
+        <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="0" :absolute="0" @refresh="onPulldownReresh">
+            <view>
+                <view class="item bg_white" v-for="(item,index) in serviceList" :key="index">
+                    <view class="status font_color_white" :class="onlineDoctor[item.opcode] != undefined ? 'bg_common' : 'bg_999'" style="display: none;">{{onlineDoctor[item.opcode] != undefined ? '在线' : '离线'}}</view>
+                    <view class="uni-flex">
+                        <img :src="item.headurl" class="head">
+                        <view class="uni-flex-1">
+                            <view class="name">{{item.personname}}</view>
+                            <view class="introduce" v-if="item.introduce!=null&&item.introduce!=''">{{item.introduce}}</view>
+                        </view>
+                    </view>
+                    
+                    <view class="uni-flex btns">
+                        <button class=" bg_common font_color_white chat" @click="callPhone(item.mobile)">联系客服</button>
+                        <button class=" bg_common font_color_white chat" @click="callPhone(item.mobile)" style="display: none;">在线咨询</button>
+                    </view>
+                </view>
+            </view>
+            <uni-load-more :status="status" :content-text="contentText" />
+        </uni-pulldown-refresh>
+    </view>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            noMore:false,
+            pageSize: 15,
+            pageNo: 1,
+            consignorId: this._consignorId_,
+            serviceList:[],
+            onlineDoctor:{},
+            outlineDoctor:{},
+            mobile:JSON.parse(this.decode64(uni.getStorageSync('memberInfo'))).mobile,
+            idName:JSON.parse(this.decode64(uni.getStorageSync('memberInfo'))).idName,
+
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad(options){
+        if(Object.keys(options).length >0){
+            this.consignorId = options.consignorId
+        }
+        this.initDoctorOnline()
+    },
+    onShow() {
+        this.getService('refresh');
+    },
+    onReachBottom() {
+        if (this.status != "noMore" && this.status != "loading") {
+            //上滑加载
+            this.getService("add");
+        }
+    },
+    methods:{
+        getService(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let params = {
+                consignorId: this.consignorId,
+                pageSize: this.pageSize,
+                pageNo: this.pageNo
+            }
+            this.ebigRequest("/pharmacist/getPharmacistList", params, true).then((res) => {
+                if(type == 'refresh'){
+                    this.serviceList = [];
+                }
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                this.serviceList = [...this.serviceList, ...res];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.serviceList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.serviceList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getService("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getService("refresh");
+        },
+        callPhone(phoneNum){
+            uni.makePhoneCall({
+                phoneNumber:phoneNum
+            })
+        },
+        initDoctorOnline() {
+            var token = uni.getStorageSync("token") || ' ';
+            uni.request({
+                url: 'https://cosin.gzppc.com.cn//agent/agentusers/onlineready/all/0cploc/' + this.mobile + '/' + this.idName + '?export=true',
+                timeout: 90000, //超时时间设置，单位毫秒
+                type: "POST",
+                header: {
+                    contentType:"application/x-www-form-urlencoded",
+                    authorization:token
+                },
+                dataType: "JSON",
+                data: {},
+                success: (data, status, xhr) => {
+                    if (data != undefined && data != null && data != '') {
+                        console.log(data);
+                        data = JSON.parse(data.data)
+                        console.log(data);
+                        var onlineDoctor = {};
+                        var outlineDoctor = {};
+                        for (var i = 0; i < data.length; i++) {
+                            if(data[i].onlinestatus == 'false'){
+                                outlineDoctor[data[i].username] = data[i].chatlink;
+                            }else{
+                                onlineDoctor[data[i].username] = data[i].chatlink;
+                            }
+                        }
+                        this.onlineDoctor = onlineDoctor;
+                        this.outlineDoctor = outlineDoctor;
+                        console.log(this.onlineDoctor);
+                        console.log(this.outlineDoctor);
+                    }
+                }
+            })
+        },
+    },
+}
+</script>
+
+<style>
+page, .page{
+    position: relative;
+    width: 100%;
+    height:100%;
+    background-color: #efeff4;
+}
+.item{
+    padding: 20rpx;
+    position: relative;
+    margin-bottom: 20rpx;
+}
+.head{
+    width: 130rpx;
+    height: 130rpx;
+    margin-right: 20rpx;
+}
+.name{
+    font-size: 34rpx;
+    color: #000000;
+}
+.status{
+    width: 120rpx;
+    height: 52rpx;
+    position: absolute;
+    right: 0;
+    top: 0;
+    border-bottom-left-radius: 20rpx;
+    text-align: center;
+    line-height: 52rpx;
+}
+.btns{
+    justify-content: flex-end;
+}
+.chat{
+    border-radius: 20rpx;
+    width: 152rpx;
+    height: 68rpx;
+    line-height: 68rpx;
+    margin-right: 40rpx;
+    font-size: 28rpx;
+}
+.ties {
+  text-align: center;
+  font-size: 20rpx;
+  color: #777777;
+  font-weight: 700;
+  padding: 20rpx;
+}
+.introduce{
+    height: 80rpx;
+    vertical-align: middle;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    justify-content: center;
+}
+</style>

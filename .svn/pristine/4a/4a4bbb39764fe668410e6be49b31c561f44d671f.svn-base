@@ -1,0 +1,528 @@
+<template>
+    <view class="mod_wrap" :style="isiphoneBt ? 'padding-bottom: 75px;' : ''">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="预约信息"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="mod_all">
+            <!-- 配送信息 -- start -->
+            <viwe class="mod">
+                <view class="mod_tit">配送方式</view>
+                <view class="mod_list">
+                    <view class="mod_item">
+                        <view class="tit hide">配送方式</view>
+                        <view class="con">
+                            <picker @change="sentPickerChange" :value="(index)" :range-key="'text'" :range="sendDate">
+                                <input class="uni-input" disabled placeholder="请选择配送方式" v-model="sendTypeName">
+                                <view class="con_btn font_color_common">选择</view>
+                            </picker>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="sendType" >
+                        <view class="tit">收货地区</view>
+                        <view class="con" @click="openAddress">
+                            <input class="uni-input" disabled placeholder="请选择收货地区" v-model="expressCity">
+                            <view class="con_btn font_color_common">选择</view>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="sendType">
+                        <view class="tit">详细地址</view>
+                        <view class="con no_choose">
+                            <input class="uni-input" disabled placeholder="请输入您的详细收货地址" v-model="expressAddr">
+                            <view class="con_btn font_color_common">选择</view>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="sendType">
+                        <view class="tit">收货人</view>
+                        <view class="con no_choose">
+                            <input class="uni-input" disabled placeholder="请先完善您的信息" v-model="userName">
+                            <view class="con_btn font_color_common">选择</view>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="sendType">
+                        <view class="tit">电话号码</view>
+                        <view class="con no_choose">
+                            <input class="uni-input" disabled placeholder="请先完善您的信息" v-model="userMobile">
+                            <view class="con_btn font_color_common">选择</view>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="!sendType">
+                        <view class="tit">选择药店</view>
+                        <view class="con">
+                            <picker @change="storePickerChange" :value="(index)" :range-key="'text'" :range="storeData">
+                                <input class="uni-input" disabled placeholder="请您选择药店" v-model="storeName">
+                                <view class="con_btn font_color_common">选择</view>
+                            </picker>
+                        </view>
+                    </view>
+                    <view class="mod_item" v-show="!sendType">
+                        <view class="tit">药店地址</view>
+                        <view class="con no_choose">
+                            <input class="uni-input" disabled placeholder="药店地址" v-model="storeAddr">
+                            <view class="con_btn font_color_common">选择</view>
+                        </view>
+                    </view>
+                </view>
+            </viwe>
+            <!-- 配送信息 -- end -->
+            <!-- 商品选择 -- start -->
+            <viwe class="mod mod_choose">
+                <view class="mod_tit">选择{{goodsTypeName}}</view>
+                <view class="mod_list">
+                    <view class="mod_item">
+                        <view class="tit">{{goodsType}}类型</view>
+                        <view class="con">
+                            <picker @change="goodsPickerChange" :value="(index)" :range-key="'text'" :range="goodsData">
+                                <input class="uni-input" disabled placeholder="请选择您需要的商品" v-model="goodsName">
+                                <view class="con_btn font_color_common">选择</view>
+                            </picker>
+                        </view>
+                    </view>
+                    <view class="mod_item mod_gg">
+                        <view class="tit">规格：{{goodsSpec}}</view>
+                        <view class="con uni-flex">
+                            <view class="con_wrap uni-flex-1">
+                                <view class="info_num">数量（{{unit}}）</view>
+                                <view class="info_des" v-if="memo != '' && memo != null">{{memo}}</view>
+                                <view class="info_des" v-else>价格按{{sellPrice}}元/{{unit}}出售，申请上限{{allQty}}{{unit}}</view>
+                            </view>
+                            <view class="con_num_wrap uni-flex">
+                                <view class="btn btn_sub">-</view>
+                                <view class="num_input uni-flex-1">
+                                    <input class="input" disabled :value="goodsQty">
+                                </view>
+                                <view class="btn btn_add">+</view>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </viwe>
+            <!-- 商品选择 -- end -->
+        </view>
+        <view class="appoint_btn bg_common font_color_white" :style="isiphoneBt ? 'padding-bottom: 30px;' : ''" @click="confirmAppoint">我要预约购买</view>
+    </view>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            isiphoneBt: false, //判断手机类型
+
+            emctype: '',
+            goodsTypeName: '',
+            goodsType: '',
+            // 配送方式参数
+            sendDate: [],                // 配送方式列表
+            sendType: '',                // 配送方式选中显示
+            sendTypeId: '',              // 配送方式id： 1；2
+            sendTypeName: '',            // 配送方式： 1-快递； 2-自提
+            // 货品参数
+            allGoods: [],                // 全部货品列表信息
+            goodsData: [],               // 货品列表信息
+            goodsList: {},               // 货品列表
+            skuid: '',                   // 货品id
+            goodsName: '',               // 货品名称
+            goodsQty: '',                // 货品购买数量
+            sellPrice: '',               // 货品价格
+            allQty: '',                  // 货品限制购买数量
+            unit: '',                    // 货品单位
+            goodsSpec: '',               // 货品规格
+            // 药店参数
+            storeData: [],               // 药店列表信息
+            storeList: {},               // 药店列表
+            // 地址参数
+            userName: '',                // 联系人
+            userMobile: '',              // 电话号码
+            addressId: '',               // 收货地址Id
+            expressCity: '',             // 收货地址地区
+            expressAddr: '',             // 收货详细地址
+            
+            bookcfgid: '',               // 预约配置标志
+            memo: '',                    //备注信息
+        }
+    },
+    mounted() {
+        let _model_ = this.getStor('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+        }
+    },
+    onLoad(option) {
+        this.emctype = option.emctype;
+        this.goodsTypeName = this.emctype == 1 ? '口罩型号' : (this.emctype == 2 ? '酒精型号' : (this.emctype == 3 ? '体温计型号' : (this.emctype == 4 ? '消毒液型号' : (this.emctype == 5 ? '手套型号' : ''))));
+        this.goodsType = this.emctype == 1 ? '口罩' : (this.emctype == 2 ? '酒精' : (this.emctype == 3 ? '体温计' : (this.emctype == 4 ? '消毒液' : (this.emctype == 5 ? '手套' : ''))));
+        this.getAppointData(option.emctype);
+    },
+    onShow() {
+        
+    },
+    methods: {
+        getAppointData: function(emctype) { //获取预约商品数据
+            let obj = {};
+			obj.emctype = 1; //emctype
+			obj.consignorId = this.getStor('_shopConsignorId_') ? this.getStor('_shopConsignorId_') : '398c673c1ca146c0b3fbafac762c3197';;
+            this.ebigRequest("/preorder/getbookcfg", obj).then((data) => {
+                // console.log(data)
+                if(data){
+                    var res = data[0];
+                    this.bookcfgid = res.bookcfgid;
+                    this.memo = res.memo;
+
+                    /* 配送方式 -- start */
+                    this.sendTypeId = res.shippingtype == 2 ? res.shippingtype : 1;
+                    this.sendTypeName = res.shippingtype == 2 ? '自提' : '快递';
+                    this.sendType = res.shippingtype == 2 ? false : true; //显示地址（1）或自提（2）
+                    if(res.shippingtype == 3 || res.shippingtype == '3'){
+                        this.sendDate = [{
+                            value: 1,
+                            text: '快递',
+                        },{
+                            value: 2,
+                            text: '自提',
+                        }];
+                    }else{
+                        this.sendDate = [{
+                            value: this.sendTypeId,
+                            text: this.sendTypeName,
+                        }];
+                    }
+                    /* 配送方式 -- end */
+
+                    this.allGoods = res.details || []; // 所有商品
+                    var stores = res.stores || []; // 所有门店
+                    this.chooseAddress(res.defaultAddress); // 选择地址
+                    this.allGoods.map((item, index) => { // 拼装商品
+                        var goodsInfo = item.productname.split('_');
+                        this.goodsData.push({
+                            value: item.skuid,
+                            text: goodsInfo[2],
+                        });
+                        this.goodsList[item.skuid] = {
+                            skuid: item.skuid,
+                            goodsName: goodsInfo[2],
+                            goodsSpec: goodsInfo[3],
+                            unit: goodsInfo[4],
+                            tinyStoreDTOS: item.tinyStoreDTOS,
+                        }
+                        if (this.allGoods.length == index + 1) {
+                            this.storeCreat(this.goodsList[this.goodsData[0].value]);
+                        }
+                    })
+                }
+            }).catch(err => {
+                
+            })
+        },
+        chooseAddress: function(address) { //选择地址
+            console.log(address)
+            if(address != null && address != ''){
+                this.userName = address.linkManName;
+                this.userMobile = address.mobile;
+                this.addressId = address.addressId;
+                this.expressCity = address.provinceName + address.cityName + address.disrictName;
+                this.expressAddr = address.address;
+            }else{
+                this.userName = '';
+                this.userMobile = '';
+                this.addressId = '';
+                this.expressCity = '';
+                this.expressAddr = '';
+            }
+        },
+        storeCreat(goods){ // 拼装门店
+            console.log(goods);
+            this.storeData = [];
+            this.storeList = {};
+            let skuid = goods.skuid;
+            let goodsName = goods.goodsName;
+            let goodsSpec = goods.goodsSpec;
+            let unit = goods.unit;
+            goods.tinyStoreDTOS.map((item,index) => {
+                this.storeData.push({
+                    value: item.storeId,
+                    text: item.storeName,
+                })
+                this.storeList[item.storeId] = {
+                    storeId: item.storeId,
+                    storeNo: item.storeNo,
+                    storeName: item.storeName,
+                    address: item.address,
+                    skuid: skuid,
+                    goodsName: goodsName,
+                    goodsSpec: goodsSpec,
+                    unit: unit,
+                    limitbookqty: item.limitbookqty,
+                    memo: item.memo,
+                    priority: item.priority,
+                }
+                if (goods.tinyStoreDTOS.length == index + 1) {
+                    this.storeId = this.storeData[0].value;
+                    this.storeName = this.storeData[0].text;
+                    this.storeAddr = this.storeList[this.storeData[0].value].address;
+                    this.skuid = this.storeList[this.storeData[0].value].skuid;
+                    this.goodsName = this.storeList[this.storeData[0].value].goodsName;
+                    this.unit = this.storeList[this.storeData[0].value].unit;
+                    this.goodsSpec = this.storeList[this.storeData[0].value].goodsSpec;
+                    this.goodsQty = this.storeList[this.storeData[0].value].limitbookqty;
+                    this.allQty = this.storeList[this.storeData[0].value].limitbookqty;
+                    this.sellPrice = this.storeList[this.storeData[0].value].sellprice;
+                    this.memo = this.storeList[this.storeData[0].value].memo;
+                }
+            });
+        },
+        storeGoods(storeid, goods) { // 门店货品列表数据重构
+            this.goodsData = [];
+            goods.map((item, index) => {
+                if (item.storeid == storeid) {
+                    var goodsInfo = item.productname.split('_');
+                    this.goodsData.push({
+                        value: item.skuid,
+                        text: goodsInfo[2],
+                    })
+                    this.goodsList[item.skuid] = {
+                        limitbookqty: item.limitbookqty,
+                        sellprice: item.sellprice,
+                        unit: goodsInfo[4],
+                        goodsSpec: goodsInfo[3],
+                    }
+                }
+                if (this.allGoods.length == index + 1) {
+                    this.unit = this.goodsList[this.goodsData[0].value].unit;
+                    this.goodsSpec = this.goodsList[this.goodsData[0].value].goodsSpec;
+                    this.skuid = this.goodsData[0].value;
+                    this.goodsName = this.goodsData[0].text;
+                    this.goodsQty = this.goodsList[this.goodsData[0].value].limitbookqty;
+                    this.allQty = this.goodsList[this.goodsData[0].value].limitbookqty;
+                    this.sellPrice = this.goodsList[this.goodsData[0].value].sellprice;
+                }
+            })
+        },
+        sentPickerChange: function(e) { //配送方式选择
+            // console.log(e)
+            this.sendTypeId = this.sendDate[e.detail.value].value;
+            this.sendTypeName = this.sendDate[e.detail.value].text;
+            if (this.sendTypeId == '1' || this.sendTypeId == 1) {
+                this.sendType = true;
+            } else {
+                this.sendType = false;
+            }
+        },
+        storePickerChange: function(e) { //门店选择
+            this.storeId = this.storeData[e.detail.value].value;
+            this.storeName = this.storeData[e.detail.value].text;
+            this.storeAddr = this.storeList[this.storeId].address;
+
+            this.skuid = this.storeList[this.storeId].skuid;
+            this.goodsName = this.storeList[this.storeId].goodsName;
+            this.unit = this.storeList[this.storeId].unit;
+            this.goodsSpec = this.storeList[this.storeId].goodsSpec;
+            this.goodsQty = this.storeList[this.storeId].limitbookqty;
+            this.allQty = this.storeList[this.storeId].limitbookqty;
+            this.sellPrice = this.storeList[this.storeId].sellprice;
+            this.memo = this.storeList[this.storeId].memo;
+        },
+        goodsPickerChange: function(e) { //商品选择
+            let skuid = this.goodsData[e.detail.value].value;
+            this.storeCreat(this.goodsList[skuid]);
+        },
+        confirmAppoint() { // 提交预约
+            if(this.userName == '' || this.userMobile == ''){
+                uni.showToast({
+                    title: "请先完善信息！",
+                    icon: "none",
+                });
+                return false;
+            }
+            var reg = /^(0|86)?(13[0-9]|15[012356789]|17[678]|18[0-9]|14[57]|19[0-9]|16[0-9])[0-9]{8}$/;
+            if (!reg.test(this.userMobile)) {
+                uni.showToast({
+                    title: "请您填写正确的手机号码！",
+                    icon: "none",
+                });
+                return;
+            }
+            if (this.sendTypeId == 1 || this.sendTypeId == '1') {
+                if (this.expressCity == '' || this.expressAddr == '') {
+                    uni.showToast({
+                        title: "请先选择地址！",
+                        icon: "none",
+                    });
+                    return false;
+                }
+            } else {
+                if (this.storeId == '') {
+                    uni.showToast({
+                        title: "请先选择门店！",
+                        icon: "none",
+                    });
+                    return false;
+                }
+            }
+            var obj = {};
+            obj.bookcfgid = this.bookcfgid; //预约配置标识
+            obj.storeid = this.storeId;  //门店Id
+            obj.skuid = this.skuid;        // 商品skuid
+            obj.shippingtype = this.sendTypeId;  //配送方式
+            obj.shippingaddrs = this.sendTypeId == 1 ? (this.expressCity + this.expressAddr) : '';  //配送地址
+            obj.quantity = this.goodsQty;  //商品数量
+            obj.addressId = this.sendTypeId == 1 ? this.addressId : '0';  //地址id
+            this.ebigRequest("/preorder/submit", obj).then((data) => {
+                if (data) {
+                    if(data.check){
+                        this.replaceUrl('appointResult', 'appoint');
+                    }else{
+                        uni.showToast({
+                            title: data.errorMsg,
+                            icon: "none",
+                        });
+                    }
+                }
+            }).catch(err => {
+                
+            })
+        },
+        openAddress(){ // 跳转地址
+            this.goUrl('addressList', 'mine', 'type=appoint');
+        },
+    }
+}
+</script>
+
+<style lang="scss">
+.mod_wrap {
+    background-color: #EFEFF4;
+    padding-bottom: 45px;
+    box-sizing: border-box;
+    .mod_all {
+        padding: 20px 10px 10px;
+        box-sizing: border-box;
+        .mod {
+            display: block;
+            padding-bottom: 20px;
+            box-sizing: border-box;
+            .mod_tit {
+                line-height: 20px;
+                padding-bottom: 5px;
+                box-sizing: border-box;
+                font-size: 18px;
+                font-weight: 700;
+                color: #000000;
+            }
+            .mod_list {
+                .mod_item {
+                    padding-bottom: 10px;
+                    box-sizing: border-box;
+                    .tit {
+                        line-height: 20px;
+                        padding-bottom: 5px;
+                        box-sizing: border-box;
+                        font-size: 14px;
+                    }
+                    .con {
+                        position: relative;
+                        .uni-input {
+                            height: 40px;
+                            line-height: 40px;
+                            padding: 7px 50px 7px 12px;
+                            box-sizing: border-box;
+                        }
+                        .con_btn {
+                            width: 40px;
+                            height: 40px;
+                            line-height: 40px;
+                            position: absolute;
+                            top: 0;
+                            right: 5px;
+                            font-size: 15px;
+                            text-align: center;
+                        }
+                        &.no_choose {
+                            .uni-input {
+                                padding: 7px 12px;
+                            }
+                            .con_btn {
+                                display: none;
+                            }
+                        }
+                    }
+                    &.mod_gg {
+                        padding: 10px 0 0;
+                        box-sizing: border-box;
+                        .tit {
+                            font-size: 16px;
+                            font-weight: 700;
+                        }
+                        .con {
+                            padding-top: 5px;
+                            box-sizing: border-box;
+                            .con_wrap {
+                                .info_num {
+                                    height: 20px;
+                                    line-height: 20px;
+                                    font-size: 14px;
+                                    color: #000000;
+                                }
+                                .info_des {
+                                    height: 20px;
+                                    line-height: 20px;
+                                    font-size: 13px;
+                                    color: #999999;;
+                                }
+                            }
+                            .con_num_wrap {
+                                width: 100px;
+                                padding: 3px 0;
+                                box-sizing: border-box;
+                                position: relative;
+                                .btn {
+                                    position: absolute;
+                                    top: 8px;
+                                    width: 24px;
+                                    height: 24px;
+                                    line-height: 22px;
+                                    border-radius: 50%;
+                                    border: 1px solid #999999;
+                                    box-sizing: border-box;
+                                    text-align: center;
+                                    background-color: #F9F9F9;
+                                }
+                                .btn_sub {
+                                    left: 4px;
+                                }
+                                .btn_add {
+                                    right: 4px;
+                                }
+                                .num_input {
+                                    padding: 0 32px;
+                                    box-sizing: border-box;
+                                    background-color: #FFFFFF;
+                                    .input {
+                                        width: 100%;
+                                        height: 34px;
+                                        line-height: 34px;
+                                        text-align: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            &.mod_choose {
+                padding-bottom: 10px;
+                box-sizing: border-box;
+            }
+        }
+    }
+    .appoint_btn {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        line-height: 45px;
+        font-size: 16px;
+        text-align: center;
+        box-sizing: border-box;
+    }
+}
+
+</style>

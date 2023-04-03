@@ -1,0 +1,328 @@
+<template>
+    <view id="page" style="width: 100%;">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="我的预约"></uni-nav-hfbar>
+        <!-- #endif -->
+        <view class="wrap">
+            <uni-nav-bar1 :pageActive='4'></uni-nav-bar1>
+            <!-- content -- start -->
+            <view class="content-wrap" :style="isiphoneBt ? 'padding-bottom: 160rpx;' : ''">
+                <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="0" :absolute="0" @refresh="onPulldownReresh">
+                    <ul class="my-order-list" style="position: relative;">
+                        <li class="my-order-item" v-for="appoint in appointList">
+                            <p class="item-name">{{appoint.newProductname}}</p>
+                            <div class="item-status" :class="(appoint.preorderstatus == 3 || (appoint.preorderstatus != 3 && (appoint.orderstatus == 5 || appoint.orderstatus == 6))) ? 'status-fail' : 'status-succ'">
+                                {{statusFilter(appoint)}}</div>
+                            <div class="item-des">
+                                <p v-if="appoint.preorderstatus == 1">
+                                    您的预约单已提交，请耐心等候预约结果通知！
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 1 && appoint.shippingtype == 1">
+                                    恭喜您！您已预约成功<br>支付成功后，我们会根据您提供的收货地址寄出货品
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 1 && appoint.shippingtype == 2">
+                                    恭喜您！您已预约成功<br>支付成功后，请您在规定时间内凭身份证到店取货
+                                </p>
+                                <p v-if="appoint.preorderstatus == 3">
+                                    不好意思，本次预约失败，好运集中在下一次！
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 2 && appoint.shippingtype == 1">
+                                    预约单已支付<br>库房正在为您加紧备货中
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 2 && appoint.shippingtype == 2">
+                                    预约单已支付<br>门店正在等候您的大驾
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 3 && appoint.shippingtype == 1">
+                                    预约单已发货<br>请您注意查收，期待下一次为我转身
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 3 && appoint.shippingtype == 2">
+                                    预约单待提货<br>请您注意查收，期待下一次为我转身
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 4">
+                                    预约单已完成<br>谢谢亲对我们的信任，祝您生活愉快
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 5">
+                                    您的预约单已取消
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 6">
+                                    您的预约单待取消
+                                </p>
+                                <p v-if="appoint.preorderstatus ==2 && appoint.orderstatus == 7">
+                                    您的预约单待确认
+                                </p>
+                                <p v-if="appoint.preorderstatus == 6">
+                                    您的预约单已取消，原因：{{appoint.memo}}
+                                </p>
+                                <p>预约流水号：{{appoint.preorderno}}</p>
+                            </div>
+                            <div class="item-info uni-flex">
+                                <p class="info-name">预约数量</p>
+                                <p class="info-des uni-flex-1">{{appoint.quantity}}{{appoint.unit}}</p>
+                            </div>
+                            <div class="item-info uni-flex">
+                                <p class="info-name">{{addressTypeFilter(appoint.shippingtype)}}</p>
+                                <p class="info-des uni-flex-1" v-if="appoint.shippingtype == 1">{{appoint.shippingaddrs}}
+                                </p>
+                                <p class="info-des uni-flex-1" v-if="appoint.shippingtype == 2">{{appoint.storeName}}</p>
+                            </div>
+                            <div class="item-info uni-flex" v-if="appoint.shippingtype == 2">
+                                <p class="info-name">门店地址</p>
+                                <p class="info-des uni-flex-1">{{appoint.storeAddress}}</p>
+                            </div>
+                            <div class="item-info uni-flex">
+                                <p class="info-name">申请时间</p>
+                                <p class="info-des uni-flex-1">{{appoint.inputdate}}</p>
+                            </div>
+                            <div class="btn-pay" v-if="appoint.orderstatus == 1 && appoint.preorderstatus == 2"
+                                @tap="toPay(appoint.orderno)">
+                                马上支付
+                            </div>
+                        </li>
+                    </ul>
+                    <uni-load-more :status="status" :content-text="contentText" />
+                </uni-pulldown-refresh>
+            </view>
+            <!-- content -- end -->
+        </view>
+    </view>
+</template>
+
+<script>
+import uniNavBar1 from '@/appoint/components/uni-nav-bar/uni-nav-bar1'
+export default {
+    components:{
+        uniNavBar1
+    },
+    data() {
+        return {
+            isiphoneBt: false,
+
+            pageNo: 1,
+            pageSize: 10,
+
+            appointList: [],
+
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad(option) {
+        
+    },
+    mounted() {
+        let _model_ = uni.getStorageSync('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+            this.$emit('update:isiphoneBt', true);
+        }
+    },
+    onShow() {
+        this.getAppointData('refresh');
+    },
+    onReachBottom() {
+        if (this.status != "noMore" && this.status != "loading") {
+            //上滑加载
+            this.getAppointData("add");
+        }
+    },
+    methods: {
+        getAppointData: function(type) { //获取预约商品数据
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = {};
+			obj.pageNo = this.pageNo;
+			obj.pageSize = this.pageSize;
+			obj.consignorId = uni.getStorageSync('_shopConsignorId_') ? uni.getStorageSync('_shopConsignorId_') : 'daa829fc66c2479ab68516c90c85e7cf';;
+            this.ebigRequest("/preorder/list", obj).then((data) => {
+                if(type == 'refresh'){
+                    this.appointList = [];
+                }
+                if(data.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                data.map((item,index) => {
+                    var goodsInfo = item.productname.split('_');
+                    Object.assign(item, {
+                        newProductname: goodsInfo[2], //名称
+                        unit: goodsInfo[4] //单位
+                    });
+                })
+                this.appointList = [...this.appointList,...data];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.appointList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.appointList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getAppointData("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getAppointData("refresh");
+        },
+        toPay: function(orderNo) { // 去支付
+            this.goUrl('orderDetail', 'order', 'orderNo=' + orderNo);
+        },
+        statusFilter: function(appoint) { //订单状态过滤
+            if(appoint){
+                if(appoint.preorderstatus == 1){
+                    return "已提交";
+                }else if(appoint.preorderstatus == 2){
+                    if(appoint.orderstatus == 1){
+                        return "待付款";
+                    }else if(appoint.orderstatus == 2){
+                        return "待发货";
+                    }else if(appoint.orderstatus == 3){
+                        return "待收货";
+                    }else if(appoint.orderstatus == 4){
+                        return "已完成";
+                    }else if(appoint.orderstatus == 5){
+                        return "已取消";
+                    }else if(appoint.orderstatus == 6){
+                        return "待取消";
+                    }else if(appoint.orderstatus == 7){
+                        return "待确认";
+                    }
+                }else if(appoint.preorderstatus == 3){
+                    return "未中签";
+                }
+            }
+        },
+        addressTypeFilter: function(val) { //地址类型过滤
+            if(val){
+                if(val == 1){
+                    return "配送地址";
+                }else if (val == 2) {
+                    return "自提门店";
+                }
+            }
+        }
+    }
+}
+</script>
+
+<style lang="scss">
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    .content-wrap {
+        width: 100%;
+        height: 100%;
+        padding-bottom: 100rpx;
+        box-sizing: border-box;
+    }
+}
+p {
+    font-size: 28rpx;
+    color: #8F8F94;
+}
+.my-order-item {
+    margin-bottom: 20rpx;
+    padding: 20rpx 16rpx;
+    position: relative;
+    background: #FFFFFF;
+    border-radius: 6rpx;
+}
+.item-name {
+    line-height: 48rpx;
+    font-size: 36rpx;
+    font-weight: 600;
+    color: #000000;
+    padding-right: 100px;
+}
+.item-status {
+    height: 48rpx;
+    line-height: 48rpx;
+    padding: 0 20rpx;
+    position: absolute;
+    top: 24rpx;
+    right: 20rpx;
+    font-size: 24rpx;
+    border-radius: 50rpx;
+}
+.status-succ {
+    border: 1px solid #1EC11C;
+    background: #B6EBB5;
+    color: #1EC11C;
+}
+.status-fail {
+    border: 1px solid #FF3300;
+    background: #FFC2B3;
+    color: #FF3300;
+}
+.item-des {
+    font-size: 24rpx;
+    color: #000000;
+    line-height: 44rpx;
+    margin-top: 10rpx;
+}
+.item-info {
+    width: 100%;
+    /* height: 48rpx; */
+    line-height: 48rpx;
+}
+.info-name {
+    width: 25%;
+    /* height: 100%; */
+    text-align: left;
+    color: #666666;
+}
+.info-des {
+    width: 75%;
+    /* height: 100%; */
+    text-align: right;
+    color: #666666;
+    /* overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis; */
+}
+.btn-pay {
+    margin-top: 20rpx;
+    line-height: 80rpx;
+    border: 1px solid;
+    border-radius: 10rpx;
+    text-align: center;
+    color: #007BC8;
+}
+
+</style>

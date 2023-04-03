@@ -1,0 +1,253 @@
+<template>
+  <div >
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="活动专区"></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="active">
+      <div class="active_item bg_white" v-for="(item,index) in zoneList" :key="index">
+        <div class="item_top ">
+          <div class="icon_ties font_color_common">{{item.activitysaletype&&item.activitysaletype==1?'普通':'专属'}}</div>
+          <div class="title">{{item.activitysalename}}</div>
+          <div class="uni-flex" style="position:relative;">
+            <div class="font_color_999 introduce uni-flex-1 " :class="item.showMore?'showMore':''" >
+              {{item.meno?item.meno:'暂无简介'}}
+            </div>
+            <div class=" font_color_common moreTXT" @click="toggleTxt(index)" v-if="item.meno.length>=40">{{ item.showMore?"[收起]":"[更多]" }}</div>
+            <div class="right_icon iconfont icon-right font_color_999" @click="goGoodsZone(item.activitysaleid)"></div>
+          </div>
+        </div>
+        <div class="success font_color_999">专场成交额 <span class="money_icon">￥</span><span class="money">{{item.volume?item.volume:'0'}}</span></div>
+        <div class=" uni-flex  share_num">
+            <div class="uni-flex-1 font_color_999">转发数：<span class=" font_color_000">{{item.forward?item.forward:'0'}}</span></div>
+            <div class="uni-flex-1 font_color_999">点击数：<span class=" font_color_000">{{item.clickcount?item.clickcount:'0'}}</span></div>
+        </div>
+        <button class="share_btn bg_common font_color_white" open-type="share" :data-share="item">分享</button>
+      </div>
+      <div class="nomore" v-show="isBottom">没有更多数据了</div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data(){
+    return{
+      shareUrl:'/distribution/pages/activeGoods/activeGoods',
+      shareContent:'分享内容',
+      zoneList:[],
+      nowShareUrl: '/distribution/pages/activeZone/activeZone',
+      pageNo:1,
+      pageSize:10,
+      isBottom:false
+    }
+  },
+  onLoad(){
+    this.getZoneList()
+  },
+  methods:{
+    getZoneList(){
+      let obj = {
+        distributorid:this.getStor('isDistributorId'),
+        consignorId:this.getStor('_defaultConsignorId_'),
+        pageNo:this.pageNo,
+        pageSize:this.pageSize
+      }
+      this.ebigRequest("/PmsActivitysale/getlist ", obj, true).then((data) => {
+        data.map(item=>{
+          item.showMore = false
+        })
+        this.zoneList = data
+        if( data.length < this.pageSize){
+          this.isBottom = true
+        }
+      })
+    },
+    toggleTxt(index){
+      this.zoneList[index].showMore = !this.zoneList[index].showMore
+    },
+    // 分享量
+    shareNum(activitysaleid,callback){
+      this.ebigRequest("/PmsActivitysale/addforward", {activitysaleid:activitysaleid}, false).then((data) => {
+        console.log(data);
+        callback&&callback()
+      })
+    },
+    // 点击量
+    clickNum(activitysaleid,callback){
+      this.ebigRequest("/PmsActivitysale/addclick", {activitysaleid:activitysaleid}, false).then((data) => {
+        callback&&callback()
+      })
+    },
+    goGoodsZone(activitysaleid){
+      this.clickNum(activitysaleid,()=>{
+        this.goUrl('activeGoods','distribution')
+      })
+    }
+  },
+  onShareAppMessage(res) { //分享到微信好友
+        console.log(res);
+        let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+        if (res.from === 'button') {// 来自页面内分享按钮
+            nowShareUrl = this.shareUrl + '?shareDistributorId='+this.getStor('isDistributorId') + '&activitysaleid='+res.target.dataset.share.activitysaleid;
+            nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+            nowShareTitle = res.target.dataset.share.activitysalename
+            nowShareContent = res.target.dataset.share.meno||'暂无简介';
+        }else{
+            nowShareUrl = this.nowShareUrl;
+            nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+            nowShareTitle = this.getStor('_shareTitle_');
+            nowShareContent = this.shareContent;
+        }
+        return {
+            title: nowShareTitle,
+            content: nowShareContent,
+            imageUrl: nowShareLogo,
+            path: nowShareUrl,
+            success: ((data) => {
+              this.shareNum(res.target.dataset.share.activitysaleid,()=>{
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+              })
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+    onShareTimeline(res){
+        let nowShareUrl, nowShareContent, nowShareLogo, nowShareTitle;
+        if (res.from === 'button') {// 来自页面内分享按钮
+            nowShareUrl = this.shareUrl + '?shareDistributorId='+this.getStor('isDistributorId') + '&activitysaleid='+res.target.dataset.share.activitysaleid;
+            nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+            nowShareTitle = res.target.dataset.share.activitysalename
+            nowShareContent = res.target.dataset.share.meno||'暂无简介';
+        }else{
+            nowShareUrl = this.nowShareUrl;
+            nowShareLogo = this.baseUrl + "img/common/logo_1.png"
+            nowShareTitle = this.getStor('_shareTitle_');
+            nowShareContent = this.shareContent;
+        }
+        return {
+            title: nowShareTitle,
+            content: nowShareContent,
+            imageUrl: nowShareLogo,
+            path: nowShareUrl,
+            success: ((data) => {
+              this.shareNum(res.target.dataset.share.activitysaleid,()=>{
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+              })
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+     onReachBottom(){
+      if(this.bottom){
+          return false
+      }else{
+          this.pageNo++
+          this.getZoneList()
+      }
+  },
+
+};
+</script>
+
+<style>
+.active {
+  padding: 30rpx;
+}
+.active_item{
+    margin-bottom: 40rpx;
+    border-radius: 20rpx;
+}
+.item_top {
+  position: relative;
+  padding: 20rpx;
+  border-bottom: 6rpx dashed #e2e2e2;
+}
+.icon_ties {
+  position: absolute;
+  right: -20rpx;
+  top: -20rpx;
+  border: 4rpx solid #007bc8;
+  border-radius: 50%;
+  height: 60rpx;
+  width: 60rpx;
+  line-height: 60rpx;
+  font-size: 24rpx;
+  text-align: center;
+  font-weight: 600;
+}
+.title {
+  font-size: 34rpx;
+  padding-bottom: 10rpx;
+}
+.introduce {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  height: 80rpx;
+}
+.showMore{
+  height: auto;
+}
+.moreTXT {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  text-align: left;
+  width: 80rpx;
+  font-size: 14px;
+  background-color: #fff;
+}
+.right_icon {
+  width: 80rpx;
+  font-size: 44rpx;
+  text-align: center;
+  height: 50rpx;
+  line-height: 50rpx;
+}
+
+.success{
+    padding: 10rpx 20rpx;
+    font-size: 24rpx;
+    
+}
+.nomore{
+    text-align: center;
+    font-size: 28rpx;
+    margin: 50rpx 0;
+  }
+.money_icon{
+    margin-left: 30rpx;
+    font-size: 28rpx;
+    color: #ffc800;
+}
+.money{
+    font-size: 34rpx;
+    color: #ffc800;
+}
+.share_num{
+    padding: 0 20rpx 10rpx 20rpx;
+    justify-content: space-between;
+    font-size: 24rpx;
+}
+.share_btn{
+    border-radius: 0 0 30rpx 30rpx;
+}
+</style>

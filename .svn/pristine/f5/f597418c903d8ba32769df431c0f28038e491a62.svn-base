@@ -1,0 +1,578 @@
+<template>
+    <view class="setAddressPage">
+        <view style="position: relative; z-index: 98;">
+            <view class="nowLocation uni-flex bg_common_light">
+                <view class="uni-flex-1 wrap" @click="chioceNow">当前定位：{{nowAddress}}</view>
+                <view class="openMap iconfont icon-address font_color_common" @click="openMap"></view>
+            </view>
+            <view class="su_form bg_white" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+                <view class="mode-item mod-linkname uni-flex">
+                    <view class="item_label">收 货 人</view>
+                    <input name="linkname" v-model="linkManName" :maxlength="5" class="item-input uni-flex-1" type="text" :adjust-position="true" placeholder="请输入姓名" />
+                </view>
+                <view class="mode-item mod-linkname uni-flex">
+                    <view class="item_label">手机号码</view>
+                    <input name="linkname" v-model="mobile" :maxlength="11" class="item-input uni-flex-1" type="number" :adjust-position="true" placeholder="请输入手机号码" />
+                </view>
+                <view class="mode-item mod-addr uni-flex">
+                    <view class="item_label">收货地区</view>
+                    <view name="mobile" class="item-input uni-flex-1" @click="openMaskLocation()">{{area ? area : '省市区县、乡镇等'}}</view>
+                </view>
+                <view class="mode-item mod-addr uni-flex" v-if="area.indexOf('广州市') != -1">
+                    <view class="item_label" style="color: red;">*所属街道</view>
+                    <picker class="item-input uni-flex-1" @change="bindPickerChange($event, 'street')" :value="street" :range="streetList" :range-key="'label'">
+                        <view>{{streetList[street].label}}</view>
+                    </picker>
+                </view>
+                <view class="mode-item mod-addr uni-flex" v-if="area.indexOf('广州市') != -1">
+                    <view class="item_label" style="color: red;">*所属居委</view>
+                    <picker class="item-input uni-flex-1" @change="bindPickerChange($event, 'streetNext')" :value="streetNext" :range="streetNextList" :range-key="'label'">
+                        <view>{{streetNextList[streetNext].label}}</view>
+                    </picker>
+                </view>
+                <view class="mode-item mod-linkname uni-flex" v-if="area.indexOf('广州市') != -1">
+                    <view class="item_label" style="color: red;">*所属小区</view>
+                    <input name="linkname" v-model="village" :maxlength="20" class="item-input uni-flex-1" type="text" :adjust-position="true" placeholder="请输入所属小区" />
+                </view>
+                <view class="mode-item mod-addr uni-flex">
+                    <view class="item_label">详细地址</view>
+                    <view class="input_addr uni-flex-1">
+                        <textarea
+                            name="addr"
+                            v-model="address"
+                            class="item-textarea"
+                            maxlength="30"
+                            :disable-default-padding="true"
+                            :adjust-position="true"
+                            v-show="!showPicker"
+                            placeholder="请输入具体地址"
+                        />
+                        <view class="item-textarea" v-show="showPicker">{{address}}</view>
+                    </view>
+                </view>
+                <view class="mode-item mod-addr uni-flex" style="border: none;">
+                    <view class="item_label uni-flex-1" style="line-height: 64rpx;">是否默认(默认使用该地址)</view>
+                    <view class="input_addr" style="width: 100rpx; text-align: center;">
+                        <switch
+                            :checked="defaultFlag == 1 ? true : false"
+                            :color="baseColor"
+                            style="transform: scale(0.7, 0.7)"
+                            @change="switchChange"
+                        />
+                    </view>
+                </view>
+            </view>
+            <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+                <button class="bg_common font_color_white" @click="saveAddress">保存</button>
+            </view>
+        </view>
+        <uni-cityPicker
+            style="position: relative; z-index: 99"
+            mode="cityPicker"
+            ref="cityPicker"
+            @confirmVal="getpickerParentValue"
+            @hidePicker="hidePicker"
+            :isType="'title'"
+            :defaultVal="defaultAreaArr"
+            :resetOut="true"
+            :pickerSize="3"
+        ></uni-cityPicker>
+    </view>
+</template>
+
+
+<script>
+import streetData from '../../static/json/street.js'
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            isEdit: false,
+            addressObj: {},
+            nowAddress: '',
+            addressId: '',
+            linkManName: '',
+            mobile: '',
+            area: '',
+            provinceId: '',
+            provinceName: '',
+            cityId: '',
+            cityName: '',
+            disrictId: '',
+            disrictName: '',
+            address: '',
+            latitude: '',
+            longitude: '',
+            defaultFlag: 0,
+            defaultAreaArr: [],
+            nowLocationObj: '',
+            showPicker: false,
+            street: 0,
+            streetList: [{label: '请选择所属街道', id: '-1'}, {label: '其他街道', id: '0'}],
+            streetNext: 0,
+            streetNextList: [{label: '请选择所属居委会', id: '0'}],
+            village: '',
+            isOrder: '',
+        };
+    },
+    mounted() {
+        let _model_ = uni.getStorageSync('_model_');
+        if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+            this.isiphoneBt = true;
+        }
+    },
+    onLoad(option) {
+        this.resetLocation();
+        this.isOrder = option.isOrder;
+        this.streetList = this.streetList.concat(streetData.data);
+        if(option.addrId != undefined && option.addrId != null){
+            this.isEdit = true;
+            this.ebigRequest("/memberaddress/detail", {addressId: option.addrId}, true).then((response) => {
+                this.addressObj = response;
+                this.addressId = response.addressId;
+                this.linkManName = response.linkManName;
+                this.mobile = response.mobile;
+                this.provinceId = response.provinceId;
+                this.address = response.address;
+                this.latitude = response.latitude;
+                this.longitude = response.longitude;
+                this.defaultFlag = response.defaultFlag;
+                this.area = this.provinceName + this.cityName;
+                if (response.provinceId != undefined && response.provinceId != 'undefined') {
+                    this.provinceId = response.provinceId;
+                    this.provinceName = response.provinceName;
+                    this.area = this.provinceName;
+                    this.defaultAreaArr.push({
+                        value: this.provinceId,
+                        text: this.provinceName
+                    });
+                }
+                if (response.cityId != undefined && response.cityId != 'undefined') {
+                    this.cityId = response.cityId;
+                    this.cityName = response.cityName;
+                    this.area = this.area + this.cityName;
+                    this.defaultAreaArr.push({
+                        value: this.cityId,
+                        text: this.cityName
+                    });
+                }
+                if (response.disrictId != undefined && response.disrictId != 'undefined') {
+                    this.disrictId = response.disrictId;
+                    this.disrictName = response.disrictName;
+                    this.area = this.area + this.disrictName;
+                    this.defaultAreaArr.push({
+                        value: this.disrictId,
+                        text: this.disrictName
+                    });
+                }
+
+                if(this.area.indexOf('广州市') != -1){
+                    for(let i = 0; i < this.streetList.length; i++){
+                        let item = this.streetList[i];
+                        if(this.address.indexOf(item.label) != -1 || this.address.indexOf('其他街道') != -1){
+                            let streetNextList = [{label: '请选择所属居委会', id: '-1'}, {label: '其他居委会', id: '0'}];
+                            this.street = this.address.indexOf('其他街道') != -1 ? i + 1 : i;
+                            this.streetNextList = streetNextList.concat(item.children);
+                            if(this.address.indexOf('其他街道') != -1) {
+                                this.streetNext = 1;
+                                let nowStreet = this.address.split('  ');
+                                this.address = nowStreet[3] ? nowStreet[3] : nowStreet[2];
+                                this.village = nowStreet[3] ? nowStreet[2] : '';
+                                this.$forceUpdate();
+                            }else{
+                                let isTrue = false;
+                                item.children.map((item1, index1) => {
+                                    if((this.address.indexOf(item1.label) != -1 || this.address.indexOf('其他居委会') != -1) && !isTrue){
+                                        isTrue = true;
+                                        this.streetNext = this.address.indexOf('其他居委会') != -1 ? index1 + 1 : index1 + 2;
+                                        this.$nextTick(() => { 
+                                            let nowStreet = this.address.split('  ');
+                                            this.address = nowStreet[3] ? nowStreet[3] : nowStreet[2];
+                                            this.village = nowStreet[3] ? nowStreet[2] : '';
+                                            this.$forceUpdate();
+                                        })
+                                    }
+                                })
+                            }
+                            break;
+                        }
+                    }
+                }
+            })
+        }
+    },
+    methods: {
+        resetLocation(){
+            // 重新定位
+            this.catchPosition().then((res) => {
+                this.initLocation(res);
+            })
+        },
+        openMap(){
+            // 打开地图快速选地址
+            uni.chooseLocation({
+                success: res => {
+                    this.initLocation(res, 'reset');
+                }
+            });
+        },
+        initLocation(res, type){
+            // 根据定位信息格式化数据
+            this.longitude = res.longitude;
+            this.latitude = res.latitude;
+            let obj = {
+                location: res.latitude + ',' + res.longitude,
+                key: this.QQmapKey,
+                output: 'json',
+            };
+            uni.request({
+                url: this.apis_map_qq_url,
+                data: obj,
+                requestMethod: 'get',
+                dataType: 'jsonp',
+                success: item => {
+                    let data = item.data;
+                    if(typeof data == "string"){
+                        if (data.substring(0, 1) == '{' && data.substring(data.length - 1, data.length) == '}') {
+                            data = JSON.parse(data);
+                        }
+                    }
+                    this.nowAddress = data.result.formatted_addresses.recommend;
+                    if(type != 'reset'){
+                        this.nowLocationObj = data;
+                    }
+
+                    this.setAddrObj(data);
+                }
+            })
+        },
+        setAddrObj(data){
+            // 解析地址信息并复制到input
+            let nowAddr = data.result.formatted_addresses.recommend;
+            let nowprovincename = data.result.address_component.province;
+            let nowcityname = data.result.address_component.city;
+            let nowdisrictname = data.result.address_component.district;
+            if(!this.isEdit){
+                if (nowAddr.indexOf(nowprovincename) != -1) {
+                    nowAddr = nowAddr.substring(nowAddr.indexOf(nowprovincename), nowAddr.length);
+                } else if (nowAddr.indexOf(nowcityname) != -1) {
+                    nowAddr = nowAddr.substring(nowAddr.indexOf(nowcityname), nowAddr.length);
+                } else if (nowAddr.indexOf(nowdisrictname) != -1) {
+                    nowAddr = nowAddr.substring(nowAddr.indexOf(nowdisrictname), nowAddr.length);
+                }
+                nowAddr = nowAddr.replace(nowprovincename, '');
+                nowAddr = nowAddr.replace(nowcityname, '');
+                nowAddr = nowAddr.replace(nowdisrictname, '');
+                this.address = nowAddr;
+
+                let pcd = {};
+                pcd.province = nowprovincename;
+                pcd.city = nowcityname;
+                pcd.disrict = nowdisrictname;
+                this.ebigRequest("/memberaddress/convertArea", pcd, true, 'post', '', true).then((response) => {
+                    if(response != null){
+                        this.provinceId = response.provinceId;
+                        this.cityId = response.cityId;
+                        this.disrictId = response.disrictId;
+                        this.provinceName = nowprovincename;
+                        this.cityName = nowcityname;
+                        this.disrictName = nowdisrictname;
+                        this.area = this.provinceName + this.cityName + (this.disrictName != null && this.disrictName != '' ? this.disrictName : '');
+                        this.defaultAreaArr.push({
+                            value: this.provinceId,
+                            text: this.provinceName
+                        });
+                        this.defaultAreaArr.push({
+                            value: this.cityId,
+                            text: this.cityName
+                        });
+                        if(this.disrictName != null && this.disrictName != ''){
+                            this.defaultAreaArr.push({
+                                value: this.disrictId,
+                                text: this.disrictName
+                            });
+                        }
+                    }
+                })
+            }
+            
+            this.isEdit = false;
+        },
+        chioceNow(){
+            // 使用当前定位地址
+            this.setAddrObj(this.nowLocationObj);
+        },
+        openMaskLocation() {
+            // 打开选择收货地区插件
+            this.showPicker = true;
+            this.$refs["cityPicker"].show();
+        },
+        getpickerParentValue(data){
+            // 选中收货地区
+            this.provinceId = data[0].value;
+            this.provinceName = data[0].text;
+            this.cityId = data[1].value;
+            this.cityName = data[1].text;
+            if(data[2].value != '-1'){
+                this.disrictId = data[2].value;
+                this.disrictName = data[2].text;
+            }
+            this.area = this.provinceName + this.cityName + this.disrictName;
+        },
+        hidePicker(){
+            // 隐藏收货地区插件
+            setTimeout(() => {
+                this.showPicker = false;
+            }, 800)
+        },
+        switchChange(e) {
+            // 修改默认
+            this.defaultFlag = e.detail.value ? 1 : 0;
+        },
+        /* 2021-06-07 */
+        bindPickerChange(e, type){
+            if(type == 'street'){
+                console.log(e)
+                let streetNextList = [{label: '请选择所属居委会', id: '-1'}, {label: '其他居委会', id: '0'}];
+                this.street = e.detail.value;
+                this.streetNextList = streetNextList.concat(this.streetList[this.street].children ? this.streetList[this.street].children : []);
+                this.streetNext = 0;
+            }else{
+                this.streetNext = e.detail.value;
+            }
+        },
+        /* 2021-06-07 */
+        saveAddress(){
+            /* 地址id */
+            let saveobj = {};
+            if (this.addressId != undefined && this.addressId != null && this.addressId != '') {
+                saveobj.addressId = this.addressId;
+            }
+
+            /* 联系人姓名 */
+            if (this.linkManName == undefined || this.linkManName == null || this.linkManName == '') {
+                uni.showToast({
+                    title: "收货人姓名不能为空！",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.linkManName = this.linkManName;
+            /* 联系人姓名 */
+
+            /* 联系人手机号码 */
+            if (this.mobile == undefined || this.mobile == null || this.mobile == '' || this.mobile.substring(0, 1) != '1' || this.mobile.length != 11) {
+                uni.showToast({
+                    title: "请输入正确的手机号码！",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.mobile = this.mobile;
+            /* 联系人手机号码 */
+
+            /* 省、市、区/县、地址 */
+            let addrInfo = '';
+            // 省份
+            if (this.provinceName == undefined || this.provinceName == null || this.provinceName == '') {
+                uni.showToast({
+                    title: "请选择收货地区！",
+                    icon: "none",
+                });
+                return;
+            }
+            saveobj.provinceName = this.provinceName;
+            saveobj.provinceId = this.provinceId;
+            addrInfo = this.provinceName;
+            // 城市
+            saveobj.cityName = this.cityName;
+            saveobj.cityId = this.cityId;
+            addrInfo = addrInfo + this.cityName;
+            // 区/县
+            if(this.disrictId != undefined && this.disrictId != null && this.disrictId != '' && this.disrictId != '-1'){
+                saveobj.disrictName = this.disrictName;
+                saveobj.disrictId = this.disrictId;
+                addrInfo = addrInfo + this.disrictName
+            }
+            // 地址
+            var addrCont = '';
+            if(this.area.indexOf('广州市') != -1) {
+                if (this.street == '0') {
+                    uni.showToast({
+                        title: "未填写您的所属街道！",
+                        icon: "none",
+                    });
+                    return;
+                }
+                addrCont = this.streetList[this.street].label + '  ';
+                if (this.streetNext == '0') {
+                    uni.showToast({
+                        title: "未填写您的所属居委！",
+                        icon: "none",
+                    });
+                    return;
+                }
+                addrCont = addrCont + this.streetNextList[this.streetNext].label + '  ';
+                if (this.street * 1 > 1 && this.streetNext * 1 > 1 && (this.village == undefined || this.village == null || this.village == '')) {
+                    uni.showToast({
+                        title: "疫情地区必须填写小区位置！",
+                        icon: "none",
+                    });
+                    return;
+                }else{
+                    addrCont = addrCont + this.village + '  ';
+                }
+            }
+            if (this.address == undefined || this.address == null || this.address == '') {
+                uni.showToast({
+                    title: "未填写您所在的街道、楼牌号或房间号等信息！",
+                    icon: "none",
+                });
+                return;
+            }
+            let streetStr = this.streetList[this.street].label;
+            let streetNextStr = this.streetNextList[this.streetNext].label;
+            let addressCont = this.address.replace(new RegExp(streetStr + '  ','g'),'');
+            addressCont = addressCont.replace(new RegExp(streetStr + ' ','g'),'');
+            addressCont = addressCont.replace(new RegExp('' + streetStr,'g'),'');
+            addressCont = addressCont.replace(new RegExp(streetNextStr + '  ','g'),'');
+            addressCont = addressCont.replace(new RegExp(streetNextStr + ' ','g'),'');
+            addressCont = addressCont.replace(new RegExp(streetNextStr,'g'),'');
+            saveobj.address = addrCont + addressCont;
+            addrInfo = addrInfo + this.address;
+            /* 省、市、区/县、地址 */
+
+            /* 是否设置默认地址 */
+            saveobj.defaultFlag = this.defaultFlag;
+            /* 是否设置默认地址 */
+
+            // 根据详细地址解析出经纬度
+            let obj = {
+                address: addrInfo,
+                key: this.QQmapKey,
+                output: 'json',
+            };
+            uni.showLoading({
+                title: '努力加载中...',
+                mask: true
+            });
+            uni.request({
+                url: this.apis_map_qq_url,
+                data: obj,
+                requestMethod: 'get',
+                dataType: 'jsonp',
+                success: item => {
+                    let data = item.data;
+                    if(typeof data == "string"){
+                        if (data.substring(0, 1) == '{' && data.substring(data.length - 1, data.length) == '}') {
+                            data = JSON.parse(data);
+                        }
+                    }
+                    saveobj.latitude = data.result.location.lat; // 纬度
+                    saveobj.longitude = data.result.location.lng; // 经度
+                    this.ebigRequest("/memberaddress/update", saveobj, true).then((res) => {
+                        uni.showToast({
+                            title: "地址保存成功！",
+                            icon: "none",
+                        });
+                        this.$nextTick(() => {
+                            setTimeout(() => {
+                                if(this.isOrder == 'true'){
+                                    let pages = getCurrentPages();//当前页
+                                    let beforePage = pages[pages.length - 2];//上个页面
+                                    beforePage.$vm.initOrder(this.addressObj.addressId);
+                                }
+                                uni.navigateBack({
+                                    delta: 1,
+                                });
+                            }, 300)
+                        })
+                    })
+                }
+            })
+        }
+    }
+}
+</script>
+
+<style>
+page, .setAddressPage {
+    width: 100%;
+    height: 100%;
+}
+.nowLocation {
+    padding: 0 0 0 20rpx;
+    height: 88rpx;
+    line-height: 88rpx;
+}
+.nowLocation .iconfont {
+    width: 100rpx;
+    text-align: center;
+}
+.su_form {
+    display: block;
+    padding: 20rpx 0 120rpx 20rpx;
+    box-sizing: border-box;
+}
+.su_form .mode-item {
+    line-height: 60rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+    border-bottom: 1px solid #F6F6F6;
+}
+.mode-item .item_label {
+    width: 126rpx;
+    line-height: 60rpx;
+}
+.mode-item .item-input {
+    width: 100%;
+    height: 60rpx;
+    line-height: 60rpx;
+    padding: 0 16rpx;
+    box-sizing: border-box;
+    font-size: 28rpx;
+}
+.mode-item .addr-input {
+    width: 100%;
+    height: 60rpx;
+    line-height: 60rpx;
+    font-size: 28rpx;
+}
+.addr-input .addr_item {
+    box-sizing: border-box;
+    margin-right: 10rpx;
+    padding: 0 10rpx;
+}
+.input_addr .item-textarea {
+    width: 100%;
+    height: 120rpx;
+    /* #ifdef MP-WEIXIN */
+    padding: 14rpx 16rpx;
+    /* #endif */
+    /* #ifdef H5 */
+    padding: 6rpx 16rpx;
+    /* #endif */
+    line-height: 40rpx;
+    font-size: 28rpx;
+    box-sizing: border-box;
+}
+.btn_wrap {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    line-height: 80rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+    font-size: 36rpx;
+    background: #F2F2F2;
+}
+.btn_wrap button {
+    border-radius: 80rpx;
+}
+.radioItem {
+    margin-right: 40rpx;
+}
+
+</style>

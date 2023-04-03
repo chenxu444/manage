@@ -1,0 +1,183 @@
+<template>
+  <view class="welcome">
+    <view class="submitLoading"></view>
+    <view class="submitLoadingCont">
+      <div class="loader-inner line-scale-pulse-out-rapid">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <p>正在处理跳转，请稍后...</p>
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      code: "",
+      state: "",
+    };
+  },
+  onLoad(option) {
+    this.code = option.code;
+    this.state = option.state;
+  },
+  methods: {
+    goTOpage() {
+      if (this.state == "getUserinfo") {
+        this.doRequest(
+          "/wechatcenter/wechat/v1/" + this.appid + "/getuserinfo",
+          { code: this.code },
+          false
+        )
+          .then((data) => {
+            this.doRequest(
+              "/usercenter/member/login/wechatuser?consignorId=" +
+                this.getStor("_defaultConsignorId_"),
+              JSON.stringify(data),
+              false,
+              "json"
+            ).then((res) => {
+              if (res) {
+                this.setStor("_token", res.token);
+                if (res.userId == "temp_id") {
+                  uni.showModal({
+                    title: "温馨提示",
+                    content: "您还未绑定手机号哦!请先去绑定手机号",
+                    showCancel: false,
+                    success: (res1) => {
+                      this.replaceUrl(
+                        "bindMoble",
+                        "mine",
+                        "returnUrl=" + this.getStor("_returnUrl_") &&
+                          this.getStor("_returnUrl_") != "true"
+                          ? this.getStor("_returnUrl_")
+                          : ""
+                      );
+                    },
+                  });
+                }
+              } else {
+                this.setStor("_token", res.token);
+              }
+            });
+          })
+          .catch((err) => {
+            uni.showModal({
+              title: "温馨提示",
+              content: "获取授权信息失败",
+              showCancel: false,
+              success: (res1) => {
+                this.replaceUrl("index");
+              },
+            });
+          });
+      } else if (state == "getOpenid") {
+        this.doRequest(
+          "/wechatcenter/wechat/v1/" + this.appid + "/getopenid",
+          { code: this.code },
+          false
+        ).then((data) => {
+          this.setStor("__openid__", data);
+        });
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.submitLoading {
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background: #ffffff;
+  opacity: 0.95;
+}
+.submitLoadingCont {
+  position: fixed;
+  z-index: 10000;
+  top: 300rpx;
+  right: 0;
+  left: 0;
+  text-align: center;
+}
+.submitLoadingCont .line-scale-pulse-out-rapid > div {
+  background: #02a9e0;
+}
+.submitLoadingCont .submitLoadingContTip {
+  padding: 40rpx 0;
+  font-size: 56rpx;
+  color: #02a9e0;
+}
+.submitLoadingCont p {
+  font-size: 32rx;
+  color: #333333;
+}
+
+@-webkit-keyframes line-scale-pulse-out-rapid {
+  0% {
+    -webkit-transform: scaley(1);
+    transform: scaley(1);
+  }
+
+  80% {
+    -webkit-transform: scaley(0.3);
+    transform: scaley(0.3);
+  }
+
+  90% {
+    -webkit-transform: scaley(1);
+    transform: scaley(1);
+  }
+}
+
+@keyframes line-scale-pulse-out-rapid {
+  0% {
+    -webkit-transform: scaley(1);
+    transform: scaley(1);
+  }
+
+  80% {
+    -webkit-transform: scaley(0.3);
+    transform: scaley(0.3);
+  }
+
+  90% {
+    -webkit-transform: scaley(1);
+    transform: scaley(1);
+  }
+}
+
+.line-scale-pulse-out-rapid > div {
+  background-color: #ffffff;
+  width: 8rpx;
+  height: 70rpx;
+  border-radius: 4rpx;
+  margin: 4rpx;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+  display: inline-block;
+  -webkit-animation: line-scale-pulse-out-rapid 0.9s 0s infinite
+    cubic-bezier(0.11, 0.49, 0.38, 0.78);
+  animation: line-scale-pulse-out-rapid 0.9s 0s infinite
+    cubic-bezier(0.11, 0.49, 0.38, 0.78);
+}
+.line-scale-pulse-out-rapid > div:nth-child(2),
+.line-scale-pulse-out-rapid > div:nth-child(4) {
+  -webkit-animation-delay: 0.25s !important;
+  animation-delay: 0.25s !important;
+}
+.line-scale-pulse-out-rapid > div:nth-child(1),
+.line-scale-pulse-out-rapid > div:nth-child(5) {
+  -webkit-animation-delay: 0.5s !important;
+  animation-delay: 0.5s !important;
+}
+</style>

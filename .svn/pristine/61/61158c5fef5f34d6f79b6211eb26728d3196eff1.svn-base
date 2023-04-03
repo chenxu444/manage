@@ -1,0 +1,266 @@
+<template>
+  <div class="addAddress">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="收货地址"></uni-nav-hfbar>
+    <!-- #endif -->
+    <uni-swipe-action class="addressList" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+      <uni-swipe-action-item class="addrItem bg_white" :boderRadius="8" :right-options="al.defaultFlag == 1 ? option : options" @click="onClick($event, al.addressId)" v-for="(al, index) in addressList">
+          <view class="addrItemC bg_white uni-flex">
+              <view class="addrCont uni-flex-1" @click="choiceAddr(al)">
+                  <view class="userInfo">{{al.linkManName}} {{al.mobile}}</view>
+                  <view class="userAddr"><i class="font_color_common bg_common_light" v-if="al.defaultFlag == 1">默认</i>{{al.provinceName + ' ' + al.cityName + ' ' + (al.disrictName ? al.disrictName : '') + ' ' + al.address}}</view>
+                  <view class="userAddr" style="font-size: 22rpx;" v-if="al.supportDeliveryTypes != null && al.supportDeliveryTypes.length > 0">
+                    支持配送：<view class="canSend" v-for="ald in al.supportDeliveryTypes">{{ald == '1' ? '就近急送' : '快递配送'}}</view>
+                  </view>
+              </view>
+              <view class="iconfont icon-edit editAddr" @click="editAddr(al.addressId)"></view>
+          </view>
+      </uni-swipe-action-item>
+      <p class="font_color_333" style="padding: 20rpx; text-align: center; background: #EFEFF4; border-top: none;" v-if="addressList.length == 0">暂无可用地址，请新增或修改</p>
+      <p class="font_color_333" style="padding-bottom: 12rpx; font-weight: 700; background: #EFEFF4;" v-if="outAddressList.length > 0">超出配送范围地址</p>
+      <uni-swipe-action-item class="addrItem bg_white" :boderRadius="8" :right-options="al.defaultFlag == 1 ? option : options" v-for="(al, index) in outAddressList">
+          <view class="addrItemC bg_white uni-flex">
+              <view class="addrCont uni-flex-1">
+                  <view class="userInfo font_color_999">{{al.linkManName}} {{al.mobile}}</view>
+                  <view class="userAddr font_color_999"><i class="font_color_999 bg_eee" v-if="al.defaultFlag == 1">默认</i>{{al.provinceName + ' ' + al.cityName + ' ' + (al.disrictName ? al.disrictName : '') + ' ' + al.address}}</view>
+                  <view class="userAddr font_color_999" style="font-size: 22rpx;" v-if="al.supportDeliveryTypes != null && al.supportDeliveryTypes.length > 0">
+                    支持配送：<view class="canSend font_color_white bg_999" v-for="ald in al.supportDeliveryTypes">{{ald == '1' ? '就近急送' : '快递配送'}}</view>
+                  </view>
+              </view>
+              <view class="iconfont icon-edit editAddr" @click="editAddr(al.addressId)"></view>
+          </view>
+      </uni-swipe-action-item>
+    </uni-swipe-action>
+    <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+        <button class="bg_common font_color_white" @click="goUrl('setAddress', 'mine', 'type=add')">新增地址</button>
+    </view>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      isiphoneBt: false,
+      storeId: '',
+      addressList: [],
+      outAddressList: [],
+      option:[
+          {
+              text: '删除',
+              style: {
+                  backgroundColor: '#dd524d',
+                  borderRadius: '0 16rpx 16rpx 0'
+              }
+          }
+      ],
+      options:[
+          {
+              text: '设为默认',
+              style: {
+                  backgroundColor: '#c7c7cc'
+              }
+          }, {
+              text: '删除',
+              style: {
+                  backgroundColor: '#dd524d',
+                  borderRadius: '0 16rpx 16rpx 0'
+              }
+          }
+      ],
+      urlType: ''
+    };
+  },
+  mounted() {
+      let _model_ = this.getStor('_model_');
+      if(_model_.indexOf('iPhone X') != -1 || _model_.indexOf('iPhone XR') != -1 || _model_.indexOf('iPhone XS') != -1 || _model_.indexOf('iPhone XS Max') != -1 || _model_.indexOf('iPhone 11') != -1 || _model_.indexOf('iPhone 11 Pro') != -1 || _model_.indexOf('iPhone 11 Pro Max') != -1){
+          this.isiphoneBt = true;
+      }
+  },
+  onLoad(options){
+    this.urlType = options.type;
+    if(options.storeId != undefined){
+      this.storeId = options.storeId;
+    }
+  },
+  onShow() {
+    this.getAddress();
+  },
+  methods: {
+    // 右侧滑块点击
+    onClick(e, addressId) {
+      let params = {
+          addressId,
+        };
+      if (e.content.text == "设为默认") {
+        this.ebigRequest("/memberaddress/markDefault", params, true).then(
+          (res) => {
+            this.getAddress();
+          }
+        );
+      } else {
+        this.ebigRequest("/memberaddress/delete", params, true).then(
+          (res) => {
+            if(res){
+              uni.showToast({
+                title:'删除成功',
+                icon:'none',
+                duration:1000
+              })
+              this.getAddress();
+            }
+            // this.content.filter((item,index) => {
+            //   if(item.addressId == addressId){
+            //     this.content.splice(index,1)
+            //   }
+            // })
+          }
+        );
+      }
+    },
+    // 选中地址
+    choiceAddr(res){
+      if(this.storeId != ''){
+        let pages = getCurrentPages();//当前页
+        let beforePage = pages[pages.length - 2];//上个页面
+        beforePage.$vm.initOrder(res.addressId);
+        uni.navigateBack({
+            delta: 1
+        });
+      }
+      if(this.urlType == 'appoint'){
+        let pages = getCurrentPages();//当前页
+        let beforePage = pages[pages.length - 2];//上个页面
+        beforePage.$vm.chooseAddress(res);
+        uni.navigateBack({
+            delta: 1
+        });
+      }
+    },
+    // 获取地址列表
+    getAddress() {
+      let params = {
+        storeid: this.storeId,
+      };
+      this.ebigRequest("/order/addressList", params, true).then((res) => {
+        let addressList = [];
+					let outAddressList = [];
+					let selectaddr = '';
+					if (res != null) {
+						for (let i = 0; i < res.length; i++) {
+							let addritem = res[i];
+							if((addritem.supportDeliveryTypes != null && addritem.supportDeliveryTypes.indexOf('3') != -1 && this.isYUYUE != 'true') || this.storeId == ''){
+								if (addritem.defaultFlag != 1) {
+									if (addritem.addressId == this.addressid) {
+										selectaddr = addritem;
+									} else {
+										addressList.push(addritem);
+									};
+								} else {
+                  addressList.unshift(addritem);
+                  clearTimeout
+								};
+							}else{
+								if (addritem.defaultFlag != 1) {
+									outAddressList.push(addritem);
+								} else {
+									outAddressList.unshift(addritem);
+								};
+							}
+						}
+					}
+					if (selectaddr != '') {
+						addressList.unshift(selectaddr);
+					}
+					this.addressList = addressList;
+					this.outAddressList = outAddressList;
+      });
+    },
+    editAddr(index, type){
+        // 修改地址
+        this.goUrl('setAddress', 'mine', 'addrId=' + addrId);
+    }
+  },
+};
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+}
+.border_bottom_1 {
+    border: 1px solid #EFEFF4;
+}
+.addAddress {
+    position: relative;
+}
+.addressList {
+    display: block;
+    padding: 20rpx 20rpx 124rpx;
+}
+.addrItem {
+    overflow: hidden;
+    display: block;
+    margin-bottom: 20rpx;
+    width: 100%;
+    border-radius: 16rpx;
+}
+.addrItem .addrItemC {
+    padding: 20rpx;
+    width: 100%;
+    border-radius: 16rpx;
+}
+.userInfo {
+    padding-bottom: 10rpx;
+    font-size: 28rpx;
+    font-weight: 700;
+    line-height: 40rpx;
+}
+.userAddr {
+    font-size: 26rpx;
+    line-height: 40rpx;
+}
+.userAddr i {
+    display: inline-block;
+    margin-right: 12rpx;
+    padding: 4rpx 12rpx;
+    font-size: 20rpx;
+    line-height: 28rpx;
+    border-radius: 6rpx;
+}
+.userAddr .canSend {
+    display: inline;
+    margin-right: 16rpx;
+    padding: 6rpx 14rpx;
+    font-size: 20rpx;
+    line-height: 20rpx;
+    border-radius: 10rpx;
+    color: #FFFFFF;
+    background: #007BC8;
+    box-sizing: border-box;
+}
+.addrItem .addrItemC .iconfont {
+    width: 80rpx;
+    font-size: 40rpx;
+    text-align: center;
+}
+.btn_wrap {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    line-height: 80rpx;
+    padding: 20rpx 20rpx 20rpx;
+    box-sizing: border-box;
+    font-size: 36rpx;
+    background: #F2F2F2;
+}
+.btn_wrap button {
+    border-radius: 80rpx;
+}
+
+
+
+
+
+</style>

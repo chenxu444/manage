@@ -1,0 +1,1239 @@
+<template>
+    <view class="page">
+        <view class="search-wrap bg_common">
+            <!-- #ifdef H5 -->
+            <view class="goBack iconfont icon-left font_color_white" @click="goBack"></view>
+            <!-- #endif -->
+            <view class="s-input" @click="goUrl('searchPage', '', 'storeId=' + storeId + (queryWord ? '&queryWord=' + queryWord : ''))">
+                <input type="text" placeholder="搜索药品、品牌、症状" v-model="queryWord" disabled />
+                <icon class="searchIcon" type="search" size="18" />
+            </view>
+        </view>
+        <view class="sort-wrap uni-flex bg_white">
+            <view class="sort-price uni-flex-1 tc" @click="sortClick('')">
+                <span :class="sortType == '' ? 'font_color_common' : ''">默认</span> 
+            </view>
+            <view class="sort-price uni-flex-1 tc" @click="sortClick('salnum')">
+                <span :class="sortType == 'salnum' ? 'font_color_common' : ''">销量</span>
+                <view class="icon-wrap">
+                    <span class="iconfont icon-top" :class="sortType == 'salnum' && sortAsc == 'true' ? 'font_color_common' : ''"></span>
+                    <span class="iconfont icon-bottom" :class="sortType == 'salnum' && sortAsc == 'false' ? 'font_color_common' : ''"></span>
+                </view> 
+            </view>
+            <view class="sort-price uni-flex-1 tc" @click="sortClick('commonprice')">
+                <span :class="sortType == 'commonprice' ? 'font_color_common' : ''">价格</span>
+                <view class="icon-wrap">
+                    <span class="iconfont icon-top" :class="sortType == 'commonprice' && sortAsc == 'true' ? 'font_color_common' : ''"></span>
+                    <span class="iconfont icon-bottom" :class="sortType == 'commonprice' && sortAsc == 'false' ? 'font_color_common' : ''"></span>
+                </view> 
+            </view>
+            <view class="sort-price uni-flex-1 tc" @click="sortClick('cansalstock')">
+                <span :class="sortType == 'cansalstock' ? 'font_color_common' : ''">库存</span>
+                <view class="icon-wrap">
+                    <span class="iconfont icon-top" :class="sortType == 'cansalstock' && sortAsc == 'true' ? 'font_color_common' : ''"></span>
+                    <span class="iconfont icon-bottom" :class="sortType == 'cansalstock' && sortAsc == 'false' ? 'font_color_common' : ''"></span>
+                </view> 
+            </view>
+        </view>
+        <view class="goodsList">
+            <uni-pulldown-refresh
+                ref="uniPulldownRefresh"
+                id="pullContent"
+                :top="170"
+                :absolute="170"
+                @refresh="onPulldownReresh"
+            >
+                <view id="product_list_line" class="prolistLine" v-if="productList.length > 0">
+					<view class="pro-item" :key="index" v-for="(product, index) in productList">
+						<view class="uni-flex" @click="goUrl('detail', '', 'skuSalNo=' + product.skuSalNo + '&storeId=' + product.storeDTO.storeId + '&consignorId=' + product.consignorId)">
+							<image class="goodsImg" lazy-load="true" mode="aspectFit" :src="product.imagePath != null ? product.imagePath : '../../static/image/default/no_img.jpg'"></image>
+							<view class="uni-flex-1">
+								<view class="pro-name wrap-2">
+									<image class="recipeFlag" :src="product.recipeFlag | showrecipeFlag"
+										v-if="product.recipeFlag != '' && product.recipeFlag != null && product.recipeFlag != undefined && product.recipeFlag != '3'"></image>{{product.brandName + ' ' + product.goodsName + ' ' + product.specification}}
+								</view>
+								<view class="pro-factory wrap" v-if="product.goodsKey">
+									{{product.goodsKey}}</view>
+								<view class="wrap">
+									<span class="pro-spec">{{product.storeDTO.storeName}}</span>
+								</view>
+								<view class="pro-pri-act">
+									<view class="p-i-pri-cont clearfix"
+										v-if="product.sellPrice != undefined && product.sellPrice != null && product.sellPrice != ''">
+										<b class="tj-pri-type bg_red font_color_white" v-if="product.isTjFlag">特价</b>
+										<span class="pri-small">￥</span>
+										<span>{{bigPrice(product.sellPrice, product.activityItems, product.isTjFlag)}}</span>
+										<span class="pri-small">{{smallPrice(product.sellPrice, product.activityItems, product.isTjFlag)}}</span>
+										<span class="yj-pri font_color_666" v-if="product.isTjFlag">
+											￥{{product.sellPrice ? product.sellPrice.sellPrice : '0.00'}}
+										</span>
+									</view>
+									<view class="p-i-pri-cont" style="font-size: 28rpx; line-height: 36rpx;"
+										v-else>暂无报价</view>
+								</view>
+								<view class="pro-act-type clearfix" v-if="product.promotionsArr != null && product.promotionsArr.length > 0">
+									<i v-for="promotion in product.promotionsArr" v-if="promotion.flag != 3">
+										{{promotion.flag == 1 ? '券' : (promotion.flag == 2 ? '满额' : (promotion.flag == 3 ? '特价' : (promotion.flag == 4 ? '套装' : (promotion.flag == 5 ? '赚' : (promotion.flag == 6 ? '整单' : '暂无')))))}}
+									</i>
+									<i v-if="product.isCrowdfundFlag">筹</i>
+								</view>
+							</view>
+						</view>
+						<view class="addCartBtn iconfont icon-addcart"
+							:class="product.sellPrice != undefined && product.sellPrice != null && product.sellPrice != '' ? 'font_color_common' : 'font_color_999'"
+							@click="togglePopup('addCartPop', product)" v-if="product.status == 1 && product.marketFlag != 0"></view>
+						<view class="addDemand bg_common font_color_white" @click="togglePopup('addCartPop', product)"
+							v-if="product.status == 2 && product.marketFlag != 0">需求登记</view>
+					</view>
+				</view>
+                <uni-load-more :status="status" :content-text="contentText" />
+            </uni-pulldown-refresh>
+        </view>
+        <view class="goodsNo" style="display: none;">
+            <view class="tips">暂无更多商品</view>
+        </view>
+
+        <view class="go_top_btn" :class="showTopBtn ? 'btn_show' : ''" @click="goTopFunc">
+			<i class="iconfont icon-gotop"></i>
+		</view>
+
+		<view class="go_cart_btn_two">
+			<button class="askDocter font_color_common" open-type="contact">
+                <i class="iconfont icon-yaoshi font_color_common"></i>
+                <span class="txt">联系客服</span>
+            </button>
+			<view class="goCart" @click="goUrl('cart')">
+				<i class="iconfont icon-cart"></i>
+				<b class="cartQty bg_common" v-if="cartQty > 0">{{cartQty}}</b>
+			</view>
+		</view>
+        <!-- 加入购物车弹出框开始 -->
+        <view class="showLoading" v-show="showLoading == true"></view>
+        <uni-popup ref="addCartPop" type="bottom" @change="popChange">
+            <view class="pagePopup bg_white" :style="isiphoneBt ? 'padding-bottom: 20px' : ''">
+                <view class="pop-specInfo-wrap uni-flex">
+                    <view class="specInfo-img">
+                        <image class="specInfo-img-img" mode="aspectFit" :lazy-load="true" :src="goodMes.imagePath" alt=""></image>
+                    </view>
+                    <view class="specInfo-info uni-flex-1">
+                        <view class="specInfo-info-name font_color_333">{{ goodMes.goodsName }}</view>
+                        <view class="specInfo-info-spe">{{ goodMes.specification }}</view>
+                        <view class="specInfo-info-price" v-if="goodMes.sellPrice">
+                            <span class="specInfo-now-price">￥{{ toFixedFunc(goodMes.sellPrice ? goodMes.sellPrice.promoPrice ? goodMes.sellPrice.promoPrice : goodMes.sellPrice.sellPrice : 0) }}</span>
+                            <span class="specInfo-old-price" v-if="goodMes.sellPrice && goodMes.sellPrice.promoPrice">{{ toFixedFunc(goodMes.sellPrice ? goodMes.sellPrice.sellPrice : 0) }}</span>
+                        </view>
+                    </view>
+                    <view class="specInfo-close">
+                        <view class="closeBtn iconfont icon-close" @click="popupCancel('addCartPop')"></view>
+                    </view>
+                </view>
+                <view class="pop-num-wrap uni-flex">
+                    <view class="pop-num-tit uni-flex-1">购买数量</view>
+                    <view class="num-wrap uni-flex">
+                        <view class="num-btn tc num-btn-sub" :class="qtyLimit.minNumFlag ? 'disabled' : ''" @click="numChangeFunc('sub')">-</view>
+                        <input class="num-input tc uni-flex-1" type="number" v-model="qtyvalue" @input="changeNumFunc" @focus="inputFoucs(qtyvalue);">
+                        <view class="num-btn tc num-btn-sub" :class="qtyLimit.maxNumFlag ? 'disabled' : ''" @click="numChangeFunc('add')">+</view>
+                    </view>
+                </view>
+                <view class="pop-btn-wrap uni-flex">
+                    <view class="pop-btnItem pop-btn-addCart uni-flex-1" v-if="goodMes.status == 2" @click="orderNeed">需求登记</view>
+                    <view class="pop-btnItem pop-btn-buyNow uni-flex-1" style="background: #f7bf57;" v-if="goodMes.status != 2" @click="addCart">加入清单</view>
+                    <view class="pop-btnItem pop-btn-buyNow uni-flex-1" v-if="goodMes.status != 2" @click="buyNowFunc">{{ goodMes.recipeFlag == 2 ? '提交需求' : '立即购买' }}</view>
+                </view>
+            </view>
+        </uni-popup>
+        <!-- 加入购物车弹出框结束 -->
+    </view>
+</template>
+
+<script>
+export default {
+	data() {
+		return {
+			cartQty: 0,
+			storeId: '',
+			queryWord: '',
+			goodsTypeNo: '',
+            brandId: '',
+            promotionId: '',
+			couponCfgId: '',
+			tagNo: '',
+			latitude: this.getStor('nowLat') == null || this.getStor('nowLat') == 'null' ? 0 : this.getStor('nowLat'),
+            longitude: this.getStor('nowLng') == null || this.getStor('nowLng') == 'null' ? 0 : this.getStor('nowLng'),
+			pageNo: 1,
+			pageSize: 10,
+			productList: '',
+            scrollTop: 0, //初始化滚动高度
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——"
+            },
+            showTopBtn: false,
+            goodMes: '',
+            qtyLimit: {},
+            qtyvalue: '',
+            oldQtyvalue: '',
+            showLoading: false,
+
+            sortType: '', //默认: '' 销量:salnum 价格:commonprice 库存:cansalstock
+            sortAsc: '', //升/降序
+            distributorId: '',
+            shareUrl: '/pages/list/list',
+		};
+    },
+    onShow() {
+        this.cartQty = this.getStor('totalItemCount') ? this.getStor('totalItemCount') : 0;
+    },
+	onLoad(options) {
+        this.storeId = this.getStor('_storeId_') != null ? this.getStor('_storeId_') : this._storeId_;
+        this.brandId = options.brandId;
+        this.goodsTypeNo = options.goodsTypeNo;
+        this.promotionId = options.promotionId;
+        this.couponCfgId = options.couponCfgId;
+        this.tagNo = options.tagNo;
+        this.queryWord = options.queryWord == undefined ? '' : decodeURIComponent(options.queryWord);
+        this.distributorId = options.shareDistributorId ? options.shareDistributorId : this.getStor('shareDistributorId') != null ? this.getStor('shareDistributorId') : '';
+        this.setStor('shareDistributorId', this.distributorId);
+        if(this.brandId){
+            this.shareUrl = this.shareUrl + '?brandId=' + this.brandId;
+        }
+        if(this.goodsTypeNo){
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + 'goodsTypeNo=' + this.goodsTypeNo;
+        }
+        if(this.promotionId){
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + 'promotionId=' + this.promotionId;
+        }
+        if(this.couponCfgId){
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + 'couponCfgId=' + this.couponCfgId;
+        }
+        if(this.tagNo){
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + 'tagNo=' + this.tagNo;
+        }
+        if(this.queryWord){
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + 'queryWord=' + this.queryWord;
+        }
+        if (this.distributorId || this.getStor('isDistributorId') != null) {
+            this.shareUrl = this.shareUrl + (this.shareUrl.indexOf('?') != -1 ? '&' : '?') + "shareDistributorId=" + (this.getStor('isDistributorId') != null ? this.getStor('isDistributorId') : this.distributorId);
+        }
+        this.initList("add");
+    },
+    onReachBottom() {
+        if(this.status != 'noMore' && this.status != 'loading'){
+            //上滑加载
+            this.initList("add");
+        }
+    },
+    onPageScroll(res){   // 监听页面滚动
+        if(res.scrollTop > 10){
+            this.showTopBtn = true;
+        }else{
+            this.showTopBtn = false;
+        }
+    },
+    onShareAppMessage(res) { //分享到微信好友
+        return {
+            title: this.getStor('_shareTitle_'),
+            content: this.shareContent,
+            imageUrl: this.getStor('_shareLogo_'),
+            path: this.shareUrl,
+            success: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+    onShareTimeline(){
+        return {
+            title: this.getStor('_shareTitle_'),
+            content: this.shareContent,
+            imageUrl: this.getStor('_shareLogo_'),
+            path: this.shareUrl,
+            success: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            }),
+        }
+    },
+    methods: {
+        sortClick: function(type) { //价格排序
+            if(type != this.sortType){
+                this.sortAsc = '';
+            }else{
+                if(type != ''){
+                    if(this.sortAsc == ''){
+                        this.sortAsc = 'false';
+                    }else if(this.sortAsc == 'true'){
+                        this.sortAsc = 'false';
+                    }else{
+                        this.sortAsc = 'true';
+                    }
+                }
+            }
+            this.sortType = type;
+            
+            this.initList('refresh');
+        },
+        getCheckObj() {
+			let returnObj = {};
+			returnObj.storeId = this.storeId == null ? '' : this.storeId;
+            returnObj.goodsTypeNo = this.goodsTypeNo == undefined || this.goodsTypeNo == null ? '' : this.goodsTypeNo;
+			returnObj.brandId = this.brandId == null ? '' : this.brandId;
+			returnObj.queryWord = this.queryWord;
+			returnObj.pageSize = this.pageSize;
+			returnObj.latitude = this.latitude;
+            returnObj.longitude = this.longitude;
+            returnObj.promotionId = this.promotionId == null ? '' : this.promotionId;
+            if(this.couponCfgId != null){
+				returnObj.promotionId = this.couponCfgId == null ? '' : this.couponCfgId;
+			}
+            returnObj.tagNo = this.tagNo == null ? '' : this.tagNo;
+			if(this.goodsTypeNo != null) {
+				returnObj.strategyType = 'index';
+			}
+			return returnObj;
+		},
+        initList(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let obj = this.getCheckObj();
+            obj.pageNo = this.pageNo;
+            
+            if(this.sortType != ''){
+                obj.orderFiled = this.sortType;
+                if(this.sortAsc == 'true'){
+                    obj.asc = true;
+                }else if(this.sortAsc == 'false'){
+                    obj.asc = false;
+                }
+            }
+
+            this.ebigRequest("/promotion/products", obj, true).then((res) => {
+                if(type == 'refresh'){
+                    this.productList = [];
+                }
+                
+                if(res.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                res.map(item1 => {
+                    let isTjFlag = false;
+                    let promotionsArr = [];
+                    let promotions = item1.promotions;
+                    for(let key in promotions){
+                        if(key == 3 || key == '3'){
+                            isTjFlag = true;
+                        }
+                        promotionsArr.push({
+                            flag: key,
+                            des: promotions[key]
+                        })
+                    }
+                    this.$set(item1, 'isTjFlag', isTjFlag);
+                    this.$set(item1, 'promotionsArr', promotionsArr);
+                })
+                this.productList = [...this.productList, ...res];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.productList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.productList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            });
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.initList("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.initList("refresh");
+        },
+        bigPrice (value, activityItems, type) {                // 价格大字体
+            let price = 0;
+            if(type){
+                price = value.promoPrice;
+            }else{
+                price = value ? value.sellPrice : 0;
+            }
+			if (price || activityItems) {
+				if (activityItems) {
+					for (i = 0; i < activityItems.length; i++) {
+						if (activityItems[i].activitytype == 3) {
+							price = activityItems[i].activityspecialgood.promoprice;
+							break;
+						}
+					}
+				}
+				price = price + '';
+				if (price.indexOf('.') > -1) {
+					return price.substring(0, price.indexOf('.'));
+				} else {
+					return price;
+				}
+			} else {
+				return '0';
+			}
+		},
+        smallPrice (value, activityItems, type) {              // 价格小字体
+            let price = 0;
+            if(type){
+                price = value.promoPrice;
+            }else{
+                price = value ? value.sellPrice : 0;
+            }
+			if (price || activityItems) {
+				if (activityItems) {
+					for (i = 0; i < activityItems.length; i++) {
+						if (activityItems[i].activitytype == 3) {
+							price = activityItems[i].activityspecialgood.promoprice;
+							break;
+						}
+					}
+				}
+				price = price + '';
+				if (price.indexOf('.') > -1) {
+					return price.substring(price.indexOf('.'), price.length);
+				} else {
+					return '.00';
+				}
+			} else {
+				return '.00';
+			}
+		},
+        /* 弹出框 start */
+        togglePopup(name, item) {
+            // 弹出弹出框
+            this.showLoading = true;
+            this.goodMes = item;
+            this.$refs[name].open();
+            this.initNumFunc();
+        },
+        popupCancel(name) {
+            // 关闭弹出框
+            this.$refs[name].close();
+        },
+        popChange(type){
+            if(type.show){
+                setTimeout(() => {
+                    this.showLoading = false;
+                }, 450)
+            }
+        },
+        /* 弹出框 start */
+        toFixedFunc(value) { //转为两位小数
+            if(value){
+                return parseFloat(value).toFixed(2);
+            }else{
+                return '';
+            }
+        },
+        initNumFunc() { //初始化购物车数量
+			let minNum, multiple, maxNum, supplyCtlQty, minSupplyQty, limitSalQty, remainCount;
+			if(this.goodMes.isTjFlag){ //特价商品
+				supplyCtlQty = this.goodMes.specialPromotionDTO.supplyCtlQty ? (this.goodMes.specialPromotionDTO.supplyCtlQty * 1) : 1;
+				minSupplyQty = this.goodMes.specialPromotionDTO.leastCount ? (this.goodMes.specialPromotionDTO.leastCount * 1) : 1;
+				limitSalQty = this.goodMes.specialPromotionDTO.limitCount ? (this.goodMes.specialPromotionDTO.limitCount * 1) : '';
+				remainCount = this.goodMes.specialPromotionDTO.remainCount ? (this.goodMes.specialPromotionDTO.remainCount * 1) : ''; //活动剩余库存
+				if(limitSalQty != ''){
+					if(remainCount != ''){
+						limitSalQty = (limitSalQty > remainCount) ? remainCount : limitSalQty;
+					}
+				}else{
+					if(remainCount != ''){
+						limitSalQty = remainCount;
+					}
+				}
+			}else{ //普通商品
+				supplyCtlQty = this.goodMes.supplyCtlQty ? this.goodMes.supplyCtlQty : 1;
+				minSupplyQty = this.goodMes.minSupplyQty ? this.goodMes.minSupplyQty : 1;
+				limitSalQty = this.goodMes.limitSalQty ? this.goodMes.limitSalQty : '';
+			}
+			if (limitSalQty != '') {
+				if (limitSalQty % supplyCtlQty != 0) {
+					limitSalQty = limitSalQty - (limitSalQty % supplyCtlQty);
+				}
+			}
+			minNum = minSupplyQty;
+			multiple = supplyCtlQty;
+            maxNum = limitSalQty;
+            Object.assign(this.qtyLimit,{
+                minNum: minNum, //最小值
+                maxNum: maxNum, //最大值
+                multiple: multiple, //倍数
+                minNumFlag: true,
+                maxNumFlag: false
+            })
+            if(maxNum != '' && maxNum == minNum){
+                Object.assign(this.qtyLimit,{
+                    maxNumFlag: true
+                })
+            }
+			this.qtyvalue = minNum; //当前数量
+			this.$forceUpdate();
+        },
+        numChangeFunc(type) { //购物车数量加减
+            let qtyLimit = JSON.parse(JSON.stringify(this.qtyLimit));
+            if(type == 'sub'){ //减
+                if(!qtyLimit.minNumFlag){
+                    let nowVal = this.qtyvalue * 1 - qtyLimit.multiple * 1;
+                    let nextVal = this.qtyvalue * 1 - qtyLimit.multiple * 2;
+                    if(nowVal > qtyLimit.minNum * 1){
+                        this.qtyvalue = nowVal;
+                        Object.assign(this.qtyLimit,{
+                            minNumFlag: false
+                        })
+                        if(nextVal < qtyLimit.minNum * 1){
+                            Object.assign(this.qtyLimit,{
+                                minNumFlag: true
+                            })
+                        }
+                    }else if(nowVal == qtyLimit.minNum * 1){
+                        this.qtyvalue = nowVal;
+                        Object.assign(this.qtyLimit,{
+                            minNumFlag: true
+                        })
+                    }
+                }
+            }else if(type == 'add'){ //加
+                if(!qtyLimit.maxNumFlag){
+                    let nowVal = this.qtyvalue * 1 + qtyLimit.multiple * 1;
+                    let nextVal = this.qtyvalue * 1 + qtyLimit.multiple * 2;
+                    if(qtyLimit.maxNum == ''){
+                        this.qtyvalue = nowVal;
+                        Object.assign(this.qtyLimit,{
+                            minNumFlag: false
+                        })
+                    }else{
+                        if(nowVal < qtyLimit.maxNum){
+                            this.qtyvalue = nowVal;
+                            Object.assign(this.qtyLimit,{
+                                minNumFlag: false
+                            })
+                            if(nextVal > qtyLimit.maxNum * 1){
+                                Object.assign(this.qtyLimit,{
+                                    maxNumFlag: true
+                                })
+                            }
+                        }else if(nowVal == qtyLimit.maxNum){
+                            this.qtyvalue = nowVal;
+                            Object.assign(this.qtyLimit,{
+                                maxNumFlag: true
+                            })
+                        }
+                    }
+                }
+            }
+            this.$forceUpdate();
+        },
+        inputFoucs(val) { //数量输入框聚焦
+            // console.log(val)
+			this.oldQtyvalue = val;
+        },
+        changeNumFunc(event) { //输入框输入数量
+            let qtyLimit = JSON.parse(JSON.stringify(this.qtyLimit));
+            let nowVal = event.detail.value * 1;
+			if (nowVal == 0 ) {
+				this.qtyvalue = this.oldQtyvalue;
+                uni.showToast({
+                    title: "数量不能为空或0!",
+                    icon: "none",
+                });
+			} else {
+				if (nowVal < qtyLimit.minNum * 1) {
+                    this.qtyvalue = this.oldQuantity;
+                    uni.showToast({
+                        title: "数量必须大于最小数量" + qtyLimit.minNum + '!',
+                        icon: "none",
+                    });
+				} else if (nowVal % qtyLimit.multiple * 1 != 0) {
+                    this.qtyvalue = this.oldQuantity;
+                    uni.showToast({
+                        title: "数量必须为" + qtyLimit.multiple + '的倍数!',
+                        icon: "none",
+                    });
+				} else if (qtyLimit.maxNum != '') {
+					if (nowVal > qtyLimit.maxNum * 1) {
+                        this.qtyvalue = this.oldQuantity;
+                        uni.showToast({
+                            title: "数量必须小于或等于" + qtyLimit.maxNum + '!',
+                            icon: "none",
+                        });
+					}else{
+                        Object.assign(this.qtyLimit,{
+                            minNumFlag: false,
+                            maxNumFlag: false
+                        })
+                        let preVal = nowVal * 1 - qtyLimit.multiple * 1;
+                        let nextVal = nowVal * 1 + qtyLimit.multiple * 1;
+                        if(preVal < qtyLimit.minNum * 1){
+                            Object.assign(this.qtyLimit,{
+                                minNumFlag: true
+                            })
+                        }
+                        if(nextVal > qtyLimit.maxNum * 1){
+                            Object.assign(this.qtyLimit,{
+                                maxNumFlag: true
+                            })
+                        }
+                    }
+				}else{
+                    Object.assign(this.qtyLimit,{
+                        minNumFlag: false,
+                        maxNumFlag: false
+                    })
+                    let preVal = nowVal * 1 - qtyLimit.multiple * 1;
+                    let nextVal = nowVal * 1 + qtyLimit.multiple * 1;
+                    if(preVal < qtyLimit.minNum * 1){
+                        Object.assign(this.qtyLimit,{
+                            minNumFlag: true
+                        })
+                    }
+                    if(nextVal > qtyLimit.maxNum * 1){
+                        Object.assign(this.qtyLimit,{
+                            maxNumFlag: true
+                        })
+                    }
+                }
+            }
+            this.$forceUpdate();
+		},
+        addCart(){
+            let item = JSON.parse(JSON.stringify(this.goodMes));
+			if(item.sellPrice != undefined && item.sellPrice != null && item.sellPrice != ''){
+				let obj = {};
+				obj.storeId = item.storeDTO.storeId;
+				obj.skuId = item.skuId;
+				if(item.isTjFlag){ //判断是否是特价商品
+					obj.quantity = this.qtyvalue;
+					obj.itemType = 5;
+					obj.itemSource = item.specItemSource;
+				}else{
+					obj.quantity = this.qtyvalue;
+					obj.itemType = 1;
+					obj.itemSource = 0;
+				}
+                if(this.distributorId){
+                    obj.distributorId = this.distributorId;
+                }else if(this.getStor('isDistributorId')){
+                    obj.distributorId = this.getStor('isDistributorId');
+                }
+				this.ebigRequest('/shopping-cart/add', obj, true).then((data) => {
+                    this.cartQty = data.totalItemCount;
+                    this.popupCancel('addCartPop');
+                    this.setStor('totalItemCount', this.cartQty)
+                    uni.showToast({
+                        title: "已加入清单",
+                        icon: "none",
+                    });
+				}).catch(() => {
+                    this.popupCancel('addCartPop');
+                });
+			}
+		},
+		orderNeed(){
+			let item = JSON.parse(JSON.stringify(this.goodMes));
+			let nowaddcartobj = {};
+			nowaddcartobj.storeId = item.storeDTO.storeId;
+			nowaddcartobj.skuId = item.skuId;
+			nowaddcartobj.quantity = this.qtyvalue;
+            if(item.isTjFlag){ //判断是否是特价商品
+				nowaddcartobj.itemType = 5;
+				nowaddcartobj.itemSource = item.specItemSource;
+			}else{
+				nowaddcartobj.itemType = 1;
+				nowaddcartobj.itemSource = 0;
+			}
+            if(this.distributorId){
+                nowaddcartobj.distributorId = this.distributorId;
+            }else if(this.getStor('isDistributorId')){
+                nowaddcartobj.distributorId = this.getStor('isDistributorId');
+            }
+            this.ebigRequest('/presalOrder/create', nowaddcartobj, true).then((data) => {
+                this.popupCancel('addCartPop');
+                this.goUrl('orderConfirm', 'order', 'orderNo=' + data + '&isOrderNeed=true')
+			}).catch(() => {
+                this.popupCancel('addCartPop');
+            });
+        },
+        buyNowFunc() { // 立即购买   
+			let item = JSON.parse(JSON.stringify(this.goodMes));
+			if (this.goodMes.status == '-1') {
+                uni.showToast({
+                    title: "抱歉！该商品库存不足",
+                    icon: "none",
+                });
+				return;
+			}
+			let nowaddcartobj = {};
+			nowaddcartobj.storeId = item.storeDTO.storeId;
+			nowaddcartobj.quantity = this.qtyvalue;
+			nowaddcartobj.skuId = item.skuId;
+			if(this.goodMes.isTjFlag){ //判断是否是特价商品
+				nowaddcartobj.itemType = 5;
+				nowaddcartobj.itemSource = item.specItemSource;
+			}else{
+				nowaddcartobj.itemType = 1;
+				nowaddcartobj.itemSource = 0;
+            }
+            if(this.distributorId){
+                nowaddcartobj.distributorId = this.distributorId;
+            }else if(this.getStor('isDistributorId')){
+                nowaddcartobj.distributorId = this.getStor('isDistributorId');
+            }
+            this.ebigRequest('/order/create', nowaddcartobj, true).then((data) => {
+                this.popupCancel('addCartPop');
+                this.goUrl('orderConfirm', 'order', 'orderNo=' + data)
+			}).catch(() => {
+                this.popupCancel('addCartPop');
+            });
+		},
+        goTopFunc(){
+            uni.pageScrollTo({
+                scrollTop: 0,
+                duration: 100
+            });
+        },
+        makeCall(){
+            uni.makePhoneCall({
+                // 手机号
+                phoneNumber: this.customerTel, 
+                // 成功回调
+                success: (res) => {
+                    console.log('调用成功!')	
+                },
+                // 失败回调
+                fail: (res) => {
+                    console.log('调用失败!')
+                }
+            });
+        },
+        goBack() {
+            history.go(-1);
+        },
+    },
+    filters: {
+        showrecipeFlag (value) {        // 商品是否为处方药
+			if (value == 1) {
+				return '../../static/image/com/otcj.png';
+			} else if (value == 2) {
+				return '../../static/image/com/rx.png';
+			} else if (value == 3) {
+				return '';
+			} else if (value == 4) {
+				return '../../static/image/com/otcy.png';
+			}
+		},
+    }
+}
+</script>
+
+<style lang="scss">
+page, .page {
+    position: relative;
+    height: 100%;
+}
+.showLoading {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 100%;
+}
+/* 搜索 start */
+.search-wrap {
+    position: fixed;
+    top: 0;
+    z-index: 999;
+    padding: 20rpx 30rpx;
+    /* #ifdef H5 */
+    padding: 20rpx 30rpx 20rpx 80rpx;
+    /* #endif */
+    width: 100%;
+    border-bottom: 1px solid rgba(228, 228, 228, 1);
+    box-sizing: border-box;
+}
+
+.goBack {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 80rpx;
+        height: 110rpx;
+        text-align: center;
+        line-height: 110rpx;
+    }
+
+.s-input {
+    position: relative;
+    padding-left: 68rpx;
+    width: 100%;
+    height: 68rpx;
+    background: #ECECEC;
+    border-radius: 80rpx;
+    box-sizing: border-box;
+}
+.s-input input {
+    width: 100%;
+    height: 100%;
+    line-height: 68rpx;
+    font-size: 30rpx;
+    color: #949494;
+}
+.s-input .searchIcon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 68rpx;
+    font-size: 36rpx;
+    text-align: center;
+    line-height: 80rpx;
+    /* #ifdef H5 */
+    line-height: 68rpx;
+    /* #endif */
+    color: #BBB2B2;
+}
+/* 搜索 end */
+
+/* 排序 -- start */
+.sort-wrap{
+    position: fixed;
+    top: 108rpx;
+    z-index: 999;
+    /* padding: 10px 15px; */
+    width: 100%;
+    height: 80rpx;
+    line-height: 80rpx;
+    border-bottom: 2rpx solid rgba(228, 228, 228, 1);
+    box-sizing: border-box;
+}
+.sort-price .icon-wrap{
+    display: inline-block;
+    position: relative;
+    top: 0;
+    vertical-align: middle;
+    height: 39px;
+}
+.icon-wrap .icon-top{
+    height: 14px;
+    line-height: 14px;
+    position: absolute;
+    top: 6px;
+    left: 0;
+}
+.icon-wrap .icon-bottom{
+    height: 14px;
+    line-height: 14px;
+    position: absolute;
+    bottom: 9px;
+    left: 0;
+}
+.sort-consignor .consignorName{
+    width: 120rpx;
+    display: inline-block;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sort-consignor .iconfont{
+    vertical-align: middle;
+}
+/* 排序 -- end */
+
+/* 商品 */
+.goodsList {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+.pro-item {
+    position: relative;
+    padding: 20rpx;
+    background: #FFFFFF;
+    border-bottom: 1px solid #EEEEEE;
+}
+.pro-item .goodsImg {
+    margin-right: 20rpx;
+    width: 188rpx;
+    height: 188rpx;
+}
+.pro-item .recipeFlag {
+    display: inline-block;
+    margin-right: 10rpx;
+    width: 68rpx;
+    height: 32rpx;
+    vertical-align: sub;
+}
+.pro-item .pro-name {
+    font-size: 28rpx;
+}
+.pro-item .pro-spec {
+    font-size: 26rpx;
+    color: #888888;
+}
+.pro-item .pro-factory {
+    font-size: 24rpx;
+    color: #666666;
+}
+.pro-pri-act {
+    padding-top: 10rpx;
+    font-size: 24rpx;
+    color: red;
+}
+.p-i-pri-cont span {
+    font-size: 36rpx;
+}
+.p-i-pri-cont span.pri-small {
+    font-size: 24rpx;
+}
+.p-i-pri-cont .yj-pri {
+    font-size: 24rpx;
+    text-decoration: line-through;
+}
+.p-i-pri-cont b.tj-pri-type {
+    float: left;
+    margin-top: 4rpx;
+    line-height: 32rpx;
+    padding: 2rpx 8rpx;
+    border-radius: 10rpx;
+    margin-right: 10rpx;
+    font-size: 20rpx;
+    font-weight: 400;
+    box-sizing: border-box;
+}
+.p-i-pri-act {
+    padding-left: 30rpx;
+    font-size: 22rpx;
+}
+.p-i-pri-act span {
+    margin-right: 4rpx;
+    padding: 4rpx 6rpx;
+    vertical-align: sub;
+    border: 1px solid red;
+    border-radius: 6rpx;
+}
+.pro-act-type {
+    padding-right: 60rpx;
+    box-sizing: border-box;
+    white-space: normal;
+}
+.pro-item .pro-act-type i {
+    float: left;
+    margin-right: 10rpx;
+    padding: 2rpx 8rpx;
+    font-size: 20rpx;
+    line-height: 28rpx;
+    vertical-align: sub;
+    color: red;
+    border: 1px solid red;
+    border-radius: 10rpx;
+}
+.addCartBtn {
+    position: absolute !important;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 84rpx;
+    height: 84rpx;
+    font-size: 48rpx;
+    text-align: center;
+    line-height: 84rpx;
+}
+.addDemand {
+    position: absolute !important;
+    right: 16rpx;
+    bottom: 16rpx;
+    z-index: 10;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 160rpx;
+    height: 64rpx;
+    font-size: 26rpx;
+    text-align: center;
+    line-height: 64rpx;
+}
+
+/* 没有商品 */
+.goodsNo {
+    padding: 110rpx 0 0;
+    box-sizing: border-box;
+}
+.tips {
+    padding: 60rpx 120rpx;
+    text-align: center;
+}
+
+/******** 置顶按钮 **********/
+.go_top_btn {
+    position: fixed;
+    bottom: 0;
+    right: 20rpx;
+    z-index: 100;
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 40rpx;
+    text-align: center;
+    line-height: 80rpx;
+    color: #999999;
+    border: 1px solid #D7D7D7;
+    background: #FFFFFF;
+    border-radius: 50%;
+    -webkit-transform: translate3d(0,100%,0);
+    -moz-transform: translate3d(0,100%,0);
+    -o-transform: translate3d(0,100%,0);
+    transform: translate3d(0,100%,0);
+    -webkit-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    -moz-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    -o-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    transition: transform .5s cubic-bezier(0,0,.25,1);
+}
+.btn_show {
+    -webkit-transform: translate3d(0,0,0);
+    -moz-transform: translate3d(0,0,0);
+    -o-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+    bottom: 20rpx;
+}
+
+
+/****** 跳转购物车 *******/
+.go_cart_btn_two {
+    display: -webkit-flex;
+    display: flex;
+    position: fixed;
+    bottom: 100rpx;
+    left: 20rpx;
+    z-index: 100;
+    width: 238rpx;
+    height: 80rpx;
+    font-size: 40rpx;
+    text-align: center;
+    line-height: 80rpx;
+    color: #999999;
+    border: 1px solid #D7D7D7;
+    background: #FFFFFF;
+    border-radius: 80rpx;
+    -moz-transform: translate3d(0,100%,0);
+    -o-transform: translate3d(0,100%,0);
+    transform: translate3d(0,100%,0);
+    -webkit-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    -moz-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    -o-transition: -webkit-transform .5s cubic-bezier(0,0,.25,1);
+    transition: transform .5s cubic-bezier(0,0,.25,1);
+}
+.go_cart_btn_two .askDocter {
+    -webkit-flex: 1;
+    flex: 1;
+    margin: 10rpx 0;
+    font-size: 26rpx;
+    border-right: 1px solid #EEEEEE;
+}
+.go_cart_btn_two .askDocter.button-hover {
+    background: #FFFFFF;
+}
+.go_cart_btn_two .askDocter::after {
+    border: none;
+}
+.go_cart_btn_two .askDocter i {
+    display: inline-block;
+    width: 44rpx;
+    font-size: 44rpx;
+    line-height: 56rpx;
+    vertical-align: top;
+}
+.go_cart_btn_two .askDocter span {
+    display: inline-block;
+    width: 60rpx;
+    line-height: 28rpx;
+    word-break: break-all;
+}
+
+.go_cart_btn_two .goCart {
+    -webkit-flex: .6;
+    flex: .6;
+}
+.go_cart_btn_show {
+    -webkit-transform: translate3d(0,0,0);
+    -moz-transform: translate3d(0,0,0);
+    -o-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+    bottom: 60px;
+}
+.cartQty {
+    display: block;
+    position: absolute;
+    top: 6rpx;
+    right: 2rpx;
+    padding: 0 10rpx;
+    min-width: 32rpx;
+    height: 32rpx;
+    font-size: 24rpx;
+    text-align: center;
+    line-height: 32rpx;
+    color: #FFFFFF;
+    border-radius: 32rpx;
+}
+.pagePopup {
+    position: relative;
+    border-radius: 0;
+    .pop-btn-wrap {
+        width: 100%;
+        height: 100rpx;
+        line-height: 100rpx;
+        font-size: 32rpx;
+        text-align: center;
+        color: white;
+        .pop-btn-addCart {
+            background-color: #F6BE57;
+        }
+        .pop-btn-buyNow {
+            background-color: #E25C5C;
+        }
+    }
+    .pop-num-wrap {
+        height: 110rpx;
+        line-height: 70rpx;
+        padding: 20rpx;
+        box-sizing: border-box;
+        .num-wrap {
+            width: 140px;
+            .num-btn {
+                width: 70rpx;
+                font-size: 36rpx;
+                background-color: #EEEEEE;
+                &.disabled {
+                    color: silver;
+                }
+            }
+            .num-input {
+                display: block;
+                height: 70rpx;
+                background-color: #EEEEEE;
+                margin: 0 2rpx;
+            }
+        }
+    }
+    .pop-specInfo-wrap {
+        min-height: 190rpx;
+        position: relative;
+        padding: 0 80rpx 80rpx 260rpx;
+        box-sizing: border-box;
+        .specInfo-img {
+            position: absolute;
+            top: -30rpx;
+            left: 20rpx;
+            width: 220rpx;
+            height: 220rpx;
+            padding: 10rpx;
+            border: 1px solid #EEEEEE;
+            box-sizing: border-box;
+            background: #FFFFFF;
+            border-radius: 10rpx;
+            .specInfo-img-img {
+                display: block;
+                width: 200rpx;
+                height: 200rpx;
+            }
+        }
+        .specInfo-info {
+            padding: 16rpx 0;
+            box-sizing: border-box;
+            .specInfo-info-name {
+                display: -webkit-box;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                word-wrap: break-word;
+                white-space: normal !important;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
+            .specInfo-info-spe {
+                margin-top: 6rpx;
+                display: -webkit-box;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                word-wrap: break-word;
+                white-space: normal !important;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                color: #8F8F94;
+            }
+            .specInfo-info-price {
+                .specInfo-now-price {
+                    font-size: 36rpx;
+                    font-weight: bold;
+                    color: #E25C5C;
+                }
+                .specInfo-old-price {
+                    margin-left: 8rpx;
+                    text-decoration: line-through;
+                    font-size: 24rpx;
+                    color: grey;
+                }
+            }
+        }
+        .specInfo-close {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80rpx;
+            height: 80rpx;
+            text-align: center;
+            .iconfont {
+                font-size: 52rpx;
+                font-weight: 400;
+            }
+        }
+    }
+}
+
+</style>

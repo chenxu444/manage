@@ -1,0 +1,38 @@
+<template>
+    <view>
+        <web-view :webview-styles="webviewStyles" @message="message" :src="pageUrl" v-if="pageUrl != ''" class="webViewCont"></web-view>
+    </view>
+</template>
+
+<script>
+import Vue from "vue";
+export default {
+    data() {
+        return {
+            isiphoneBt: false,
+            webviewStyles: {
+                progress: {
+                    color: '#FF3333'
+                }
+            },
+            pageUrl: '',
+            distributorId: '',
+            nowShareUrl: '/distribution/pages/activeGoods/activeGoods',
+            storeId: '',
+            activitysaleId:''
+
+        }
+    },
+    onLoad(option) {
+        this.distributorId = option.distributorId
+        this.activitysaleId = option.activitysaleId
+        this.storeId = this.getStor('_defaultStoreId_');
+        this.consignorId = this.getStor('_defaultConsignorId_');
+        let _token = this.getStor("_token");
+        this.pageUrl = 'https://wechat.gzppc.com.cn/app/activePage.html'+'?storeId='+this.storeId+(_token ? '&_token=' + _token : '');
+    },
+    message(event){
+        console.log(event.detail.data);
+    }
+}
+</script>

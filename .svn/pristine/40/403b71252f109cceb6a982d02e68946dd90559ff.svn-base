@@ -1,0 +1,115 @@
+<template>
+<div>
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="意见反馈"></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="feedBack">
+        <div class="title font_color_666">选择标签</div>
+        <div class="tag bg_white uni-flex">
+            <div class="tag_item" :class="isActive == index ? 'active_tag' : ''" v-for="(item,index) in tagName" :key="index" @click="chooseTag(item,index)">{{item}}</div>
+        </div>
+        <div class="title font_color_666">描述详情</div>
+        <div class=" bg_white">
+            <textarea  class="userTxt bg-white" placeholder="您的意见很重要，请畅所欲言~(200字以内)" v-model="content" maxlength=200></textarea>
+        </div>
+        <button class="submitBtn bg_common font_color_white" @click="subSuggest">提交</button>
+  </div>
+</div>
+  
+</template>
+<script>
+export default {
+    data(){
+        return{
+            tagName:["功能建议","药师服务","配送服务","售后服务","商品建议","优惠活动","点一个赞","其他"],
+            content: '',
+            title: '',
+            isActive:null
+        }
+    },
+    methods:{
+        chooseTag(name,index){
+            this.isActive = index
+            this.title = name
+        },
+        subSuggest(){
+            if(this.title == ''){
+                uni.showToast({
+                    title:'抱歉！您还未选择意见类型！',
+                    icon:'none',
+                    duration:1000
+                })
+                return
+            }
+            if(this.content == ''){
+                uni.showToast({
+                    title:'抱歉！您还未填写意见内容！',
+                    icon:'none',
+                    duration:1000
+                })
+                return
+            }
+            let params = {
+                title:this.title,
+                content:this.content
+            }
+            this.ebigRequest("/suggest/submit", params, false).then((res) => {
+                uni.showModal({
+                    title:'温馨提示',
+                    content:'感谢您的投诉与建议',
+                    showCancel:false,
+                    confirmColor:'#007aff',
+                    success:res => {
+                        if(res.confirm){
+                            uni.navigateBack({
+                                delta: 1
+                            })
+                        }
+                    }
+                })
+            })
+        }
+    }
+    }
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+}
+.feedBack {
+    padding: 0 20rpx;
+}
+.title {
+    padding: 10rpx 0;
+}
+.tag {
+    width: 100%;
+    flex-wrap: wrap;
+    padding-bottom: 20rpx;
+    margin-bottom: 10rpx;
+}
+.tag_item {
+    box-sizing: border-box;
+    width: 30%;
+    padding: 16rpx 10rpx;
+    background-color: #F0EFF4;
+    border-radius: 6rpx;
+    text-align: center;
+    margin: 20rpx 0 0 18rpx;
+    font-size: 26rpx;
+}
+.userTxt {
+    border: 1px solid #00000033;
+    width: 100%;
+}
+.submitBtn {
+    margin-top: 100px;
+    line-height: 88rpx;
+}
+.active_tag {
+    background: linear-gradient(0deg, rgba(0, 123, 200, 1) 0%, rgba(0, 123, 200, 1) 0%, rgba(25, 158, 216, 1) 100%, rgba(25, 158, 216, 1) 100%) !important;
+    color: #FFFFFF;
+}
+
+</style>

@@ -1,0 +1,459 @@
+<template>
+    <view class="orderPayPage">
+        <view class="payTips font_color_white bg_common">
+            <p class="redFont font_color_white" id="title_words" v-if="isCountDown">
+                <span>￥</span>
+                <span class="all_money">{{totalPayAmount}}</span>
+            </p>
+            <p class="redFont font_color_white" id="title_words" v-else>亲~当前订单已过期哦</p>
+            <p class="time font_color_white" v-if="isCountDown">剩余时间：<span id="clock">{{countDownInfo.day ? (countDownInfo.day + '天') : ('' + (countDownInfo.hour ? countDownInfo.hour : '00') + ':' + (countDownInfo.minute ? countDownInfo.minute : '00') + ':' + (countDownInfo.second ? countDownInfo.second : '00'))}}</span></p>
+        </view>
+        <view class="orderDetails" :style="isiphoneBt ? 'padding-bottom: 160rpx' : ''">
+            <view class="speBac wrap" style="line-height: 48rpx;">
+                <p style="color: #000;">订单号：{{orderDetail ? orderDetail.orderNo : '--'}}</p>
+                <p style="font-weight: 700; color: #000;">{{orderDetail ? orderDetail.storeName : '--'}}</p>
+            </view>
+            <view class="detailNav uni-flex" style="line-height: 142rpx;">
+                <view class="uni-flex-1 clearfix" style="margin-right: 20rpx;">
+                    <view class="goodImg fl" v-for="(item,index) in orderDetail.orderDtls" v-if="index < 3">
+                        <image class="goodImgCont" lazy-load="true" mode="aspectFit" :src="item.defaultPic | minImage(90)" />
+                    </view>
+                </view>
+                <view style="overflow: hidden;width: 140rpx; height: 140rpx;">
+                    <span class="fr">
+                        <i class="iconfont icon-right" style="font-size: 40rpx;"></i>
+                    </span>
+                    <span class="fr">共{{orderDetail ? orderDetail.totalQuantity : 0}}件</span>
+                </view>
+            </view>
+            <view class="detailNumP clearfix">
+                <span class="fl">总数量：{{orderDetail ? orderDetail.totalQuantity : 0}}</span>
+                <span class="fr">
+                    商品总价：
+                    <span
+                        class="colorFont">￥{{ (orderDetail ? orderDetail.productMoneyAmount : 0) | tofix2 }}</span>
+                </span>
+            </view>
+            <view class="colorfff">
+                <view class="orderNoLi font_color_666">
+                    <span class="payleft">配送费</span>
+                    <span class="payRight">+
+                        ￥{{(orderDetail ? orderDetail.deliveryFeeAmount : 0) | tofix2}}</span>
+                </view>
+                <view class="orderNoLi font_color_666">
+                    <span class="payleft">开方费</span>
+                    <span class="payRight">+
+                        ￥{{(orderDetail ? orderDetail.recipeAmount : 0) | tofix2 }}</span>
+                </view>
+                <view class="orderNoLi font_color_666">
+                    <span class="payleft">配送费立减</span>
+                    <span class="payRight">-
+                        ￥{{(orderDetail ? orderDetail.promoDeliveryFeeAmount : 0) | tofix2 }}</span>
+                </view>
+                <view class="orderNoLi font_color_666">
+                    <span class="payleft">活动立减</span>
+                    <span class="payRight">-
+                        ￥{{actReduceFilter(orderDetail.discountAmount,orderDetail.promoReduceAmount)}}</span>
+                </view>
+                <view class="orderNoLi font_color_666">
+                    <span class="payleft">优惠券</span>
+                    <span class="payRight">-
+                        ￥{{ (orderDetail ? orderDetail.couponReduceAmount : 0) | tofix2 }}</span>
+                </view>
+                <view class="orderNoLi font_color_666" style="display: none;">
+                    <span class="payleft">积分支付</span>
+                    <span class="payRight">- ￥{{pointsPayMoney}}</span>
+                </view>
+                <view class="orderNoLi font_color_666" style="display: none;">
+                    <span class="payleft">电子账户</span>
+                    <span class="payRight">- ￥{{walletAmount}}</span>
+                </view>
+            </view>
+            <view class="orderft orderNo colorfff">
+                <span class="payleft">总金额：<span class="colorFont">￥{{totalPayAmount}}</span></span>
+                <span class="payRight"
+                    v-if="scoreTotal != '' && scoreTotal != null && scoreTotal != undefined">可获得积分：<span
+                        class="colorFont">{{scoreTotal}}</span></span>
+            </view>
+        </view>
+        <view class="btn_wrap" :style="isiphoneBt ? 'padding-bottom: 60rpx' : ''">
+            <button class="bg_common font_color_white" @click="orderPay">立即支付</button>
+        </view>
+    </view>
+</template>
+
+<script>
+let pages = '';//当前页
+let beforePage = '';//上个页面
+export default {
+    components: {},
+    data() {
+        return {
+            isiphoneBt: false,
+            isCountDown: true,
+            countDownInfo: {},
+            orderNos: '',
+            orderDetail: '',
+			totalPayAmount: 0,
+			scoreTotal: 0,
+			quantityNum: 0,
+			totalQuantity: 0,
+			totalAmount: 0,
+			pointsPayMoney: 0,
+			walletAmount: 0,
+			recipemoney: 0,
+            totalpromoAmount: 0,
+            appid: '',
+            openid: '',
+            shareUrl: '/order/pages/orderPay/orderPay', //分享链接
+            memberId: ''
+        };
+    },
+    onLoad(option) {
+        this.orderNos = option.orderNos;
+        this.shareUrl += '?orderNos=' + option.orderNos;
+        this.memberId = option.memberId ? option.memberId : '';
+        this.getOrderDetail();
+        pages = getCurrentPages(); //当前页面栈
+        beforePage = pages[pages.length - 2];//上个页面
+        uni.login({
+            provider: "weixin",
+            success: (res) => {
+                this.appid = uni.getAccountInfoSync().miniProgram.appId;
+                this.ebigRequest('/wechat/' + this.appid + '/jscode2session', {jscode: res.code}, false, 'post', '', false, true).then((response) => {
+                    this.openid = response.value.openid;
+                })
+            }
+        })
+    },
+    onShareAppMessage() { //分享到微信好友
+        return {
+            title: '您有个订单需要支付',
+            // content: '',
+            // imageUrl: this.goodImgArr[0],
+            path: this.shareUrl,
+            succsee: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            })
+        }
+    },
+    onShareTimeline() { //分享到微信朋友圈
+        return {
+            title: '您有个订单需要支付',
+            // content: '',
+            // imageUrl: this.goodImgArr[0],
+            path: this.shareUrl,
+            succsee: ((data) => {
+                uni.showToast({
+                    title: "分享成功!",
+                    icon: "none",
+                });
+            }),
+            fail: ((err) => {
+                uni.showToast({
+                    title: "分享失败!",
+                    icon: "none",
+                });
+            })
+        }
+    },
+    methods: {
+        getOrderDetail() {
+            var url = '/order/showOrderPay';
+            var params = {};
+            params.orderNos = this.orderNos;
+            if(this.memberId != ''){
+                url = '/order/showOrderPayByGuest';
+                params.buyMemberId = this.memberId;
+            }
+            this.ebigRequest(url, params, false, '', '', true, true).then((res) => {
+                let totalpromoAmount = 0;
+                let pointsPayMoney = 0;
+                let walletAmount = 0;
+                console.log(res)
+                if(this.memberId != '' && (res.code == '3201' || res.code == 3201)){
+                    this.replaceUrl('orderDetail', 'order', 'orderNo=' + this.orderNos + '&memberId=' + this.memberId);
+                    return;
+                }
+                res = JSON.parse(JSON.stringify(res.data));
+                for (let i = 0; i < res.length; i++) {
+                    if (res[i].totalpromoAmount) {
+                        totalpromoAmount = (totalpromoAmount * 1 + res[i].totalpromoAmount * 1).toFixed(2);
+                    }
+                    if (res[i].pointsPayMoney) {
+                        pointsPayMoney = pointsPayMoney + res[i].pointsPayMoney.toFixed(2);
+                    }
+                    if (res[i].walletAmount) {
+                        walletAmount = walletAmount + res[i].walletAmount.toFixed(2);
+                    }
+                    this.orderDetail = res[i];
+                    this.shareUrl += '&memberId=' + res[0].memberId;
+                    this.totalPayAmount = res[i].totalPayAmount ? parseFloat(res[0].totalPayAmount).toFixed(2) : '0.00';            // 订单总应付
+                    this.scoreTotal = res[i].scoreTotal;                    // 订单应得积分
+                    this.quantityNum = res[i].orderDtls.length;
+                    this.totalAmount = res[i].totalAmount.toFixed(2);
+                    this.totalQuantity = res[i].totalQuantity;
+                    this.recipemoney = res[i].recipemoney;
+                    this.totalpromoAmount = totalpromoAmount;
+                    this.pointsPayMoney = pointsPayMoney;
+                    this.walletAmount = walletAmount;
+                    // 订单支付倒计时
+                    let autoCancelTime = res[i].autoCancelTime;
+                    if (autoCancelTime != '' && autoCancelTime != null && autoCancelTime != undefined) {
+                        autoCancelTime = autoCancelTime * 60 * 1000;
+                        let ordertime = res[i].inputDate;
+                        ordertime = ordertime.replace(new RegExp("-","gm"),"/");
+                        let ordertimeHaoMiao = (new Date(ordertime)).getTime(); //得到毫秒数
+
+                        let time = ordertimeHaoMiao + autoCancelTime;
+                        if (time > 0) {
+                            this.isCountDown = true;
+                            this.countDown(time, new Date().getTime());
+                        } else {
+                            this.isCountDown = false;
+                        }
+                    }
+                }
+            })
+        },
+        countDown: function (startTime, endDate) { //倒计时
+			var t = startTime - endDate;
+			var intDiff = parseInt(t / 1000);
+			var item = setInterval(() => {
+				var day = 0,
+					hour = 0,
+					minute = 0,
+					second = 0;
+				if (intDiff >= 0) {
+					day = Math.floor(intDiff / (60 * 60 * 24));
+					hour = Math.floor(intDiff / (60 * 60)) - (day * 24);
+					minute = Math.floor(intDiff / 60) - (day * 24 * 60) - (hour * 60);
+					second = Math.floor(intDiff) - (day * 24 * 60 * 60) - (hour * 60 * 60) - (minute * 60);
+					if (hour <= 9) hour = '0' + hour;
+					if (minute <= 9) minute = '0' + minute;
+                    if (second <= 9) second = '0' + second;
+                    Object.assign(this.countDownInfo, {
+                        day: day,
+                        hour: hour,
+                        minute: minute,
+                        second: second
+                    })
+					if (day == 0 && hour == '00' && minute == '00' && second == '00') {
+						clearInterval(item);
+                    }
+                    this.$forceUpdate();
+				};
+				intDiff--;
+			}, 1000);
+		},
+        actReduceFilter(discountAmount,promoReduceAmount){ //活动立减过滤
+			return (discountAmount * 1 + promoReduceAmount * 1).toFixed(2);
+		},
+        orderPay(){
+            // 立即支付
+            uni.showLoading({
+                title: '正在支付中...',
+                mask: true
+            });
+            
+            //重新调用支付详情接口，以确认订单是否可以支付
+            this.ebigRequest(this.memberId != ''?'/order/showOrderPayByGuest':'/order/showOrderPay', this.memberId != ''?{'orderNos': this.orderNos}:{'orderNos': this.orderNos,'buyMemberId': this.memberId}, false, '', '', true, true).then((res) => {
+                if(res.success == false && res.code == 3201){
+                    uni.hideLoading();
+                    let that = this;
+                    uni.showModal({
+                        title: '支付异常',
+                        content: res.errorMsg,
+                        showCancel: false,
+                        success: res1 => {
+                            this.replaceUrl('orderDetail', 'order', 'orderNo=' + that.orderNos + '&memberId=' + that.memberId);
+                        }
+                    });
+                }else{
+                    var params = {};
+                    params.payType = 'icbcjft';
+                    params.clientType = 'MINIAPP';
+                    params.b2cPayType = '3';
+                    params.orderNos = this.orderNos;
+                    params.openId = this.openid;
+                    params.appId = this.appid;
+
+                    this.ebigRequest('/epaycenter/ebig_paysrv/B2cOrder/prepare', params, false).then((data) => {
+                        if (typeof data == "string") {
+                            data = JSON.parse(data);
+                        }
+                        uni.requestPayment({
+                            timeStamp: data.timeStamp,
+                            nonceStr: data.nonceStr,
+                            package: data.package,
+                            signType: data.signType,
+                            paySign: data.paySign,
+                            success:(res) => {
+                                console.log(res);
+                                uni.showToast({
+                                    title: '支付成功',
+                                    duration: 2000
+                                });
+                                if (beforePage.route == 'order/pages/orderList/orderList') {
+                                    beforePage.$vm.getOrder('refresh');
+                                } else if (beforePage.route == 'order/pages/orderDetail/orderDetail') {
+                                    beforePage.$vm.getOrderDetail();
+                                }
+                                setTimeout(() => {
+                                    if(this.memberId != ''){
+                                        this.replaceUrl('orderSuccess', 'order', 'orderNo=' + this.orderNos + '&memberId=' + this.memberId);
+                                    }else{
+                                        this.replaceUrl('orderSuccess', 'order', 'orderNo=' + this.orderNos);
+                                    }
+                                }, 2000)
+                            },
+                            fail:(res) => {
+                                uni.hideLoading();
+                            },
+                        });
+                    }).catch(() => {
+                        uni.hideLoading();
+                    })
+                }
+                
+            })
+
+        }
+    },
+    filters: {
+        tofix2(value) {
+			if (value != undefined && value != null && value != '') {
+				value = parseFloat(value);
+				return value.toFixed(2);
+			} else {
+				return '0.00';
+			};
+        },
+        minImage (value, num) {                // 原图转成小图片
+			if (!value) {
+				return '../../static/image/default/no_img.jpg';
+			} else {
+				return value + '?x-oss-process=image/resize,m_mfit,h_' + num + ',w_' + num;
+			}
+		},
+    }
+}
+</script>
+
+<style lang="scss">
+.orderPayPage {
+    position: relative;
+
+    .payTips {
+        padding: 20rpx 20rpx 120rpx;
+
+        p {
+            text-align: center;
+        }.redFont {
+            font-size: 32rpx;
+            margin-bottom: 20rpx;
+
+            .all_money {
+                font-size: 56rpx;
+            }
+        }
+    }
+    .orderDetails {
+        width: 94%;
+        margin: -80rpx auto 0;
+        background: #FFFFFF;
+        border-radius: 16rpx;
+
+        .speBac {
+            padding: 16rpx 30rpx;
+            font-size: 28rpx;
+            border-bottom: 1px solid #ECEAEA;
+            box-sizing: border-box;
+        }
+        .detailNav {
+            padding: 16rpx 30rpx;
+            font-size: 28rpx;
+            border-bottom: 1px solid #ECEAEA;
+            box-sizing: border-box;
+
+            .goodImg {
+                overflow: hidden;
+                height: 144rpx;
+
+                .goodImgCont {
+                    display: block;
+                    margin-right: 10rpx;
+                    width: 140rpx;
+                    height: 140rpx;
+                    border: 1px solid #EEEEEE;
+                }
+            }
+        }
+    }
+    .detailNumP {
+        padding: 20rpx 30rpx;
+        font-size: 28rpx;
+        border-bottom: 1px solid #ECEAEA;
+        box-sizing: border-box;
+
+        .colorFont {
+            font-weight: 700;
+            color: #EA1F2E;
+        }
+    }
+    .orderNoLi {
+        overflow: hidden;
+        padding: 20rpx 30rpx;
+        color: #9D9D9D;
+        font-size: 28rpx;
+        span {
+            font-size: 28rpx;
+        }
+    }.orderft {
+        span {
+            span {
+                font-size: 32rpx;
+                font-weight: 700;
+            }
+        }
+    }
+    .payleft {
+        float: left;
+    }
+    .payRight {
+        float: right;
+    }
+    .orderNo {
+        padding: 30rpx;
+        overflow: hidden;
+        font-size: 28rpx;
+        font-weight: 700;
+    }
+
+    .btn_wrap {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        line-height: 80rpx;
+        padding: 20rpx;
+        box-sizing: border-box;
+        font-size: 36rpx;
+        background: #F2F2F2;
+
+        button {
+            border-radius: 80rpx;
+        }
+    }
+}
+
+</style>

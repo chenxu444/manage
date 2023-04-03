@@ -1,0 +1,1176 @@
+<!--
+ * @Description: 生成海报组件
+ * @Version: 1.0.0
+ * @Autor: gshow
+ * @Date: 2021-06-07 14:48:41
+ * @LastEditors: hch
+ * @LastEditTime: 2020-08-10 11:02:27
+ * 保存海报按钮和关闭按钮 在html代码中写出来 绑定点击方法然后透明 再用canvas 覆盖
+-->
+
+<template>
+  <view class="canvas-content" v-show="canvasShow">
+    <!-- 遮罩层 -->
+    <view class="canvas-mask"></view>
+    <canvas class="canvas" canvas-id="myCanvas"></canvas>
+    <!-- 海报 -->
+    <!-- 关闭按钮 -->
+    <!-- <cover-image class="canvas-close-btn" @tap="handleCanvasCancel" src="https://huangchunhongzz.gitee.io/imgs/poster/close_btn.png" alt="" srcset=""></cover-image> -->
+    <view class="button-wrapper" style="display: none">
+      <!-- 保存海报按钮 -->
+      <cover-view class="save-btn" @tap="handleSaveCanvasImage(true)"
+        >保存海报</cover-view
+      >
+      <cover-view class="save-btn cancel-btn" @tap="handleCanvasCancel"
+        >取消</cover-view
+      >
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      canvasShow: false,
+      attrs: {
+        //主板版海报
+        marginLR: 10,
+        marginTB: 20,
+        innerLR: 10,
+        innerTB: 10,
+        radius: 0.03,
+        fillColor: "#ffffff",
+        posterShareWidth: 36,
+        posterShareImgUrl: "",
+        posterConsignorName: "",
+        pcnFontSize: 30,
+        pcnLineHeight: 50,
+        pcnColor: "#000000",
+        posterActivityType: "",
+        patFontSize: 40,
+        patLineHeight: 40,
+        patColor: "#EE231E",
+        posterActivityName: "",
+        panFontSize: 14,
+        panLineHeight: 40,
+        panColor: "#FFFFFF",
+        posterRatio: 1.3,
+        posterImgUrl: "",
+        title: "",
+        titleFontSize: 14,
+        titleLineHeight: 20,
+        titleColor: "",
+        smallTitle: "",
+        smallTitleFontSize: 16,
+        smallTitleLineHeight: 24,
+        smallTitleColor: "",
+        miniTitle: "",
+        miniTitleFontSize: 12,
+        miniTitleLineHeight: 14,
+        miniTitleColor: "",
+        posterCodeUrl: "",
+        codeRatio: 1,
+        codeRadius: 0.5,
+        codeName: "",
+        codeFontSize: 16,
+        codeLineHeight: 16,
+        codeColor: "#000000",
+        codeTitle: "",
+        codeTitleFontSize: 12,
+        codeTitleLineHeight: 14,
+        codeTitleColor: "",
+        tips: "",
+        tipsFontSize: 12,
+        tipsLineHeight: 14,
+        tipsColor: "",
+        posterBgUrl: "",
+      },
+    };
+  },
+  props: {
+    canvasAttr: {
+      type: Object,
+      default: {
+        marginLR: 10,
+        marginTB: 20,
+        innerLR: 10,
+        innerTB: 10,
+        radius: 0.03,
+        fillColor: "#ffffff",
+        posterShareWidth: 36,
+        posterShareImgUrl: "",
+        posterConsignorName: "",
+        pcnFontSize: 30,
+        pcnLineHeight: 50,
+        pcnColor: "#000000",
+        posterActivityType: "",
+        patFontSize: 40,
+        patLineHeight: 40,
+        patColor: "#EE231E",
+        posterActivityName: "",
+        panFontSize: 14,
+        panLineHeight: 40,
+        panColor: "#FFFFFF",
+        posterRatio: 1.3,
+        posterImgUrl: "",
+        title: "",
+        titleFontSize: 16,
+        titleLineHeight: 25,
+        titleColor: "",
+        smallTitle: "",
+        smallTitleFontSize: 16,
+        smallTitleLineHeight: 24,
+        smallTitleColor: "",
+        miniTitle: "",
+        miniTitleFontSize: 12,
+        miniTitleLineHeight: 14,
+        miniTitleColor: "",
+        posterCodeUrl: "",
+        codeRatio: 1,
+        codeRadius: 0.5,
+        codeName: "",
+        codeFontSize: 16,
+        codeLineHeight: 16,
+        codeColor: "#000000",
+        codeTitle: "",
+        codeTitleFontSize: 12,
+        codeTitleLineHeight: 14,
+        codeTitleColor: "",
+        tips: "",
+        tipsFontSize: 12,
+        tipsLineHeight: 14,
+        tipsColor: "",
+        posterBgUrl: "",
+      },
+    },
+    posterBgFlag: {
+      //是否展示海报背景图
+      type: Boolean,
+      default: false,
+    },
+    simpleFlag: {
+      //是否展示简单版海报
+      type: Boolean,
+      default: false,
+    },
+  },
+  mounted() {
+    this.system = this.getSystem();
+  },
+  methods: {
+    /**
+     * @description: 展示海报
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    posterShow() {
+      this.canvasShow = true;
+      Object.assign(this.attrs, this.canvasAttr);
+      this.attrs = {
+        marginLR: this.attrs.marginLR * this.systemScale,
+        marginTB: this.attrs.marginTB * this.systemScale,
+        innerLR: this.attrs.innerLR * this.systemScale,
+        innerTB: this.attrs.innerTB * this.systemScale,
+        radius: this.attrs.radius,
+        fillColor: this.attrs.fillColor,
+        posterShareWidth: this.attrs.posterShareWidth,
+        posterShareImgUrl: this.attrs.posterShareImgUrl,
+        posterConsignorName: this.attrs.posterConsignorName,
+        pcnFontSize: this.attrs.pcnFontSize,
+        pcnLineHeight: this.attrs.pcnLineHeight,
+        pcnColor: this.attrs.pcnColor,
+        posterActivityType: this.attrs.posterActivityType,
+        patFontSize: this.attrs.patFontSize,
+        patLineHeight: this.attrs.patLineHeight,
+        patColor: this.attrs.patColor,
+        posterActivityName: this.attrs.posterActivityName,
+        panFontSize: this.attrs.panFontSize,
+        panLineHeight: this.attrs.panLineHeight,
+        panColor: this.attrs.panColor,
+        posterRatio: this.attrs.posterRatio,
+        posterImgUrl: this.attrs.posterImgUrl,
+        title: this.attrs.title,
+        titleFontSize: this.attrs.titleFontSize * this.systemScale,
+        titleLineHeight: this.attrs.titleLineHeight * this.systemScale,
+        titleColor: this.attrs.titleColor,
+        smallTitle: this.attrs.smallTitle,
+        smallTitleFontSize: this.attrs.smallTitleFontSize * this.systemScale,
+        smallTitleLineHeight:
+          this.attrs.smallTitleLineHeight * this.systemScale,
+        smallTitleColor: this.attrs.smallTitleColor,
+        miniTitle: this.attrs.miniTitle,
+        miniTitleFontSize: this.attrs.miniTitleFontSize * this.systemScale,
+        miniTitleLineHeight: this.attrs.miniTitleLineHeight * this.systemScale,
+        miniTitleColor: this.attrs.miniTitleColor,
+        posterCodeUrl: this.attrs.posterCodeUrl,
+        codeRatio: this.attrs.codeRatio,
+        codeRadius: this.attrs.codeRadius,
+        codeName: this.attrs.codeName,
+        codeFontSize: this.attrs.codeFontSize,
+        codeLineHeight: this.attrs.codeLineHeight,
+        codeColor: this.attrs.codeColor,
+        codeTitle: this.attrs.codeTitle,
+        codeTitleFontSize: this.attrs.codeTitleFontSize,
+        codeTitleLineHeight: this.attrs.codeTitleLineHeight,
+        codeTitleColor: this.attrs.codeTitleColor,
+        tips: this.attrs.tips,
+        tipsFontSize: this.attrs.tipsFontSize,
+        tipsLineHeight: this.attrs.tipsLineHeight,
+        tipsColor: this.attrs.tipsColor,
+        posterBgUrl: this.attrs.posterBgUrl,
+      };
+
+      if (this.simpleFlag) {
+        this.creatSimplePoster(this.attrs);
+      } else {
+        this.creatPoster(this.attrs);
+      }
+    },
+    /**
+     * @description: 生成海报
+     * @param {number} marginTB 上下距离
+     * @param {number} marginLR 左右距离
+     * @param {number} innerLR 上下内边距
+     * @param {number} innerTB 左右内边距
+     * @param {number} radius 圆角
+     * @param {string} fillColor 海报填充背景色
+     * @param {string} posterBgUrl 海报背景图片
+     * @param {number} posterShareWidth 海报分享人头像宽高比例
+     * @param {string} posterShareImgUrl 海报分享人头像
+     * @param {string} posterConsignorName 海报商品所属商户名称
+     * @param {number} pcnFontSize 字体大小
+     * @param {number} pcnLineHeight 标题文本的行高大小
+     * @param {string} pcnColor 标题文本的字体颜色
+     * @param {string} posterActivityType 海报商品参与的活动类型
+     * @param {number} patFontSize 字体大小
+     * @param {number} patLineHeight 标题文本的行高大小
+     * @param {string} patColor 标题文本的字体颜色
+     * @param {string} posterActivityName 海报商品参与的活动名称
+     * @param {number} panFontSize 字体大小
+     * @param {number} panLineHeight 标题文本的行高大小
+     * @param {string} panColor 标题文本的字体颜色
+     * @param {number} posterRatio 海报主图片宽高比例
+     * @param {string} posterImgUrl 海报主图片url
+     * @param {string} title 海报的标题
+     * @param {number} titleFontSize 字体大小
+     * @param {number} titleLineHeight 标题文本的行高大小
+     * @param {string} titleColor 标题文本的字体颜色
+     * @param {string} smallTitle 海报的小标题
+     * @param {number} smallTitleFontSize 小标题字体大小
+     * @param {number} smallTitleLineHeight 小标题文本的行高大小
+     * @param {string} smallTitleColor 小标题文本的字体颜色
+     * @param {string} miniTitle 海报的mini标题
+     * @param {number} miniTitleFontSize mini标题字体大小
+     * @param {number} miniTitleLineHeight mini标题文本的行高大小
+     * @param {string} miniTitleColor mini标题文本的字体颜色
+     * @param {string} posterCodeUrl 小程序码图片
+     * @param {number} codeRatio 小程序码的宽度比例
+     * @param {number} codeRadius 小程序码的圆角
+     * @param {string} codeName 小程序码名字
+     * @param {number} codeFontSize 小程序码名字字体大小
+     * @param {number} codeLineHeight 小程序码名字的行高大小
+     * @param {string} codeColor 小程序码名字的字体颜色
+     * @param {string} codeTitle 小程序码名字下面内容
+     * @param {number} codeTitleFontSize 小程序码名字下面内容字体大小
+     * @param {number} codeTitleLineHeight 小程序码名字下面内容文本的行高大小
+     * @param {string} codeTitleColor 小程序码名字下面内容文本的字体颜色
+     * @param {string} tips 提示语
+     * @param {number} tipsFontSize 提示语字体大小
+     * @param {number} tipsLineHeight 提示语文本的行高大小
+     * @param {string} tipsColor 提示语文本的字体颜色
+     * @author: hch
+     */
+    async creatPoster(canvasAttr) {
+      uni.showLoading({
+        title: "生成海报中...",
+      });
+      const ctx = uni.createCanvasContext("myCanvas", this);
+      ctx.draw(); //清空之前的海报
+      // 根据设备屏幕大小和距离屏幕上下左右距离，及圆角绘制背景
+      this.roundRect(
+        ctx,
+        canvasAttr.marginLR,
+        canvasAttr.marginTB,
+        this.system.w - 2 * canvasAttr.marginLR,
+        this.scale * this.system.w - 2 * canvasAttr.marginTB - 100,
+        (this.system.w - 2 * canvasAttr.marginLR) * canvasAttr.radius,
+        canvasAttr.fillColor
+      );
+      if (this.posterBgFlag) {
+        await this.creatBgImg(ctx, canvasAttr);
+      }
+      if (canvasAttr.posterShareImgUrl && canvasAttr.posterShareImgUrl.indexOf('https://') != -1) {
+        let shareImgCanvasAttr = {
+          posterShareImgUrl: canvasAttr.posterShareImgUrl,
+          shareImgX: canvasAttr.marginLR + canvasAttr.innerLR,
+          shareImgY: canvasAttr.marginTB + canvasAttr.innerTB,
+          marginLR: canvasAttr.marginLR,
+          innerLRL: canvasAttr.innerLR,
+          radius: canvasAttr.radius,
+          posterShareWidth: canvasAttr.posterShareWidth,
+        };
+        await this.creatShareImg(ctx, shareImgCanvasAttr);
+      }
+
+      var cnCanvasAttr = {
+        title: canvasAttr.posterConsignorName,
+        fontSize: canvasAttr.pcnFontSize,
+        lineHeight: canvasAttr.pcnLineHeight,
+        color: canvasAttr.pcnColor,
+        titleX: canvasAttr.marginLR * 1 + canvasAttr.innerLR * 2 + canvasAttr.posterShareWidth * 2 + 10,
+        titleY: (canvasAttr.marginTB + canvasAttr.innerTB) * 2 - 4,
+        titleWidth:
+          this.system.w -
+          2 * canvasAttr.marginLR -
+          canvasAttr.innerLR -
+          canvasAttr.posterShareWidth - 10,
+        notShowAll: true,
+        isCenter: true,
+        isBold: true,
+      };
+      let textCNY = this.creatTitle(ctx, cnCanvasAttr);
+      let textPATY = 0;
+      if (canvasAttr.posterActivityType != "") {
+        let posterCanvasAttr = {
+          title: canvasAttr.posterActivityType,
+          fontSize: canvasAttr.patFontSize,
+          lineHeight: canvasAttr.patLineHeight,
+          color: canvasAttr.patColor,
+          titleX: this.system.w / 2,
+          titleY:
+            canvasAttr.marginTB +
+            canvasAttr.innerLR +
+            canvasAttr.posterShareWidth * 2 +
+            8,
+          isBold: true,
+          isCenter: true,
+        };
+        textPATY = this.creatTitle(ctx, posterCanvasAttr);
+      }
+      let imgAttr = await this.creatImg(ctx, canvasAttr);
+      // 活动名称背景
+      if(canvasAttr.posterActivityName) {
+        this.shareImgActBg(ctx, canvasAttr);
+        let pCanvasAttr = {
+          title: canvasAttr.posterActivityName,
+          fontSize: canvasAttr.panFontSize,
+          lineHeight: canvasAttr.panLineHeight,
+          color: canvasAttr.panColor,
+          titleX: this.system.w / 2,
+          titleY: canvasAttr.marginTB +
+          canvasAttr.innerLR +
+          canvasAttr.posterShareWidth * 2 -
+          25 +
+          (canvasAttr.posterActivityType != ""
+            ? canvasAttr.patLineHeight + 10
+            : 0) + ((this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+                canvasAttr.posterRatio) - 15,
+          isCenter: true,
+          isBold: true,
+        };
+        let pText = this.creatTitle(ctx, pCanvasAttr);
+      }
+      // 绘制标题 textY 绘制文本的y位置
+      let tCanvasAttr = {
+        title: canvasAttr.title,
+        fontSize: canvasAttr.titleFontSize,
+        lineHeight: canvasAttr.titleLineHeight,
+        color: canvasAttr.titleColor,
+        titleX: this.system.w / 2,
+        titleY:
+          (this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+            canvasAttr.posterRatio +
+          (canvasAttr.posterActivityType != "" ? textPATY - 8 : textCNY) +
+          canvasAttr.titleLineHeight +
+          20,
+        titleWidth:
+          (this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+          2,
+        isCenter: true,
+        isBold: true,
+      };
+      let textY = this.creatTitle(ctx, tCanvasAttr);
+      let textMY = "";
+      if (canvasAttr.miniTitle) {
+        let mntCanvasAttr = {
+          title: canvasAttr.miniTitle,
+          fontSize: canvasAttr.miniTitleFontSize,
+          lineHeight: canvasAttr.miniTitleLineHeight,
+          color: canvasAttr.miniTitleColor,
+          titleX: this.system.w / 2,
+          titleY: textY + canvasAttr.miniTitleLineHeight + 8.5,
+          isLineThrough: canvasAttr.miniTitle != ' ' ? true : false,
+          isCenter: true,
+          isBold: false,
+        };
+        textMY = this.creatTitle(ctx, mntCanvasAttr);
+      }
+      let smtCanvasAttr = {
+        title: canvasAttr.smallTitle,
+        fontSize: canvasAttr.smallTitleFontSize,
+        lineHeight: canvasAttr.smallTitleLineHeight,
+        color: canvasAttr.smallTitleColor,
+        titleX: this.system.w / 2,
+        titleY: (textMY ? textMY : textY) + canvasAttr.smallTitleLineHeight + 7,
+        isLineThrough: false,
+        isCenter: true,
+        notShowAll: true,
+        isBold: false,
+      };
+      let textSY = this.creatTitle(ctx, smtCanvasAttr);
+
+      // 绘制虚线
+      let dashY = this.creatDash(ctx, canvasAttr, textSY);
+
+      // 绘制小程序码
+      let codeCanvasObj = {
+        posterCodeUrl: canvasAttr.posterCodeUrl,
+        codeX:
+          (this.system.w - canvasAttr.marginLR - canvasAttr.innerLR) / 2 + 65,
+        codeY: dashY - 3,
+        marginLR: canvasAttr.marginLR,
+        innerLR: canvasAttr.innerLR,
+        codeRatio: canvasAttr.codeRatio,
+        codeRadius: canvasAttr.codeRadius,
+      };
+      this.creatCode(ctx, codeCanvasObj);
+      // 扫码的提示
+      let codeCanvasAttr = {
+        title: canvasAttr.codeName,
+        fontSize: canvasAttr.codeFontSize,
+        lineHeight: canvasAttr.codeLineHeight,
+        color: canvasAttr.codeColor,
+        titleX: canvasAttr.marginLR * 2 + canvasAttr.innerLR * 2 + 76,
+        titleY: dashY + 24,
+        titleWidth:
+          (this.system.w - canvasAttr.marginLR - canvasAttr.innerLR) / 2 + 20,
+        notShowAll: true,
+        isCenter: true,
+      };
+      let codeY = this.creatTitle(ctx, codeCanvasAttr);
+
+      // 扫码提示下面文字内容
+      let codeBTCanvasAttr = {
+        title: canvasAttr.codeTitle,
+        fontSize: canvasAttr.codeTitleFontSize,
+        lineHeight: canvasAttr.codeTitleLineHeight,
+        color: canvasAttr.codeTitleColor,
+        titleX: canvasAttr.marginLR * 2 + canvasAttr.innerLR * 2 + 67,
+        titleY: codeY + canvasAttr.codeLineHeight + 8,
+        titleWidth:
+          (this.system.w - canvasAttr.marginLR - canvasAttr.innerLR) / 2 + 20,
+        notShowAll: true,
+        isCenter: true,
+      };
+      let codeBTY = this.creatTitle(ctx, codeBTCanvasAttr);
+
+      // 提示语
+      let tipsCanvasAttr = {
+        title: canvasAttr.tips,
+        fontSize: canvasAttr.tipsFontSize,
+        lineHeight: canvasAttr.tipsLineHeight,
+        color: canvasAttr.tipsColor,
+        titleX: canvasAttr.marginLR * 2 + canvasAttr.innerLR * 2 + 60,
+        titleY: codeBTY + canvasAttr.codeLineHeight + 4,
+        titleWidth:
+          (this.system.w - canvasAttr.marginLR - canvasAttr.innerLR) / 2 + 20,
+        isCenter: true,
+      };
+      this.creatTitle(ctx, tipsCanvasAttr);
+    },
+    /**
+     * @description: 生成海报(简单版)
+     * @param {number} marginTB 上下距离
+     * @param {number} marginLR 左右距离
+     * @param {number} innerLR 上下内边距
+     * @param {number} innerTB 左右内边距
+     * @param {number} radius 圆角
+     * @param {string} fillColor 海报填充背景色
+     * @param {string} posterBgUrl 海报背景图
+     * @param {number} posterShareWidth 海报分享人头像宽度
+     * @param {String} posterShareImgUrl 海报分享人头像图片url
+     * @param {String} title 海报的title
+     * @param {number} titleFontSize 字体大小
+     * @param {number} titleLineHeight 标题文本的行高大小
+     * @param {String} posterCodeUrl 小程序码图片
+     * @param {number} codeRatio 小程序码的宽度比例
+     * @param {number} codeRadius 小程序码的圆角
+     * @param {String} codeName 小程序码名字
+     * @param {number} codeFontSize 小程序码名字字体大小
+     * @param {number} codeLineHeight 小程序码名字的行高大小
+     * @param {string} codeColor 小程序码名字的字体颜色
+     * @param {String} tips 提示语
+     * @author: hch
+     */
+    async creatSimplePoster(canvasAttr) {
+      uni.showLoading({
+        title: "生成海报中...",
+      });
+      const ctx = uni.createCanvasContext("myCanvas", this);
+      ctx.draw(); //清空之前的海报
+      // 根据设备屏幕大小和距离屏幕上下左右距离，及圆角绘制背景
+      this.roundRect(
+        ctx,
+        canvasAttr.marginLR,
+        canvasAttr.marginTB,
+        this.system.w - 2 * canvasAttr.marginLR,
+        this.scale * this.system.w - 2 * canvasAttr.marginTB - 100,
+        (this.system.w - 2 * canvasAttr.marginLR) * canvasAttr.radius,
+        canvasAttr.fillColor
+      );
+      if (this.posterBgFlag) {
+        await this.creatBgImg(ctx, canvasAttr);
+      }
+      // 绘制小程序码
+      let codeCanvasObj = {
+        posterCodeUrl: canvasAttr.posterCodeUrl,
+        codeX:
+          (this.system.w -
+            ((this.system.w -
+              2 * canvasAttr.marginLR -
+              2 * canvasAttr.innerLR) /
+              2) *
+              canvasAttr.codeRatio) /
+          2,
+        codeY: canvasAttr.innerTB + 10,
+        marginLR: canvasAttr.marginLR,
+        innerLR: canvasAttr.innerLR,
+        codeRatio: canvasAttr.codeRatio,
+        codeRadius: canvasAttr.codeRadius,
+      };
+      this.creatCode(ctx, codeCanvasObj);
+
+      // 小程序码提示
+      let titleCanvasAttr = {
+        title: canvasAttr.title,
+        fontSize: canvasAttr.titleFontSize,
+        lineHeight: canvasAttr.titleLineHeight,
+        color: canvasAttr.titleColor,
+        titleX: this.system.w / 2,
+        titleY:
+          ((this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+            2) *
+            canvasAttr.codeRatio +
+          canvasAttr.innerTB +
+          canvasAttr.titleLineHeight +
+          10,
+        notShowAll: true,
+        isBold: true,
+        isCenter: true,
+      };
+      let titleY = this.creatTitle(ctx, titleCanvasAttr);
+      if(canvasAttr.posterShareImgUrl){
+        let shareImgCanvasAttr = {
+          posterShareImgUrl: canvasAttr.posterShareImgUrl,
+          shareImgX: (this.system.w - canvasAttr.posterShareWidth) / 2,
+          shareImgY: titleY + 15,
+          marginLR: canvasAttr.marginLR,
+          innerLRL: canvasAttr.innerLR,
+          radius: canvasAttr.radius,
+          posterShareWidth: canvasAttr.posterShareWidth,
+        };
+        await this.creatShareImg(ctx, shareImgCanvasAttr);
+      }
+
+      // 分享人昵称
+      let reg = /.*[\u4e00-\u9fa5]+.*$/;
+      let allReg = /^[\u4E00-\u9FA5]+$/;
+      let re = new RegExp("^[a-zA-Z]+$");
+      let ren = /^(?=.*[a-zA-Z]+)(?=.*[0-9]+)[a-zA-Z0-9]+$/;
+      let codeNameCanvasAttr = {
+        title: canvasAttr.codeName,
+        fontSize: canvasAttr.codeFontSize,
+        lineHeight: canvasAttr.codeLineHeight,
+        color: canvasAttr.codeColor,
+        titleX: this.system.w / 2,
+        titleY: titleY + (canvasAttr.posterShareImgUrl ? canvasAttr.posterShareWidth : canvasAttr.posterShareWidth / 2) + 15,
+        notShowAll: true,
+        isBold: true,
+        isCenter: true,
+      };
+      this.creatTitle(ctx, codeNameCanvasAttr);
+    },
+    /**
+     *
+     * @param {CanvasContext} ctx canvas上下文
+     * @param {number} x 圆角矩形选区的左上角 x坐标
+     * @param {number} y 圆角矩形选区的左上角 y坐标
+     * @param {number} w 圆角矩形选区的宽度
+     * @param {number} h 圆角矩形选区的高度
+     * @param {number} r 圆角的半径
+     * @param {String} fillColor 天聪颜色
+     */
+    roundRect(ctx, x, y, w, h, r, fillColor = "#ffffff") {
+      ctx.save();
+      ctx.beginPath();
+      // 绘制左上角圆弧
+      ctx.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5);
+      // 绘制border-top
+      // 画一条线 x终点、y终点
+      ctx.lineTo(x + w - r, y);
+      // 绘制右上角圆弧
+      ctx.arc(x + w - r, y + r, r, Math.PI * 1.5, Math.PI * 2);
+      // 绘制border-right
+      ctx.lineTo(x + w, y + h - r);
+      // 绘制右下角圆弧
+      ctx.arc(x + w - r, y + h - r, r, 0, Math.PI * 0.5);
+      // 绘制左下角圆弧
+      ctx.arc(x + r, y + h - r, r, Math.PI * 0.5, Math.PI);
+      // 绘制border-left
+      ctx.lineTo(x, y + r);
+      // 填充颜色
+      ctx.setFillStyle("#ffffff");
+      ctx.fill();
+      // 剪切，剪切之后的绘画绘制剪切区域内进行，需要save与restore 这个很重要 不然没办法保存
+      ctx.clip();
+    },
+    /**
+     * @description: 获取设备信息
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    getSystem() {
+      let system = uni.getSystemInfoSync();
+      this.scale = 667 / 375; //按照苹果留 375*667比例 其他型号手机等比例缩放 显示
+      this.systemScale = system.windowWidth / 375; //按照苹果留 375*667比例 其他型号手机等比例缩放 显示
+      return { w: system.windowWidth, h: system.windowHeight };
+    },
+    /**
+     * @description: 生成海报背景图
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    creatBgImg(ctx, canvasAttr) {
+      let _this = this;
+      return new Promise((resolve, reject) => {
+        if (canvasAttr.posterBgUrl != "") {
+          ctx.drawImage(
+            canvasAttr.posterBgUrl,
+            canvasAttr.marginLR,
+            canvasAttr.marginTB,
+            _this.system.w - 2 * canvasAttr.marginLR,
+            _this.scale * _this.system.w - 2 * canvasAttr.marginTB - 100
+          );
+          ctx.restore();
+          ctx.draw(true);
+        }
+        resolve();
+      });
+    },
+    /**
+     * @description: 生成海报分享人头像图
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    creatShareImg(ctx, canvasAttr) {
+      let _this = this;
+      return new Promise((resolve, reject) => {
+        if (canvasAttr.posterShareImgUrl != "") {
+          uni.getImageInfo({
+            src: canvasAttr.posterShareImgUrl,
+            success(res) {
+              ctx.restore();
+              ctx.draw(true);
+              const imgAttr = res; //海报展示图片信息
+              let sale =
+                res.width /
+                (_this.system.w -
+                  2 * canvasAttr.marginLR -
+                  2 * canvasAttr.innerLR);
+              _this.roundRect(
+                ctx,
+                canvasAttr.shareImgX,
+                canvasAttr.shareImgY,
+                canvasAttr.posterShareWidth,
+                canvasAttr.posterShareWidth,
+                (_this.system.w - 2 * canvasAttr.marginLR) * canvasAttr.radius
+              );
+              ctx.drawImage(
+                res.path,
+                canvasAttr.shareImgX,
+                canvasAttr.shareImgY,
+                canvasAttr.posterShareWidth,
+                canvasAttr.posterShareWidth
+              );
+              ctx.restore();
+              ctx.draw(true);
+              resolve({ imgAttr, sale });
+            },
+            fail(res) {
+              console.log("fail -> res", res);
+              uni.showToast({
+                title: "海报分享人头像下载异常",
+                duration: 2000,
+                icon: "none",
+              });
+              _this.handleCanvasCancel();
+            },
+          });
+        }
+      });
+    },
+    /**
+     * @description: 生成头部海报图
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    creatImg(ctx, canvasAttr) {
+      let _this = this;
+      return new Promise((resolve, reject) => {
+        uni.getImageInfo({
+          src: canvasAttr.posterImgUrl,
+          success(res) {
+            ctx.restore();
+            ctx.draw(true);
+
+            const imgAttr = res; //海报展示图片信息
+            let sale =
+              res.width /
+              (_this.system.w -
+                2 * canvasAttr.marginLR -
+                2 * canvasAttr.innerLR);
+            let w =
+              (_this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+              canvasAttr.posterRatio;
+            let x = (_this.system.w - w) / 2;
+            let y =
+              canvasAttr.marginTB +
+              canvasAttr.innerLR +
+              canvasAttr.posterShareWidth * 2 -
+              25 +
+              (canvasAttr.posterActivityType != ""
+                ? canvasAttr.patLineHeight + 10
+                : 0);
+            let r = 6;
+            
+            _this.roundRect(
+              ctx,
+              x,
+              y,
+              w,
+              w,
+              (_this.system.w - 2 * canvasAttr.marginLR) * canvasAttr.radius
+            );
+
+            ctx.beginPath(); //开始绘制
+            //先画个圆   前两个参数确定了圆心 （x,y） 坐标  第三个参数是圆的半径  四参数是绘图方向  默认是false，即顺时针
+            ctx.arc(
+              x + r,
+              y + r,
+              r,
+              Math.PI,
+              Math.PI * 1.5
+            );
+            ctx.arc(
+              w + x - r,
+              y + r,
+              r,
+              Math.PI * 1.5,
+              Math.PI * 2
+            );
+            ctx.arc(
+              w + x - r,
+              w + y - r,
+              r,
+              0,
+              Math.PI * 0.5
+            );
+            ctx.arc(
+              x + r,
+              y + w - r,
+              r,
+              Math.PI * 0.5,
+              Math.PI
+            );
+            ctx.clip(); //画好了圆 剪切  原始画布中剪切任意形状和尺寸。一旦剪切了某个区域，则所有之后的绘图都会被限制在被剪切的区域内 这也是我们要save上下文的原因
+
+            ctx.drawImage(
+              res.path,
+              x,
+              y,
+              w,
+              w
+            );
+            ctx.restore();
+            ctx.draw(true);
+            resolve({ imgAttr, sale });
+          },
+          fail(res) {
+            console.log("fail -> res", res);
+            uni.showToast({
+              title: "海报主图下载异常",
+              duration: 2000,
+              icon: "none",
+            });
+            _this.handleCanvasCancel();
+          },
+        });
+      });
+    },
+    /**
+     * @description: 存在优惠活动时生成背景颜色
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    shareImgActBg(ctx, canvasAttr) {
+      let w =
+        (this.system.w - 2 * canvasAttr.marginLR - 2 * canvasAttr.innerLR) /
+        canvasAttr.posterRatio;
+      let h = 40;
+      let x = (this.system.w - w) / 2;
+      let y =
+        canvasAttr.marginTB +
+        canvasAttr.innerLR +
+        canvasAttr.posterShareWidth * 2 -
+        25 +
+        (canvasAttr.posterActivityType != ""
+          ? canvasAttr.patLineHeight + 10
+          : 0) + w - 40;
+      let r = 6;
+
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(238, 35, 30, 0.75)";
+
+      // 左上角
+      ctx.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5)
+      // border-top
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + w - r, y)
+      ctx.lineTo(x + w, y + r)
+      // 右上角
+      ctx.arc(x + w - r, y + r, r, Math.PI * 1.5, Math.PI * 2)
+      // border-right
+      ctx.lineTo(x + w, y + h - r)
+      ctx.lineTo(x + w - r, y + h)
+      // 右下角
+      ctx.arc(x + w - r, y + h - r, r, 0, Math.PI * 0.5)
+      // border-bottom
+      ctx.lineTo(x + r, y + h)
+      ctx.lineTo(x, y + h - r)
+      // 左下角
+      ctx.arc(x + r, y + h - r, r, Math.PI * 0.5, Math.PI)
+      // border-left
+      ctx.lineTo(x, y + r)
+      ctx.lineTo(x + r, y)
+
+      ctx.fill();
+      ctx.closePath();
+    },
+    /**
+     * @description: 生成横向文本标题
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    creatTitle(ctx, canvasAttr) {
+      ctx.restore(); //恢复之前保存的绘图上下文
+      ctx.save();
+      ctx.font =
+        "normal " +
+        (canvasAttr.isBold ? "bold " : "") +
+        Math.round(canvasAttr.fontSize) +
+        "px 'Helvetica Neue',Helvetica,sans-serif";
+      ctx.setFontSize(canvasAttr.fontSize);
+      if (canvasAttr.color != "") {
+        ctx.setFillStyle(canvasAttr.color); //文字颜色：默认黑色
+      }
+
+      let textY = this.drawText(
+        ctx,
+        canvasAttr.title,
+        canvasAttr.titleX,
+        canvasAttr.titleY,
+        canvasAttr.titleWidth,
+        canvasAttr.lineHeight,
+        canvasAttr.notShowAll,
+        canvasAttr.isCenter
+      );
+      if (canvasAttr.isLineThrough) {
+        ctx.moveTo(
+          (this.system.w - canvasAttr.title.length * canvasAttr.fontSize) / 2,
+          canvasAttr.titleY - canvasAttr.lineHeight / 3.5
+        ); //设置线条的起始路径坐标
+        ctx.lineTo(
+          (this.system.w - canvasAttr.title.length * canvasAttr.fontSize) / 2 + canvasAttr.title.length * canvasAttr.fontSize,
+          canvasAttr.titleY - canvasAttr.lineHeight / 3.5
+        ); //设置线条的终点路径坐标
+        ctx.setStrokeStyle(canvasAttr.titleColor);
+        ctx.stroke(); //对当前路径进行描边
+        ctx.closePath(); //关闭当前路径
+      }
+      ctx.draw(true);
+      return textY;
+    },
+    /**
+     * @description: 生成虚线
+     */
+    creatDash(ctx, canvasAttr, posterY) {
+      ctx.setStrokeStyle("#EEEEEE");
+      ctx.setLineWidth(1);
+      ctx.beginPath();
+      ctx.moveTo(canvasAttr.marginLR + canvasAttr.innerLR + 20, posterY + 14);
+      ctx.lineTo(
+        this.system.w - canvasAttr.marginLR - canvasAttr.innerLR - 20,
+        posterY + 14
+      );
+      ctx.stroke();
+      ctx.draw(true);
+      return posterY + 24;
+    },
+    /**
+     * @param {Object} ctx canvas上下文
+     * @param {String} text 需要输入的文本
+     * @param {Number} x X轴起始位置
+     * @param {Number} y Y轴起始位置
+     * @param {Number} maxWidth 单行最大宽度
+     * @param {Number} lineHeight 行高
+     */
+    drawText(ctx, text, x, y, maxWidth, lineHeight, notShowAll, isCenter) {
+      let arrText = text.split("");
+      let line = "";
+      let lineWidth = 0;
+      for (let n = 0; n < arrText.length; n++) {
+        let testLine = line + arrText[n];
+        let metrics = ctx.measureText(testLine);
+        let textWidth = metrics.width;
+        lineWidth = textWidth;
+        if (textWidth > maxWidth && n > 0) {
+          if (notShowAll) {
+            line = line.substring(0, line.length - 1);
+            line = line + "...";
+            break;
+          }
+          ctx.fillText(line, x, y);
+          line = arrText[n];
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if(isCenter){
+        ctx.setTextAlign('center');
+      }
+      ctx.fillText(line, x, y);
+      return y;
+    },
+    /**
+     * @description: 小程序码
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    creatCode(ctx, canvasAttr) {
+      const _this = this;
+      uni.getImageInfo({
+        src: canvasAttr.posterCodeUrl,
+        success(res) {
+          ctx.restore();
+          ctx.draw(true);
+          _this.roundRect(
+            ctx,
+            canvasAttr.codeX,
+            canvasAttr.codeY,
+            ((_this.system.w -
+              2 * canvasAttr.marginLR -
+              2 * canvasAttr.innerLR) /
+              2) *
+              canvasAttr.codeRatio,
+            ((_this.system.w -
+              2 * canvasAttr.marginLR -
+              2 * canvasAttr.innerLR) /
+              2) *
+              canvasAttr.codeRatio,
+            _this.system.w * canvasAttr.codeRatio * canvasAttr.codeRadius
+          );
+          ctx.drawImage(
+            res.path,
+            canvasAttr.codeX,
+            canvasAttr.codeY,
+            ((_this.system.w -
+              2 * canvasAttr.marginLR -
+              2 * canvasAttr.innerLR) /
+              2) *
+              canvasAttr.codeRatio,
+            ((_this.system.w -
+              2 * canvasAttr.marginLR -
+              2 * canvasAttr.innerLR) /
+              2) *
+              canvasAttr.codeRatio
+          );
+          ctx.restore();
+          ctx.draw(true);
+          _this.$nextTick(() => {
+            setTimeout(() => {
+              _this.handleSaveCanvasImage();
+              uni.hideLoading();
+            }, 100);
+          });
+        },
+        fail() {
+          uni.showToast({
+            title: "海报生成失败",
+            duration: 2000,
+            icon: "none",
+          });
+          _this.handleCanvasCancel();
+        },
+      });
+    },
+    /**
+     * @description: 保存到系统相册
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    handleSaveCanvasImage(type) {
+      const canvasAttr = this.attrs;
+      if (type) {
+        uni.showLoading({
+          title: "保存中...",
+        });
+      }
+      let _this = this;
+      // 把画布转化成临时文件
+      uni.canvasToTempFilePath(
+        {
+          x: canvasAttr.marginLR,
+          y: canvasAttr.marginTB,
+          width: this.system.w - 2 * canvasAttr.marginLR, // 画布的宽
+          height: this.scale * this.system.w - 2 * canvasAttr.marginTB - 100, // 画布的高
+          destWidth: (this.system.w - 2 * canvasAttr.marginLR) * 5,
+          destHeight:
+            (this.scale * this.system.w - 2 * canvasAttr.marginTB - 100) * 5,
+          canvasId: "myCanvas",
+          success(res) {
+            //保存图片至相册
+            if (type) {
+              uni.saveImageToPhotosAlbum({
+                filePath: res.tempFilePath,
+                success(res) {
+                  uni.hideLoading();
+                  uni.showToast({
+                    title: "图片保存成功，可以去分享啦~",
+                    duration: 2000,
+                    icon: "none",
+                  });
+                  _this.handleCanvasCancel();
+                },
+                fail() {
+                  uni.showToast({
+                    title: "保存失败，稍后再试",
+                    duration: 2000,
+                    icon: "none",
+                  });
+                  uni.hideLoading();
+                },
+              });
+            } else {
+              var pimgSrc = [];
+              pimgSrc.push(res.tempFilePath);
+              uni.previewImage({
+                current: pimgSrc[0],
+                urls: pimgSrc,
+              });
+              _this.$nextTick(() => {
+                _this.handleCanvasCancel();
+              });
+            }
+          },
+          fail(res) {
+            console.log("fail -> res", res);
+            uni.showToast({
+              title: "保存失败，稍后再试",
+              duration: 2000,
+              icon: "none",
+            });
+            uni.hideLoading();
+          },
+        },
+        this
+      );
+    },
+    /**
+     * @description: 取消海报
+     * @param {type}
+     * @return {type}
+     * @author: hch
+     */
+    handleCanvasCancel() {
+      this.canvasShow = false;
+      this.$emit("cancel", true);
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.content {
+    text-align: center;
+    height: 100%;
+}
+.canvas-content {
+    .canvas-mask {
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: rgba(0, 0, 0, .5);
+        z-index: 9;
+    }
+    .canvas {
+        position: fixed !important;
+        top: -100% !important;
+        left: -100% !important;
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 9;
+    }
+    .button-wrapper {
+        width: 100%;
+        height: 72rpx;
+        position: fixed;
+        bottom: 20rpx;
+        display: flex;
+        justify-content: space-around;
+        z-index: 16;
+    }
+
+    .save-btn {
+        font-size: 30rpx;
+        line-height: 72rpx;
+        color: #FFFFFF;
+        background: #EE231E;
+        width: 40%;
+        height: 100%;
+        text-align: center;
+        border-radius: 45rpx;
+        border-radius: 36rpx;
+        z-index: 10;
+    }
+    .cancel-btn {
+        background: #FFFFFF;
+        color: #EE231E;
+    }
+    .canvas-close-btn {
+        position: fixed;
+        width: 60rpx;
+        height: 60rpx;
+        padding: 20rpx;
+        top: 30rpx;
+        right: 0;
+        z-index: 12;
+    }
+}
+
+</style>

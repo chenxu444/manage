@@ -1,0 +1,190 @@
+<template>
+    <view class="page">
+        <view style="position: relative; z-index: 99;">
+            <view class="top">
+                {{ points }} 积分
+            </view>
+            <img :src="baseUrl + 'miniProgram/logo_2.png'" class="logo">
+            <!-- <view class="point_detail border_bottom_1">积分明细</view> -->
+        </view>
+        <!-- <view>
+            <uni-pulldown-refresh ref="uniPulldownRefresh" id="pullContent" :top="0" :absolute="0" @refresh="onPulldownReresh">
+                <view class="point_item bg_white border_bottom_1" v-for="(item,index) in pointDetailList" :key="index">
+                    <view class="first_time font_color_common">{{item.dateKey}}</view>
+                    <view class="point_item_list uni-flex border_bottom_1" v-for="(pdtl,index) in item.children" :key="index">
+                        <view class="uni-flex-1">
+                            <view>{{ pdtl.adjPointType == 1 ? '手工调整' : pdtl.adjPointType == 2 ? '系统调整' : pdtl.adjPointType == 3 ? '销售' : pdtl.adjPointType == 4 ? '销退' : pdtl.adjPointType == 5 ? '换购' : pdtl.adjPointType == 6 ? '活动赠送' : '暂无信息' }}</view>
+                            <view class=" font_color_999">{{ pdtl.adjDate }}</view>
+                        </view>
+                        <view class="change" :class="[pdtl.adjPoints * 1 > 0 ? 'in' : 'font_color_red']">{{ pdtl.adjPoints * 1 > 0 ? '+' : ''}} {{ pdtl.adjPoints }}</view>
+                    </view>
+                </view>
+                <uni-load-more :status="status" :content-text="contentText" />
+            </uni-pulldown-refresh>
+        </view> -->
+    </view>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            consignorId:'',
+            pageSize: 15,
+            pageNo: 1,
+            points:0,
+            pointDetailList:[],
+            
+            reload: false,
+            statusColor: "#ccc",
+            status: "more",
+            contentText: {
+                contentdown: "上拉加载更多",
+                contentrefresh: "正在加载...",
+                contentnomore: "—— 我也是有底线的 ——",
+            },
+        }
+    },
+    onLoad(options){
+        if(options.consignorId){
+            this.consignorId = options.consignorId
+        }
+    },
+    onShow() {
+        // this.getPoint('refresh');
+    },
+    onReachBottom() {
+        if (this.status != "noMore" && this.status != "loading") {
+            //上滑加载
+            // this.getPoint("add");
+        }
+    },
+    methods:{
+        getPoint(type){
+            if(this.reload){
+                return;
+            }
+            this.status = "loading";
+            if (type === "refresh") {
+                this.pageNo = 1;
+                this.reload = true;
+            }
+            let params = {
+                pageSize:this.pageSize,
+                pageNo:this.pageNo,
+                consignorId:uni.getStorageSync('_shopConsignorId_') || '0834a63196dc47139706cf20d52ea07a'
+            }
+            this.ebigRequest("/member-center/getMemberPoints", params, true).then((res) => {
+                var points = (res == null ? 0 : res.totalAmount === '' ? 0 : res.totalAmount);
+                this.points = points;
+                if(type == 'refresh'){
+                    this.pointDetailList = [];
+                }
+                if(res && res.memberPointDtls !== null && res.memberPointDtls.length < this.pageSize){
+                    this.status = "noMore";
+                }else{
+                    this.status = "more";
+                }
+                this.pointDetailList = [...this.pointDetailList, ...res.memberPointDtls];
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                this.pageNo = this.pageNo + 1;
+            }).catch(err => {
+                if (type === "refresh") {
+                    this.reload = false;
+                    this.pointDetailList = [];
+                    this.$refs.uniPulldownRefresh &&
+                    this.$refs.uniPulldownRefresh.endPulldownRefresh();
+                }
+                if(this.pageNo == 1){
+                    this.status = "noMore";
+                    this.pointDetailList = [];
+                }else{
+                    this.status = "more";
+                    this.pageNo = this.pageNo - 1;
+                }
+            })
+        },
+        // 等待加载
+        loadMore() {
+            this.status = "more";
+            this.getPoint("add");
+        },
+        //下拉刷新
+        onPulldownReresh() {
+            this.getPoint("refresh");
+        },
+    },
+}
+</script>
+
+<style>
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.border_bottom_1 {
+    border-bottom: 1px solid #EEEEEE;
+}
+.top {
+    position: fixed;
+    height: 196rpx;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #007BC8;
+    font-size: 60rpx;
+    font-weight: 500;
+    text-align: center;
+    line-height: 196rpx;
+    color: #FFFFFF;
+}
+.logo {
+    position: absolute;
+    width: 220rpx;
+    height: 220rpx;
+    opacity: .65;
+    top: -20rpx;
+    right: 20rpx;
+    transform: rotate(330deg);
+    vertical-align: top;
+}
+.point_detail {
+    margin-top: 200rpx;
+    background-color: #FFFFFF;
+    padding: 10rpx 20rpx;
+    font-size: 32rpx;
+    color: #333333;
+    font-weight: 600;
+}
+.point_item {
+    padding: 32rpx;
+}
+.first_time {
+    font-size: 30rpx;
+    font-weight: 600;
+}
+.point_item_list {
+    padding: 20rpx 0 20rpx 30rpx;
+    align-items: center;
+}
+.change {
+    width: 200rpx;
+    text-align: right;
+    font-size: 32rpx;
+    font-weight: 600;
+}
+.in {
+    color: #029C20;
+}
+.point_item .point_item_list:last-child {
+    padding-bottom: 0;
+    border: none;
+}
+
+</style>

@@ -1,0 +1,246 @@
+<template>
+  <view class="bindMobile">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="手机登录"></uni-nav-hfbar>
+    <!-- #endif -->
+    <view class="pageLogo">
+      <image :src="logoImg" class="imglogo" />
+      <image :src="comImg" class="imglogo" style="margin-top: 20rpx; height: 50rpx;" />
+    </view>
+    <form class="login" @submit="doLogin">
+      <view class="mode-item mod-account">
+        <input name="mobile" class="login-input" v-model="mobile" type="text" placeholder="请输入手机号码"/>
+      </view>
+      <view class="mod-password uni-flex">
+        <view class="mode-item uni-flex-1">
+          <input
+            name="smsCode"
+            class="login-input"
+            type="text"
+            placeholder="请输入验证码"
+          />
+        </view>
+        <button
+          class="bg_common font_color_white btn-getCode"
+          :class="coundownFlag ? 'bg_aaa' : ''"
+          @click="getCode"
+        >{{coundownFlag ? coundownCount + '秒后可重新发送' : '获取验证码'}}</button>
+      </view>
+      <button class="bg_common font_color_white btn-login" formType="submit">确定</button>
+      <view>
+        <checkbox-group class="checkboxG" @change="checkboxChange">
+          <label>
+            <checkbox class="checkbox" value="agree" :checked="agree" />我已阅读并同意
+            <span class="font_color_common" @click.stop="goUrl('loginInfo', 'mine')">《知情同意书》</span>和
+            <span class="font_color_common" @click.stop="goUrl('registerInfo', 'mine')">《会员注册授权协议》</span>
+          </label>
+        </checkbox-group>
+      </view>
+    </form>
+  </view>
+</template>
+
+
+<script>
+export default {
+  components: {},
+  data() {
+    return {
+      storeId: '',
+      mobile: "",
+      openId: "",
+      coundownCount: 0,
+      coundownFlag: false,
+      agree: false,
+      isBack: false,
+      logoImg: this.baseUrl + "img/common/logo_1.png",
+      comImg: this.baseUrl + "img/common/com_1.png",
+    };
+  },
+  onLoad(option) {
+    this.isBack = option.returnUrl != undefined ? true : false;
+    let _this = this;
+    // #ifdef MP-WEIXIN
+    uni.login({
+      provider: "weixin",
+      success: function (res) {
+        console.log(res);
+        if (res.errMsg == "login:ok") {
+          _this.isLogin = true;
+          uni.getUserInfo({
+            provider: "weixin",
+            success: function (infoRes) {
+              console.log(infoRes);
+              console.log("用户昵称为：" + infoRes.userInfo.nickName);
+            },
+          });
+        }
+      },
+      fail: function (err) {
+        console.log(res);
+      },
+    });
+    // #endif
+  },
+  methods: {
+    coundownCMS() {
+      if (this.coundownCount == 0) {
+        this.coundownCount = 60;
+        this.coundownFlag = false;
+        return;
+      } else {
+        this.coundownCount = this.coundownCount * 1 - 1;
+      }
+      setTimeout(() => {
+        this.coundownCMS();
+      }, 1000); //每1000毫秒执行一次
+    },
+    getCode() {
+      if (this.coundownFlag) {
+        uni.showToast({
+          title: "短信已发送",
+          icon: "none",
+        });
+        return;
+      }
+      var reg = /^(((13[0-9]{1})|(14[0-9]{1})|(17[0-9]{1})|(15[0-3]{1})|(15[4-9]{1})|(18[0-9]{1})|(199))+\d{8})$/;
+      if (this.mobile == "" || this.mobile == null || !reg.test(this.mobile)) {
+        uni.showToast({
+          title: "请输入正确的手机号",
+          icon: "none",
+        });
+        return;
+      }
+      this.ebigRequest(
+        "/login/sendSmsCode",
+        {
+          mobile: this.mobile,
+        },
+        true
+      ).then((res) => {
+        this.coundownFlag = true;
+        this.coundownCount = 60;
+        this.coundownCMS();
+      });
+    },
+    /**
+     * 更改选中
+     */
+    checkboxChange(e) {
+      this.agree = !this.agree;
+    },
+    /**
+     * 登录
+     */
+    doLogin(e) {
+      var mobile = e.detail.value.mobile.replace(/\s+/g, ""); //账号
+      var smsCode = e.detail.value.smsCode; //验证码
+      if (!this.agree) {
+        uni.showToast({
+          title: "请先勾选知情同意书",
+          icon: "none",
+        });
+        return;
+      }
+      var reg = /^(((13[0-9]{1})|(14[0-9]{1})|(17[0-9]{1})|(15[0-3]{1})|(15[4-9]{1})|(18[0-9]{1})|(199))+\d{8})$/;
+      if (mobile == "" || mobile == null || !reg.test(mobile)) {
+        uni.showToast({
+          title: "请输入正确的手机号",
+          icon: "none",
+        });
+        return;
+      }
+      // if (smsCode == "" || smsCode == null) {
+      //   uni.showToast({
+      //     title: "请输入验证码",
+      //     icon: "none",
+      //   });
+      //   return;
+      // }
+      this.ebigRequest(
+        "/login/mobile",
+        {
+          mobile: mobile,
+          smsCode: '9999',
+          openId: this.openId,
+          storeId: this.storeId,
+        },
+        true
+      ).then((res) => {
+        console.log(res);
+        if (res) {
+          uni.setStorageSync('_mobile_', mobile);
+          uni.setStorageSync("_token", res.token);
+          //判断用户是否需要实名
+          this.ebigRequest("/member/requireRealName", {}, true).then((data) => {
+            uni.setStorageSync("_noMobile_", "");
+            uni.setStorageSync("_loginMobile_", mobile);
+            if (data) {
+              uni.showModal({
+                title: "温馨提示",
+                content: "您还未完善用户资料哦!请先去完善资料",
+                showCancel: false,
+                success: (res1) => {
+                  this.replaceUrl('memberInfo', 'mine');
+                },
+              });
+            } else {
+              this.replaceUrl('myCenter', 'mine', '')
+            }
+          });
+        }
+      });
+    },
+  },
+};
+</script>
+
+<style>
+.bindMobile {
+    padding: 0 0 0;
+}
+.pageLogo {
+    margin: 0 auto 80rpx;
+    width: 320rpx;
+    height: 380rpx;
+}
+.pageLogo .imglogo {
+    display: block;
+    margin: 0 auto;
+    width: 320rpx;
+    height: 320rpx;
+}
+.login {
+    display: block;
+    padding: 0 30rpx;
+}
+.mode-item {
+    margin-top: 40rpx;
+    padding: 20rpx;
+    background: #FFFFFF;
+    border-radius: 10rpx;
+}
+.mode-item input {
+    height: 40rpx;
+}
+.btn-getCode {
+    margin: 40rpx 0 0 30rpx;
+    width: 260rpx;
+    font-size: 28rpx;
+    line-height: 80rpx;
+}
+.btn-login {
+    margin: 40rpx auto;
+    font-size: 28rpx;
+    line-height: 80rpx;
+}
+.checkboxG {
+    line-height: 44rpx;
+}
+.checkboxG .checkbox {
+    vertical-align: middle;
+}
+
+
+
+</style>

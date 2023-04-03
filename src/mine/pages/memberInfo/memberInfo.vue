@@ -1,0 +1,273 @@
+<template>
+  <div class="memberInfo">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar
+      fixed
+      status-bar
+      left-icon="back"
+      title="会员资料"
+    ></uni-nav-hfbar>
+    <!-- #endif -->
+    <div class="info_wrap border_bottom_1 uni-flex">
+      <span class="left">个人姓名<span class="font_color_red">*</span></span>
+      <input type="text" placeholder="请输入您的个人姓名" v-model="name" class="uni-flex-1" />
+    </div>
+    <div class="info_wrap border_bottom_1 uni-flex">
+      <span class="left">身份证号</span>
+      <input type="idcard" placeholder="身份证号码" v-model="idCard" class="uni-flex-1" @input="getBirthByIdCard" />
+    </div>
+    <div class="info_wrap border_bottom_1 uni-flex">
+      <span class="left">出生年月</span>
+      <view class="uni-flex-1">
+          <picker mode="date" :start="startDate" :end="endDate" :value="birth" @change="bindDateChange">
+            <input class="uni-input" disabled placeholder="出生年月" v-model="birth">
+          </picker>
+        </view>
+    </div>
+    <div class="info_wrap border_bottom_1 uni-flex">
+      <span class="left">会员性别</span>
+      <view class="uni-flex-1">
+          <picker @change="bindPickerChange" :value="(sex-1)" :range="array">
+            <input class="uni-input" disabled placeholder="选择性别" :value="sex==1 ? '男' : sex==2 ? '女' : ''">
+        </picker>
+      </view>
+    </div>
+    <div class="info_wrap border_bottom_1 uni-flex">
+      <span class="left">邀请码</span>
+      <input type="text" placeholder="邀请码" v-model="invite" class="uni-flex-1" />
+    </div>
+    <div class="ties">
+      (<span class="font_color_red">*</span>带星号为必填项)
+      <button class="bg_common savebtn" @click="saveInfo">保存</button>
+    </div>
+      
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      name: '',
+      idCard:'',
+      birth:'',
+      sex:'',
+      invite:'',
+      array:['男','女']
+    };
+  },
+  methods: {
+    // 选择日期
+    bindDateChange: function(e) {
+        this.birth = e.target.value
+        console.log(this.birth);
+    },
+    IdentityCodeValid(code) { //校验身份证号码
+            // 验证身份证号
+            let tip, pass;
+            let city = {
+                11: '北京',
+                12: '天津',
+                13: '河北',
+                14: '山西',
+                15: '内蒙古',
+                21: '辽宁',
+                22: '吉林',
+                23: '黑龙江 ',
+                31: '上海',
+                32: '江苏',
+                33: '浙江',
+                34: '安徽',
+                35: '福建',
+                36: '江西',
+                37: '山东',
+                41: '河南',
+                42: '湖北 ',
+                43: '湖南',
+                44: '广东',
+                45: '广西',
+                46: '海南',
+                50: '重庆',
+                51: '四川',
+                52: '贵州',
+                53: '云南',
+                54: '西藏 ',
+                61: '陕西',
+                62: '甘肃',
+                63: '青海',
+                64: '宁夏',
+                65: '新疆',
+                71: '台湾',
+                81: '香港',
+                82: '澳门',
+                91: '国外 '
+            };
+            if (!code || !/^\d{6}(18|19|20)?\d{2}(0[1-9]|1[012])(0[1-9]|[12]\d|3[01])\d{3}(\d|X)$/i.test(code)) {
+                tip = '身份证号格式错误';
+                pass = false;
+            } else if (!city[code.substr(0, 2)]) {
+                tip = '地址编码错误';
+                pass = false;
+            } else {
+                //18位身份证需要验证最后一位校验位
+                if (code.length == 18) {
+                    code = code.split('');
+                    //∑(ai×Wi)(mod 11)
+                    //加权因子
+                    let factor = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+                    //校验位
+                    let parity = [1, 0, 'X', 9, 8, 7, 6, 5, 4, 3, 2];
+                    let sum = 0;
+                    let ai = 0;
+                    let wi = 0;
+                    for (let i = 0; i < 17; i++) {
+                        ai = code[i];
+                        wi = factor[i];
+                        sum += ai * wi;
+                    }
+                    let last = parity[sum % 11];
+                    if (parity[sum % 11] != code[17]) {
+                        tip = '校验位错误';
+                        pass = false;
+                    } else {
+                        pass = true;
+                    }
+                }
+            }
+            return pass;
+        },
+    // 选择性别
+    bindPickerChange: function(e) {
+        this.sex = parseInt(e.target.value) + 1
+        console.log(this.sex);
+    },
+    // 根据身份证获取出生年月
+    getBirthdayFromIdCard : function(idCard) {
+	  	var birthday = "";
+      if(idCard != null && idCard != ""){
+        if(idCard.length == 15){
+          birthday = "19"+idCard.substr(6,6);
+        } else if(idCard.length == 18){
+          birthday = idCard.substr(6,8);
+        }
+        birthday = birthday.replace(/(.{4})(.{2})/,"$1-$2-");
+      }
+      return birthday;
+	  },
+    showToast(title) {
+      uni.showToast({
+        title,
+        icon: "none",
+        duration: 1000,
+      });
+    },
+    // 
+    getBirthByIdCard(){
+      if(this.IdentityCodeValid(this.idCard)){
+        this.birth = this.getBirthdayFromIdCard(this.idCard)
+      }
+    },
+    
+    // 保存
+    saveInfo(){ 
+      if(this.name == '' || this.name == null){
+        this.showToast('个人姓名为必填信息！')
+        return
+      }
+      if(this.idCard){
+        if(!this.IdentityCodeValid(this.idCard)){
+          this.showToast('请填写正确的身份证号码')
+          return
+        }
+      }
+      let params = {
+        idName: this.name,
+        idNumber: this.idCard,
+        birthDate: this.birth,
+        gender: this.sex,
+        inviteCode:this.invite,
+        addToDrugUser: true,
+        consignorId: this.getStor('_shopConsignorId_') || this.getStor('_defaultConsignorId_'),
+      }
+      this.doRequest("/usercenter/member/update", params, true).then((res) => {
+        if(res){
+          this.removeStor('memberInfo')
+          this.replaceUrl('myCenter', 'mine')
+          // this.getUserinfo()
+        }
+      })
+    },
+    getDate(type) {
+        const date = new Date();
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1;
+        let day = date.getDate();
+
+        if (type === 'start') {
+            year = year - 100;
+        } else if (type === 'end') {
+            year = year;
+        }
+        month = month > 9 ? month : '0' + month;;
+        day = day > 9 ? day : '0' + day;
+        return `${year}-${month}-${day}`;
+        }
+  },
+  computed: {
+        startDate() {
+            return this.getDate('start');
+        },
+        endDate() {
+            return this.getDate('end');
+        }
+    },
+  onLoad(){
+    var memberInfo = this.getStor('memberInfo')
+    if(memberInfo){
+      console.log(JSON.parse(this.decode64(memberInfo)));
+      this.name = JSON.parse(this.decode64(memberInfo)).idName || ''
+      this.idCard = JSON.parse(this.decode64(memberInfo)).idNumber || ''
+      this.birth = JSON.parse(this.decode64(memberInfo)).birthDate || ''
+      this.sex = JSON.parse(this.decode64(memberInfo)).gender || ''
+      this.invite = JSON.parse(this.decode64(memberInfo)).inviteCode || ''
+    }
+  }
+};
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+}
+.info_wrap {
+    background-color: #FFFFFF;
+    height: 110rpx;
+    padding-left: 30rpx;
+    line-height: 110rpx;
+    align-items: center;
+}
+.left {
+    margin-right: 40rpx;
+    width: 140rpx;
+}
+.border_bottom_1 {
+    border-bottom: 1px solid #EEEEEE;
+}
+.ties {
+    text-align: center;
+    margin-top: 40rpx;
+}
+.savebtn {
+    width: 90%;
+    color: #FFFFFF;
+    border-radius: unset;
+    margin: 64rpx auto;
+}
+.uni-input {
+    padding: unset;
+}
+
+
+
+
+</style>

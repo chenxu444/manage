@@ -1,0 +1,892 @@
+<template>
+  <view style="background-color: #efeff4">
+    <uni-nav-bar :pageActive="4"></uni-nav-bar>
+    <view>
+      <view class="center_top">
+        <view class="center_topBg" v-if="loginStatus"
+          ><image class="cBgImg" :src="logo2"></image
+        ></view>
+        <!-- 登录前 -->
+        <view class="center_nologin" v-if="!loginStatus">
+          <view class="center_nologin_head">
+            <image
+              class="noLoginImg"
+              src="../../static/image/user/head.png"
+            ></image>
+          </view>
+          <view class="center_nologin_btn tc">
+            <view
+              class="gologinexternal_gy font_color_white"
+              @click="goUrl('login', 'mine')"
+              >登录</view
+            >
+          </view>
+        </view>
+        <!-- 登录后 -->
+        <view class="center_user" v-if="loginStatus">
+          <view class="user_content">
+            <view class="user_img" @click="goUrl('memberInfo', 'mine')">
+              <!-- #ifdef MP-WEIXIN -->
+              <open-data
+                class="user_imgSrc"
+                type="userAvatarUrl"
+                v-if="loginStatus"
+              ></open-data>
+              <!-- #endif -->
+              <!-- #ifdef H5 -->
+              <image class="user_imgSrc" :src="headImgUrl"></image>
+              <!-- #endif -->
+            </view>
+            <view class="user_card" @click="goUrl('memberInfo', 'mine')">
+              <view class="user_memberlevel">
+                {{ mobile ? mobile : "--" }}
+                <i class="iconfont icon-personalinfo"></i>
+              </view>
+              <view class="user_name" id="user_name">{{
+                idName ? idName : mobile ? mobile : "--"
+              }}</view>
+            </view>
+            <view class="user_member_type bg_white" v-if="memberTypeName">{{
+              memberTypeName
+            }}</view>
+            <view
+              class="user_qrcode"
+              id="qrcodesexy"
+              @click="openCode"
+              v-if="hasInviteRoot"
+            >
+              <view class="font_color_white">邀请码</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 订单tabs -->
+      <view class="center_order" style="overflow: hidden">
+        <view class="my_order list-block">
+          <view
+            href="javascript:void(0);"
+            class="item-link item-content myorder external"
+            @click="goUrl('orderList', 'order', 'status=0')"
+          >
+            <view class="item-inner clearfix">
+              <view class="item-title fl">我的订单</view>
+              <view class="total_order fr">
+                <span>
+                  全部订单
+                  <i
+                    class="iconfont icon-right"
+                    style="display: inline-block; vertical-align: top"
+                  ></i>
+                </span>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="order_classify uni-flex">
+          <view
+            class="uni-flex-1"
+            v-on:click="goUrl('orderList', 'order', 'status=1')"
+          >
+            <view href="javascript:void(0);" class="waitpay">
+              <i class="iconfont icon-waitpay font_color_common"></i>
+              <span>待付款</span>
+              <b class="font_color_common border_common" v-if="notPayQtyFlag">{{
+                notPayQty
+              }}</b>
+            </view>
+          </view>
+          <view
+            class="uni-flex-1"
+            v-on:click="goUrl('orderList', 'order', 'status=2')"
+          >
+            <view href="javascript:void(0);" class="waitsend">
+              <i class="iconfont icon-waitsend font_color_common"></i>
+              <span>待发货</span>
+              <b
+                class="font_color_common border_common"
+                v-if="unProcessedQtyFlag"
+                >{{ unProcessedQty }}</b
+              >
+            </view>
+          </view>
+          <view
+            class="uni-flex-1"
+            v-on:click="goUrl('orderList', 'order', 'status=3')"
+          >
+            <view href="javascript:void(0);" class="waittake">
+              <i class="iconfont icon-waittake font_color_common"></i>
+              <span>待收货</span>
+              <b
+                class="font_color_common border_common"
+                v-if="preReciQtyFlag"
+                >{{ preReciQty }}</b
+              >
+            </view>
+          </view>
+          <view
+            class="uni-flex-1"
+            v-on:click="goUrl('orderList', 'order', 'status=4')"
+          >
+            <view href="javascript:void(0);" class="waitevaluate">
+              <i class="iconfont icon-waitevaluate font_color_common"></i>
+              <span>已完成</span>
+            </view>
+          </view>
+          <view
+            class="uni-flex-1"
+            v-on:click="goUrl('afterSaleList', 'order', 'return_url=0')"
+          >
+            <view href="javascript:void(0);" class="returngood">
+              <i class="iconfont icon-returngood font_color_common"></i>
+              <span>退款/售后</span>
+            </view>
+          </view>
+        </view>
+      </view>
+      <!-- 订单tabs -->
+
+      <!-- 分销tabs -->
+      <view class="center_order" style="overflow: hidden" v-if="manInfo.distributorId&&checkStatus == 'APPROVED'"  >
+        <view class="my_order list-block">
+          <view
+            href="javascript:void(0);"
+            class="item-link item-content myorder external"
+          >
+            <view class="item-inner clearfix">
+              <view class="item-title fl">推广中心</view>
+              <view class="total_order fr" @click="beCome">
+                <span>
+                  点击进入
+                  <i
+                    class="iconfont icon-right"
+                    style="display: inline-block; vertical-align: top"
+                  ></i>
+                </span>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="order_classify uni-flex">
+          <view class="uni-flex-1">
+            <view href="javascript:void(0);" class="waitevaluate">
+              <div class="point_title">
+                {{ manInfo.waitCommission ? manInfo.waitCommission : "0" }}
+              </div>
+              <div class="font_color_999">待入账积分</div>
+            </view>
+          </view>
+          <view class="uni-flex-1">
+            <view href="javascript:void(0);" class="returngood">
+              <div class="point_title">
+                {{ manInfo.canWithDrawMoney ? manInfo.canWithDrawMoney : "0" }}
+              </div>
+              <div class="font_color_999">已入账积分</div>
+            </view>
+          </view>
+        </view>
+      </view>
+      <!-- 分销tabs -->
+      <view class="center_other" :style="isiphoneBt ? 'padding-bottom: 160rpx;' : ''">
+        <view class="center_other_wrap clearfix">
+          <view
+            href="javascript:void(0);"
+            class="mysign center_other_list"
+            v-on:click="goUrl('recipelList', 'mine')"
+          >
+            <i class="iconfont icon-mysign" style="color: #0cb80c"></i>
+            <span>我的处方</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="myevaluate center_other_list"
+            v-on:click="goUrl('appointIndex', 'appoint')"
+            style="display: none"
+          >
+            <i class="iconfont icon-myevaluate" style="color: #fd8e2c"></i>
+            <span>我的预约</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="mycoupon center_other_list"
+            v-on:click="goUrl('myCoupon', 'activity')"
+          >
+            <i class="iconfont icon-coupon" style="color: #bb5b06"></i>
+            <span>我的优惠券</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="mycoupon center_other_list"
+            v-on:click="goUrl('sign', 'activity')"
+          >
+            <i class="iconfont icon-signIn" style="color: #f34959"></i>
+            <span>签到有奖</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="mycustom center_other_list"
+            v-on:click="goUrl('customerService', 'mine')"
+          >
+            <i class="iconfont icon-mycustom" style="color: #5c72f3"></i>
+            <span>客户服务</span>
+          </view>
+          <button
+            class="mycustom center_other_list goCustom"
+            open-type="contact"
+          >
+            <i class="iconfont icon-friend" style="color: #0cb80c"></i>
+            <span>咨询客服</span>
+          </button>
+          <view
+            href="javascript:void(0);"
+            class="mydrug center_other_list"
+            v-on:click="goUrl('drugUsers', 'mine')"
+          >
+            <i class="iconfont icon-personalinfo" style="color: #fd8e2c"></i>
+            <span>用药人</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="mydrug center_other_list"
+            v-on:click="goUrl('addressList', 'mine')"
+          >
+            <i class="iconfont icon-addr" style="color: #bb5b06"></i>
+            <span>我的地址</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="myintegral center_other_list"
+            v-on:click="goUrl('myPoint', 'mine')"
+          >
+            <i class="iconfont icon-myshop" style="color: #0cb80c"></i>
+            <span>我的积分</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="mycollect center_other_list"
+            v-on:click="goUrl('myCollect')"
+          >
+            <i class="iconfont icon-mycollect" style="color: #f34959"></i>
+            <span>我的收藏</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="myfoot center_other_list"
+            v-on:click="goUrl('myHistory')"
+          >
+            <i class="iconfont icon-myfoot" style="color: #5c72f3"></i>
+            <span>我的足迹</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="myfoot center_other_list"
+            v-on:click="beCome"
+          >
+            <i class="iconfont icon-share" style="color: #fd8e2c"></i>
+            <span>分销商中心</span>
+          </view>
+          <view
+            href="javascript:void(0);"
+            class="loginOut center_other_list"
+            v-on:click="loginOut"
+            v-if="loginStatus"
+          >
+            <i class="iconfont icon-loginout" style="color: #3bdbe9"></i>
+            <span>切换账号</span>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 邀请码弹出框 -->
+    <view class="popup_porn_codeBg" v-show="openCodeFlag"></view>
+    <view class="popup_porn_code bg_white" v-show="openCodeFlag">
+      <view class="pornCode_tit">你的邀请码</view>
+      <view class="pornCode_info">
+        <input
+          type="text"
+          v-model="inviteCode.code"
+          class="font_color_red shareCodeTxt"
+          id="shareCodeTxt"
+          readonly
+        />
+        <view @tap="initCode(true)" class="font_color_999">
+          (该邀请码于{{ inviteCode.invalidDate }}失效，点击重置
+          <i
+            class="iconfont icon-refresh"
+            style="margin-left: 10rpx; font-size: 28rpx; font-weight: 700"
+          ></i
+          >)
+        </view>
+      </view>
+      <view class="pornCode_btn_wrap font_color_common uni-flex">
+        <view class="uni-flex-1 copyCode" @click="copyPornCode"
+          >复制邀请码</view
+        >
+        <view class="uni-flex-1" @click="closeCode">知道了</view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+  components: {},
+  data() {
+    return {
+      loginStatus: false,
+      mobile: "--",
+      idName: "",
+      memberTypeName: "",
+      headImgUrl: "",
+      hasInviteRoot: false,
+      openCodeFlag: false,
+      inviteCode: {},
+      notPayQty: "", // 未付款订单数量
+      unProcessedQty: "", // 未发货订单数量
+      preReciQty: "", // 未收货数量
+      notCommentQty: "", // 未评价订单数量
+      notPayQtyFlag: false, // 未付款订单数量显示标识
+      unProcessedQtyFlag: false, // 未发货订单数量显示标识
+      preReciQtyFlag: false, // 未收货数量显示标识
+      notCommentQtyFlag: false, // 未评价订单数量显示标识
+      manInfo: {}, //分销员信息
+      logo2: this.baseUrl + "img/common/logo_2.png",
+      isiphoneBt: false,
+    };
+  },
+  onLoad(option) {},
+  onShow() {
+    this.initUserInfo();
+  },
+  mounted() {
+    let _model_ = uni.getStorageSync("_model_");
+    if (
+      _model_.indexOf("iPhone X") != -1 ||
+      _model_.indexOf("iPhone XR") != -1 ||
+      _model_.indexOf("iPhone XS") != -1 ||
+      _model_.indexOf("iPhone XS Max") != -1 ||
+      _model_.indexOf("iPhone 11") != -1 ||
+      _model_.indexOf("iPhone 11 Pro") != -1 ||
+      _model_.indexOf("iPhone 11 Pro Max") != -1
+    ) {
+      this.isiphoneBt = true;
+    }
+  },
+  methods: {
+    initUserInfo() {
+      this.ebigRequest(
+        "/member-center/index",
+        { consignorId: this._consignorId_ },
+        true
+      ).then((res) => {
+        uni.setStorageSync("memberInfo", this.encode64(JSON.stringify(res)));
+        this.initOrderQty();
+        // this.getManInfo();
+        this.loginStatus = true;
+        this.mobile = res.mobile;
+        this.idName = res.idName;
+        this.memberTypeName = res.memberTypeName;
+        this.headImgUrl = res.headImgUrl;
+        this.hasInviteRoot = res.extras ? res.extras.hasInviteRoot : false;
+      });
+    },
+    getManInfo: function () {
+      //获取分销员信息
+      let obj = {
+        consignorId: this._consignorId_,
+      };
+      this.doRequest("/distributorcenter/distributor", obj, true, "get")
+        .then((data) => {
+          if (data) {
+            uni.setStorageSync("isDistributorId", data.distributorId);
+            this.manInfo = data;
+          }
+        })
+        .catch((err) => {});
+    },
+    initOrderQty() {
+      this.ebigRequest("/order/count", {}, true).then((res) => {
+        if (res) {
+          this.notPayQty = res["1"] ? res["1"] : "";
+          this.unProcessedQty = res["2"] ? res["2"] : "";
+          this.preReciQty = res["3"] ? res["3"] : "";
+          this.notCommentQty = res["4"] ? res["4"] : "";
+        }
+        if (
+          this.notPayQty != "" &&
+          this.notPayQty != null &&
+          this.notPayQty != undefined &&
+          this.notPayQty != "0"
+        ) {
+          this.notPayQtyFlag = true;
+          if (this.notPayQty * 1 > 99) {
+            this.notPayQty = "99+";
+          }
+        } else {
+          this.notPayQtyFlag = false;
+        }
+        if (
+          this.unProcessedQty != "" &&
+          this.unProcessedQty != null &&
+          this.unProcessedQty != undefined &&
+          this.unProcessedQty != "0"
+        ) {
+          this.unProcessedQtyFlag = true;
+          if (this.unProcessedQty * 1 > 99) {
+            this.unProcessedQty = "99+";
+          }
+        } else {
+          this.unProcessedQtyFlag = false;
+        }
+        if (
+          this.preReciQty != "" &&
+          this.preReciQty != null &&
+          this.preReciQty != undefined &&
+          this.preReciQty != "0"
+        ) {
+          this.preReciQtyFlag = true;
+          if (this.preReciQty * 1 > 99) {
+            this.preReciQty = "99+";
+          }
+        } else {
+          this.preReciQtyFlag = false;
+        }
+        if (
+          this.notCommentQty != "" &&
+          this.notCommentQty != null &&
+          this.notCommentQty != undefined &&
+          this.notCommentQty != "0"
+        ) {
+          this.notCommentQtyFlag = true;
+          if (this.notCommentQty * 1 > 99) {
+            this.notCommentQty = "99+";
+          }
+        } else {
+          this.notCommentQtyFlag = false;
+        }
+      });
+    },
+    openCode() {
+      this.openCodeFlag = true;
+      this.initCode();
+    },
+    closeCode() {
+      this.openCodeFlag = false;
+    },
+    initCode(type) {
+      this.ebigRequest(
+        type ? "/member-center/genNewCode" : "/member-center/getInviteCode",
+        {},
+        true
+      ).then((data) => {
+        if (data) {
+          this.inviteCode = data;
+        }
+      });
+    },
+    copyPornCode() {
+      uni.setClipboardData({
+        data: this.inviteCode.code,
+        success(res) {
+          uni.showToast({
+            title: "复制成功",
+            icon: "none",
+          });
+        },
+      });
+    },
+    beCome() {
+      this.doRequest(
+        "/distributorcenter/distributor/check_status",
+        { consignorId: this._consignorId_ },
+        true,
+        "get"
+      ).then((res) => {
+        if (res == "COMMIT") {
+          uni.showToast({
+            title: "申请已提交，请耐心等候审核",
+            icon: "none",
+          });
+          return;
+        } else if (res == "NONE") {
+          this.goUrl("becomeGuide", "distribution");
+        } else if (res == "APPROVED" || res == "DISABLED") {
+          this.goUrl("promotionCenter", "distribution");
+        } else if (res == "REFUSED") {
+          this.goUrl("applyInfo", "distribution", "status=check");
+        } else if (res == "DESTROYED") {
+          uni.showToast({
+            title: "账号已经注销，无法访问",
+            icon: "none",
+          });
+          return;
+        }
+      })
+    },
+    loginOut() {
+      uni.showModal({
+        title: "温馨提示",
+        content: "是否确定注销登录？",
+        success: (res1) => {
+          if (res1.confirm) {
+            this.ebigRequest("/login/invalidate", {}, true).then((res) => {
+              this.loginStatus = false;
+              uni.removeStorageSync("_token");
+              uni.removeStorageSync("memberInfo");
+              uni.removeStorageSync("isLogin");
+              uni.removeStorageSync("_mobile_");
+              uni.removeStorageSync("__encryptdata__");
+              uni.removeStorageSync("__ivdata__");
+              uni.removeStorageSync("__memberid__");
+              uni.removeStorageSync("sessionid");
+              uni.showToast({
+                title: "退出登录成功！",
+                icon: "none",
+              });
+              uni.navigateTo({
+                url: "/mine/pages/login/login?returnUrl=true",
+              });
+              // setTimeout(() => {
+              //   this.goUrl('login');
+              // }, 800)
+            });
+          } else if (res1.cancel) {
+            console.log("用户点击取消");
+          }
+        },
+      });
+    },
+  },
+};
+</script>
+
+<style>
+.center_top {
+  overflow: hidden;
+  position: relative;
+  height: 340rpx;
+  background-color: #007bc8;
+}
+.center_topBg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 380rpx;
+  transform: rotate(330deg);
+}
+.cBgImg {
+  margin-top: -20rpx;
+  width: 380rpx;
+  height: 380rpx;
+  opacity: 0.65;
+}
+/* center_nologin start */
+.center_nologin {
+  position: relative;
+  z-index: 9;
+  margin: 0 auto;
+  width: 300rpx;
+  height: 210rpx;
+}
+.center_nologin_head {
+  overflow: hidden;
+  margin: 0 auto;
+  width: 160rpx;
+  height: 160rpx;
+  background: #ffffff;
+  border-radius: 50%;
+}
+.center_nologin_head .noLoginImg {
+  display: block;
+  margin: 0 auto;
+  padding-top: 36rpx;
+  width: 130rpx;
+  height: 130rpx;
+}
+.center_nologin_btn {
+  margin: 20rpx auto 0;
+  width: 250rpx;
+  height: 40rpx;
+  font-size: 30rpx;
+  line-height: 40rpx;
+}
+.center_nologin_btn view {
+  color: #ffffff;
+}
+/* center_nologin end */
+
+/* center_user start */
+.center_user {
+  position: relative;
+  z-index: 9;
+  margin: 80rpx 20rpx 0;
+  box-sizing: border-box;
+  height: 216rpx;
+  border-radius: 40rpx;
+}
+.user_top .setting,
+.user_top .news {
+  position: absolute;
+  top: 8rpx;
+  width: 64rpx;
+  height: 64rpx;
+}
+.user_top .setting {
+  left: 16rpx;
+}
+.user_top .news {
+  right: 16rpx;
+}
+.user_top .setting a,
+.user_top .news view {
+  display: block;
+  padding: 10rpx;
+  width: 68rpx;
+  height: 68rpx;
+  font-size: 52rpx;
+  text-align: center;
+  line-height: 52rpx;
+  color: #ffffff;
+}
+.user_content {
+  position: relative;
+  height: 140rpx;
+}
+.user_img {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 136rpx;
+  height: 136rpx;
+  font-size: 72rpx;
+  text-align: center;
+  line-height: 136rpx;
+  border: 4rpx solid #ffffff;
+  border-radius: 50%;
+}
+.user_img .user_imgSrc {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.user_img i {
+  font-size: 72rpx;
+  color: #ffffff;
+}
+.user_card {
+  margin: 0 100rpx 0 156rpx;
+  color: #ffffff;
+}
+.user_card view {
+  line-height: 70rpx;
+}
+.user_card view i {
+  display: inline-block;
+  margin-left: 10rpx;
+}
+.user_member_type {
+  height: 52rpx;
+  line-height: 52rpx;
+  position: absolute;
+  left: -20rpx;
+  bottom: -64rpx;
+  font-size: 24rpx;
+  padding: 0 42rpx;
+  text-align: center;
+  background: #e5f3f7;
+  border-radius: 0 100rpx 100rpx 0;
+}
+.user_name {
+  font-size: 28rpx;
+}
+.user_infoEdit {
+  font-size: 24rpx;
+}
+.user_infoEdit i {
+  letter-spacing: 8rpx;
+}
+
+.user_qrcode {
+  position: absolute;
+  top: 160rpx;
+  left: 188rpx;
+  width: 130rpx;
+  height: 44rpx;
+  border-radius: 10rpx;
+}
+.user_qrcode p {
+  display: block;
+  line-height: 40rpx;
+  font-size: 24rpx;
+  text-align: center;
+  border: 1px solid #ffffff;
+  border-radius: 10rpx;
+}
+.user_qrcode p i {
+  display: inline-block;
+  padding-right: 10rpx;
+  font-size: 40rpx;
+  vertical-align: bottom;
+}
+/* center_user end */
+
+/* center_order start */
+.center_order {
+  border-radius: 10rpx;
+}
+.center_order .list-block {
+  margin: 16rpx 0 0;
+  background: #ffffff;
+  border-radius: 10rpx 10rpx 0 0;
+}
+.center_order .list-block .item-content {
+  padding-left: 0;
+  display: block;
+}
+.center_order .list-block .item-content .item-inner {
+  padding: 0 28rpx;
+  font-size: 28rpx;
+  line-height: 88rpx;
+  border-bottom: 1px solid #e7e7e7;
+}
+.item-inner .total_order {
+  padding-right: 0;
+}
+.center_order .list-block a {
+  font-size: 28rpx;
+  color: #666666;
+}
+.order_classify {
+  background: #ffffff;
+}
+.order_classify .uni-flex-1 {
+  align-items: center;
+  position: relative;
+  display: block;
+  padding: 32rpx 0;
+  text-align: center;
+}
+.order_classify i {
+  display: block;
+  padding-bottom: 6rpx;
+  font-size: 54rpx;
+}
+.order_classify span {
+  display: block;
+  font-size: 28rpx;
+}
+.order_classify b {
+  position: absolute;
+  top: 16rpx;
+  left: 50%;
+  display: block;
+  margin-left: 20rpx;
+  padding: 1px;
+  min-width: 32rpx;
+  font-size: 20rpx;
+  line-height: 24rpx;
+  background: #ffffff;
+  border: 1px solid;
+  border-radius: 32rpx;
+}
+/* center_order end */
+
+/* 九宫格 */
+.center_other {
+  margin: 16rpx 0 0;
+  padding-bottom: 100rpx;
+}
+.center_other_wrap {
+  text-align: center;
+  background: #ffffff;
+  border-radius: 10rpx;
+}
+.center_other_wrap .center_other_list {
+  float: left;
+  display: block;
+  padding: 32rpx 0;
+  width: 25%;
+  border-bottom: 1px solid #eeeeee;
+}
+.center_other_wrap i {
+  display: block;
+  padding-bottom: 8rpx;
+  font-size: 48rpx;
+  line-height: 72rpx;
+}
+.center_other_wrap span {
+  display: block;
+  font-size: 28rpx;
+  line-height: 44rpx;
+}
+
+/* 九宫格 */
+
+/* 邀请码弹窗 */
+.popup_porn_codeBg {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 999;
+  background-color: #333333;
+  opacity: 0.6;
+}
+.popup_porn_code {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 999;
+  margin: -160rpx 0 0 -240rpx;
+  width: 480rpx;
+  text-align: center;
+  border-radius: 6px;
+}
+.pornCode_tit {
+  font-size: 30rpx;
+  text-align: center;
+  line-height: 80rpx;
+}
+.pornCode_info p {
+  padding: 16rpx 20rpx 0;
+  font-size: 30rpx;
+}
+.shareCodeTxt {
+  border: none;
+  text-align: center;
+  margin: 0 0 20rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #8f8f94;
+}
+.pornCode_btn_wrap {
+  margin-top: 32rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  border-top: 1px solid #eeeeee;
+}
+.copyCode {
+  border-right: 1px solid #eeeeee;
+}
+/* 邀请码弹窗 */
+
+button.goCustom {
+  background: #ffffff;
+  border-radius: 0;
+}
+button.goCustom::after {
+  border: none;
+  border-radius: 0;
+}
+.point_title {
+  color: orange;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+</style>

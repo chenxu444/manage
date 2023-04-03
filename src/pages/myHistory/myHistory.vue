@@ -1,0 +1,184 @@
+<template>
+  <view class="page">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar fixed status-bar left-icon="back" title="我的足迹"></uni-nav-hfbar>
+    <!-- #endif -->
+    <uni-pulldown-refresh
+      ref="uniPulldownRefresh"
+      id="pullContent"
+      :top="0"
+      :absolute="0"
+      @refresh="onPulldownReresh"
+    >
+      <view>
+        <view class="myHistory uni-flex uni-flex-j">
+          <view
+            class="history_item"
+            v-for="(item, index) in content"
+            :key="index"
+            @click="openDetail(item)"
+          >
+            <view>
+              <img
+                :src="item.imagePath || '../../static/image/default/no_img.jpg'"
+                class="goods_img"
+              />
+            </view>
+            <view class="goods_info">
+              {{ item.goodsName + item.specification }}
+            </view>
+            <view class="goods_price font_color_red">
+              ￥ {{ toFixed(item.sellPrice) }}
+            </view>
+          </view>
+        </view>
+      </view>
+      <uni-load-more :status="status" :content-text="contentText" />
+    </uni-pulldown-refresh>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      pageSize: 20,
+      pageNo: 1,
+      content: [],
+      reload: false,
+      statusColor: "#ccc",
+      status: "more",
+      contentText: {
+        contentdown: "上拉加载更多",
+        contentrefresh: "正在加载...",
+        contentnomore: "—— 我也是有底线的 ——",
+      },
+    };
+  },
+  onShow() {
+    this.getHistory("refresh");
+  },
+  onReachBottom() {
+    if (this.status != "noMore" && this.status != "loading") {
+      //上滑加载
+      this.getHistory("add");
+    }
+  },
+  methods: {
+    getHistory(type) {
+      if (this.reload) {
+        return;
+      }
+      this.status = "loading";
+      if (type === "refresh") {
+        this.pageNo = 1;
+        this.reload = true;
+      }
+      let params = {
+        pageSize: this.pageSize,
+        pageNo: this.pageNo,
+      };
+      this.ebigRequest("/product/getTraceLogs", params, true)
+        .then((res) => {
+          if (type == "refresh") {
+            this.content = [];
+          }
+          if (res.length < this.pageSize) {
+            this.status = "noMore";
+          } else {
+            this.status = "more";
+          }
+          if (res.length < this.pageSize) this.noMore = true;
+          this.content = [...this.content, ...res];
+          if (type === "refresh") {
+            this.reload = false;
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          this.pageNo = this.pageNo + 1;
+        })
+        .catch((err) => {
+          if (type === "refresh") {
+            this.reload = false;
+            this.content = [];
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          if (this.pageNo == 1) {
+            this.status = "noMore";
+            this.content = [];
+          } else {
+            this.status = "more";
+            this.pageNo = this.pageNo - 1;
+          }
+        });
+    },
+    // 等待加载
+    loadMore() {
+      this.status = "more";
+      this.getHistory("add");
+    },
+    //下拉刷新
+    onPulldownReresh() {
+      this.getHistory("refresh");
+    },
+    toFixed(data) {
+      return data ? data.sellPrice.toFixed(2) : "暂无报价";
+    },
+    openDetail(item) {
+      this.goUrl(
+        "detail",
+        '',
+        "skuSalNo=" +
+          item.skuSalNo +
+          "&storeId=" +
+          item.storeDTO.storeId +
+          "&consignorId=" +
+          item.consignorId
+      );
+    },
+  },
+  filters: {},
+};
+</script>
+
+<style>
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.myHistory {
+    flex-wrap: wrap;
+}
+.history_item {
+    box-sizing: border-box;
+    width: 49%;
+    background-color: #FFFFFF;
+    padding: 40rpx 20rpx 20rpx;
+    margin-bottom: 2%;
+}
+.goods_img {
+    display: block;
+    margin: 0 auto;
+    width: 320rpx;
+    height: 320rpx;
+    margin-bottom: 20rpx;
+    border: 1px solid #CCCCCC;
+}
+.goods_info {
+    padding: 4rpx 0;
+}
+.goods_price {
+    margin-top: 10rpx;
+}
+.ties {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 600;
+    padding: 20rpx;
+}
+
+</style>

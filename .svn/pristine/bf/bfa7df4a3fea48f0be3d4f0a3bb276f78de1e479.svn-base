@@ -1,0 +1,201 @@
+<template>
+    <div class="integralShop">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar left-icon="back" title="积分商城"></uni-nav-hfbar>
+        <!-- #endif -->
+        <swiper class="swiper bg_white">
+            <swiper-item>
+                <image  class="swiper-item-img" src="../../static/image/com/change.jpg"  :lazy-load="true"></image>
+            </swiper-item>
+        </swiper>
+        <div class="icon_list uni-flex bg_white">
+            <div class="uni-flex-1">
+                <span class=" iconfont icon-selected font_color_common"></span>
+                必备好物
+            </div>
+            <div class="uni-flex-1">
+                <span class=" iconfont icon-selected font_color_common"></span>
+                热销直兑
+            </div>
+            <div class="uni-flex-1">
+                <span class=" iconfont icon-selected font_color_common"></span>
+                优品甄选
+            </div>
+            <div class="uni-flex-1">
+                <span class=" iconfont icon-selected font_color_common"></span>
+                积分乐园
+            </div>
+        </div>
+        <div class="bg_nav font_color_white uni-flex">
+            <div class="uni-flex-1 change">积分兑换</div>
+            <div class="uni-flex-1 login" v-if="userPoint">{{userPoint}}积分</div>
+            <div class="uni-flex-1 login" v-else @click="goUrl('bindMobile','mine','returnUrl=true')">登录查看积分</div>
+        </div>
+        <div class="goods_wrap">
+            <div class="goods_wrap2 bg_white uni-flex">
+                <div class="good_wrap" v-for="(item,index) in goodsList" :key="index" @click="goUrl('detail', '', 'redeemId=' + item.redeemId)">
+                    <div class="img_wrap">
+                        <image class="good_img" :src="item.productDTO.imagePath ? item.productDTO.imagePath : '../../../static/image/default/no_img.jpg'" mode="aspectFit" :lazy-load="true"></image>
+                    </div>
+                    <div>{{item.productDTO.goodsName}}</div>
+                    <div class="uni-flex chang_warp">
+                        <div class="uni-flex-1 need_point">{{item.needIntegral}}积分</div>
+                        <div class="uni-flex-1 change_btn font_color_white" @click.stop="exchangeFunc(item.redeemId,item.redeemQty)">立即兑换</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="nomore" v-if="isBottom">没有更多数据</div>
+    </div>
+</template>
+
+<script>
+export default {
+    onLoad(){
+        this.getGoods()
+    },
+    onShow(){
+        this.getUserPoint()
+    },
+    data(){
+        return{
+            goodsList:[],
+            pageNo:1,
+            pageSize:10,
+            userPoint:'',
+            isBottom:false,
+        }
+    },
+    methods:{
+        getGoods(){
+            let obj = {}
+            obj.storeId = this._storeId_;
+            obj.consignorId = this._consignorId_;
+            obj.pageNo = this.pageNo;
+            obj.pageSize = this.pageSize;
+            obj.startDate = this.getSystemDate();
+            console.log(obj.startDate);
+            obj.endDate = this.getSystemDate();
+            this.ebigRequest("/redeemProduct/list", obj).then((data) => {
+                if(data.length < this.pageSize){
+                    this.isBottom = true
+                }
+                this.goodsList = [...this.goodsList,...data]
+            })
+        },
+        exchangeFunc(redeemId,redeemQty){ //立即兑换
+			var obj = {};
+			obj.redeemId = redeemId;
+			obj.quantity = redeemQty;
+			this.ebigRequest('/redeemOrder/create', obj, true,).then(data=>{
+				if(data){
+					this.goUrl('orderConfirm','order','orderNo='+data+'&isRedeem=true')
+				}
+            })
+		},
+        getUserPoint(){
+            var obj = {};
+			obj.consignorId = this._consignorId_;
+			obj.pageNo = 1;
+			obj.pageSize = 16;
+            this.ebigRequest("/member-center/getMemberPoints", obj,false,'','',true,false).then((data) => {
+                this.userPoint = data.totalAmount||'0'
+            })
+            
+        }
+    },
+    onReachBottom(){
+        if(this.isBottom){
+            return false
+        }else{
+            this.pageNo++
+            this.getGoods()
+        }
+    }
+}
+</script>
+
+<style>
+page {
+    background-color: #EFEFF4;
+}
+.swiper-item-img {
+    width: 100%;
+    height: 300rpx;
+    display: block;
+    margin: 0 auto;
+}
+.icon_list {
+    text-align: center;
+    padding: 16rpx 0;
+}
+.bg_nav {
+    background-color: blueviolet;
+    padding: 40rpx 40rpx 100rpx;
+    box-sizing: border-box;
+}
+.change {
+    font-size: 38rpx;
+    font-weight: 700;
+}
+.login {
+    text-align: right;
+    font-size: 32rpx;
+}
+.goods_wrap {
+    margin-top: -60rpx;
+    padding: 0 20rpx;
+    box-sizing: border-box;
+}
+.goods_wrap2 {
+    border-radius: 20rpx;
+    padding: 20rpx;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+}
+.good_wrap {
+    padding: 10rpx;
+    width: 49%;
+    text-align: center;
+    border: 1px solid #CCCCCC;
+    box-sizing: border-box;
+    margin-bottom: 20rpx;
+    box-shadow: 0px 0px 6px #ECE7E7;
+}
+.good_wrap:nth-child(2n-1) {
+    margin-right: 2%;
+}
+.img_wrap {
+    width: 300rpx;
+    height: 300rpx;
+    margin: 0 auto;
+}
+.good_img {
+    width: 300rpx;
+    height: 300rpx;
+    margin: 0 auto;
+}
+.change_btn {
+    background-color: #E35C5C;
+    text-align: center;
+    border-radius: 6rpx;
+}
+.need_point {
+    font-weight: 600;
+    text-align: left;
+    color: #E35C5C;
+}
+.chang_warp {
+    padding: 20rpx;
+}
+.nomore {
+    text-align: center;
+    font-size: 30rpx;
+    color: #777777;
+    font-weight: 700;
+    height: 100rpx;
+    line-height: 100rpx;
+}
+
+
+</style>

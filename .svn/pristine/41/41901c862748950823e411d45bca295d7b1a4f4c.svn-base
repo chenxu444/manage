@@ -1,0 +1,249 @@
+<template>
+  <div class="promotionOrderDetail">
+        <!-- #ifndef MP-WEIXIN -->
+        <uni-nav-hfbar fixed status-bar :border="false" left-icon="back" title="订单详情"></uni-nav-hfbar>
+        <!-- #endif -->
+      <div class="top">
+          <div class=" uni-flex Status_wrap">
+              <span class="iconfont icon-waitsend iconImg" ></span>
+              <span class="topOrder">{{orderDetail.orderStatus | toStatus}}</span>
+          </div>
+      </div>
+      <div class="Content">
+          <div class="orderItem bg_white">
+              <div class="user uni-flex">
+                  <div class="uni-flex-1"><span class="font_color_999">顾客：</span>{{orderDetail.memberName}}</div>
+                  <div class="orderStatus font_color_999">{{orderDetail.orderStatus | toStatus}}</div>
+              </div>
+              <div class="orderTime font_color_999">
+                  下单时间：{{orderDetail.inputDate}}
+              </div>
+              <div class="orderGoods_wrap" v-for="(item,index) in goodsDetail" :key="index">
+                  <div class="orderGoods uni-flex">
+                    <img :src="item.defaultPic" class="goods_img">
+                    <div class="uni-flex-1">
+                        <div class="goods_name font_color_999">{{item.goodsName}}</div>
+                        <div class="uni-flex">
+                            <div class="uni-flex-1 roat font_color_common">{{orderDetail.commissionType==1?'佣金比例'+ toPercent(orderDetail.rate):'首单拉新奖励'}}</div>
+                            <div class="goods_num">x{{item.quantity}}</div>
+                        </div>
+                    </div>
+                   </div>
+              </div>
+              <div class="totalPrice font_color_999">订单总价：￥{{orderDetail.totalMoney | toFixed}}</div>
+              <div class="getMoney" :class="orderDetail.commissionStatus== 2 ? 'roat font_color_common' : ''" v-if="orderDetail.commissionType==1">{{orderDetail.commissionStatus == 1 ? '预计获得佣金：￥'+orderDetail.actCommission : orderDetail.commissionStatus== 2 ? '已入账佣金：￥'+orderDetail.actCommission : '客户已取消订单'}}</div>
+              <div class="getMoney" :class="orderDetail.commissionStatus== 2 ? 'roat font_color_common' : ''" v-else>{{orderDetail.commissionStatus == 1 ? '预计获得拉新奖励：￥'+orderDetail.actCommission : orderDetail.commissionStatus== 2 ? '已入账拉新奖励：￥'+orderDetail.actCommission : '客户已取消订单'}}</div>
+          </div>
+          <div class="orderInfo bg_white">
+              <div class="uni-flex">
+                  <div class="uni-flex-1 font_color_999">订单编号：<span id="copy-txt">{{orderDetail.orderNo}}</span></div>
+                  <div class="copy bg_common" @click="copy(orderDetail.orderNo)">复制</div>
+              </div>
+              <div class="orderDate font_color_999">下单时间：{{orderDetail.inputDate}}</div>
+              <div class="font_color_999">下单店铺：{{orderDetail.storeName}}</div>
+          </div>
+      </div>
+  </div>
+</template>
+
+<script>
+export default {
+    data(){
+        return{
+            orderDetail:{
+                
+            },
+            goodsDetail:[],
+            commissionsettleid:''
+        }
+    },
+    methods:{
+        getOrderDetail(){
+            let obj = {
+                pubCommissionSettleId:this.commissionsettleid
+            }
+            this.ebigRequest("/distribution/getDistributorOrderDetails", obj, true).then((data) => {
+                if(data){
+                    this.orderDetail = data
+                    this.goodsDetail = data.orderDtlDTOList
+                    var getMoney = ((data.totalMoney?data.totalMoney:0).toFixed(2) * data.rate).toFixed(2)
+                    this.orderDetail.getMoney = getMoney
+                }
+            })
+        },
+        copy(num){
+            // #ifdef MP-WEIXIN
+            num = num + ''
+            uni.setClipboardData({
+                data: num,
+                success:res=> {
+                    uni.showToast({
+                        title:'复制成功',
+                        icon:'none'
+                    })
+                }
+            })
+            // #endif
+            // #ifdef H5
+            console.log(222);
+            this.copyH5(num); //调用copyH5方法;
+            // #endif
+        },
+        // #ifdef H5
+        copyH5(data) {
+            let url = data;
+            let oInput = document.createElement('input');
+            oInput.value = url;
+            document.body.appendChild(oInput);
+            oInput.select(); // 选择对象;
+            document.execCommand("Copy"); // 执行浏览器复制命令
+            // 复制成功提示;
+            uni.showToast({
+            title: '复制成功',
+            icon: 'none',
+            duration: 2000
+            });
+            oInput.remove()
+            },
+             // #endif
+    toPercent(point){
+        var str=Number(point*100).toFixed(0);
+        str+="%";
+        return str;
+    },
+    },
+    filters:{
+        toFixed: (data) => {
+            return parseFloat(data).toFixed(2);
+        },
+        // 订单状态
+        toStatus: (data) => {
+            if(data == 1){
+                return '待付款'
+            }
+            if(data == 2){
+                return '待发货'
+            }
+            if(data == 3){
+                return '待收货'
+            }
+            if(data == 4){
+                return '已完成'
+            }
+            if(data == 5){
+                return '已取消'
+            }
+            if(data == 6){
+                return '售后处理中'
+            }
+        },
+         
+    },
+    onLoad(options){
+        this.commissionsettleid = options.commissionsettleid
+        this.getOrderDetail()
+    }
+}
+</script>
+
+<style>
+.top {
+    padding: 20rpx;
+    height: 340rpx;
+    background: linear-gradient(to bottom, #EE231E 0%, rgba(238, 35, 30, 1) 0%, rgba(238, 35, 30, 1) 35%, rgba(242, 242, 242, 1) 100%, rgba(242, 242, 242, 1) 100%);
+}
+.Status_wrap {
+    align-items: center;
+}
+.iconImg {
+    font-size: 80rpx;
+    color: #FFFFFF;
+    margin-right: 20rpx;
+}
+.topOrder {
+    font-size: 36rpx;
+    color: #FFFFFF;
+    font-weight: 700;
+}
+/* 订单列表 */
+.Content {
+    padding: 0 20rpx;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 160rpx;
+    /* ifdef H5 */
+    top: 240rpx;
+    /* #endif */
+}
+.orderItem {
+    padding: 20rpx 30rpx;
+    border-radius: 10rpx;
+    margin-bottom: 20rpx;
+}
+
+.orderGoods {
+    padding: 14rpx 0;
+    border-bottom: 2rpx solid #E4E4E4;
+}
+.orderStatus {
+    width: 200rpx;
+    text-align: right;
+}
+.orderTime {
+    padding-top: 16rpx;
+}
+.goods_img {
+    width: 110rpx;
+    height: 110rpx;
+    margin-right: 20rpx;
+}
+.roat {
+    font-size: 24rpx;
+}
+.goods_name {
+    height: 80rpx;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.goods_num {
+    width: 50px;
+    text-align: right;
+    font-size: 24rpx;
+}
+.totalPrice {
+    text-align: right;
+    font-size: 24rpx;
+    padding: 14rpx 0;
+}
+.getMoney {
+    text-align: right;
+    font-size: 24rpx;
+}
+.hasSure {
+    font-family: '微软雅黑 Bold', '微软雅黑';
+    font-weight: 700;
+    font-size: 28rpx;
+}
+
+/* 订单信息 */
+.orderInfo {
+    padding: 20rpx 30rpx;
+    border-radius: 10rpx;
+}
+.copy {
+    color: #FFFFFF;
+    border-radius: 10rpx;
+    width: 90rpx;
+    height: 44rpx;
+    text-align: center;
+    font-size: 24rpx;
+    line-height: 44rpx;
+}
+.orderDate {
+    padding: 16rpx 0;
+}
+
+</style>

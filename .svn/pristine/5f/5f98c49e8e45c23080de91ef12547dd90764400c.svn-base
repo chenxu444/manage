@@ -1,0 +1,203 @@
+<template>
+  <view class="page">
+    <!-- #ifndef MP-WEIXIN -->
+    <uni-nav-hfbar
+      fixed
+      status-bar
+      left-icon="back"
+      title="客户服务"
+    ></uni-nav-hfbar>
+    <!-- #endif -->
+    <view class="top_nav bg_white uni-flex bg-white">
+      <view class="uni-flex-1" @click="goUrl('feedBack', 'mine')">
+        <view class="iconfont icon-complain font_color_common icons"></view>
+        <span>意见反馈</span>
+      </view>
+      <view class="uni-flex-1" @click="goUrl('orderComplain', 'mine')">
+        <view class="iconfont icon-cancel font_color_common icons"></view>
+        <span>订单投诉</span>
+      </view>
+      <button class="uni-flex-1 goCustom" open-type="contact" style="line-height: 1; border: none;">
+        <view class="iconfont icon-customer font_color_common icons" style="height: 66rpx; line-height: 66rpx;"></view>
+        <span style="font-size: 28rpx;">客服咨询</span>
+      </button>
+    </view>
+    <view class="newList">
+      <uni-pulldown-refresh
+        ref="uniPulldownRefresh"
+        id="pullContent"
+        :top="0"
+        :absolute="0"
+        @refresh="onPulldownReresh"
+      >
+        <view>
+          <view
+            class="news uni-flex"
+            v-for="(item, index) in newList"
+            :key="index"
+            @click="goUrl('informationDetail', 'mine', 'newsId=' + item.newsId)"
+          >
+            <view class="question-icon iconfont icon-takegoods news_icon"></view>
+            <view class="news_txt uni-flex-1">{{ item.newsTitle }}</view>
+            <view class="right font_color_999">></view>
+          </view>
+        </view>
+        <uni-load-more :status="status" :content-text="contentText" />
+      </uni-pulldown-refresh>
+    </view>
+  </view>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      newsType: 0,
+      pageNo: 1,
+      pageSize: 15,
+      newList: [],
+
+      reload: false,
+      statusColor: "#ccc",
+      status: "more",
+      contentText: {
+        contentdown: "上拉加载更多",
+        contentrefresh: "正在加载...",
+        contentnomore: "—— 我也是有底线的 ——",
+      },
+    };
+  },
+  onShow() {
+    this.getsServiceList("refresh");
+  },
+  onReachBottom() {
+    if (this.status != "noMore" && this.status != "loading") {
+      //上滑加载
+      this.getsServiceList("add");
+    }
+  },
+  methods: {
+    getsServiceList(type) {
+      if (this.reload) {
+        return;
+      }
+      this.status = "loading";
+      if (type === "refresh") {
+        this.pageNo = 1;
+        this.reload = true;
+      }
+      let params = {
+        pageNo: this.pageNo,
+        pageSize: this.pageSize,
+        newsType: this.newsType,
+        consignorId: this.getStor('_defaultConsignorId_'),
+      };
+      this.ebigRequest("/news/list", params, true, "post", "", true, true)
+        .then((res) => {
+          if (type == "refresh") {
+            this.newList = [];
+          }
+          if (res.length < this.pageSize || res == null) {
+            this.status = "noMore";
+          } else {
+            this.status = "more";
+          }
+          this.newList = [...this.newList, ...res];
+          if (type === "refresh") {
+            this.reload = false;
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          this.pageNo = this.pageNo + 1;
+        })
+        .catch((err) => {
+          if (type === "refresh") {
+            this.reload = false;
+            this.newList = [];
+            this.$refs.uniPulldownRefresh &&
+              this.$refs.uniPulldownRefresh.endPulldownRefresh();
+          }
+          if (this.pageNo == 1) {
+            this.status = "noMore";
+            this.newList = [];
+          } else {
+            this.status = "more";
+            this.pageNo = this.pageNo - 1;
+          }
+        });
+    },
+    // 等待加载
+    loadMore() {
+      this.status = "more";
+      this.getsServiceList("add");
+    },
+    //下拉刷新
+    onPulldownReresh() {
+      this.getsServiceList("refresh");
+    },
+  },
+};
+</script>
+
+<style>
+page, .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #EFEFF4;
+}
+.page {
+    /* padding-top: 160rpx; */
+    box-sizing: border-box;
+}
+.top_nav {
+    position: fixed;
+    top: 0;
+    /* #ifdef H5 */
+    top: 88rpx;
+    /* #endif */ 
+    left: 0;
+    right: 0;
+    z-index: 99;
+    padding: 16rpx 0;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+}
+.icons {
+    padding: 10rpx 0;
+    font-size: 44rpx;
+}
+.noMore {
+    text-align: center;
+    font-size: 30rpx;
+    color: #999999;
+    padding: 20rpx;
+    font-weight: 700;
+}
+.news {
+    height: 90rpx;
+    line-height: 90rpx;
+    border-bottom: 1px solid #E0E0E0;
+}
+.news_icon {
+    padding: 0 20rpx;
+    font-size: 40rpx;
+    width: 40rpx;
+}
+.right {
+    font-size: 36rpx;
+    width: 40rpx;
+}
+.icon-customer::after{
+  border: none;
+}
+button.goCustom{
+  background: #FFFFFF;
+  border-radius: 0;
+}
+button.goCustom::after{
+  border: none;
+  border-radius: 0;
+}
+</style>
