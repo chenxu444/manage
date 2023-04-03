@@ -9,7 +9,7 @@ import Vue from "vue";
 export default {
     data() {
         return {
-            isiphoneBt: false,
+            isiphoneBt: false,   
             webviewStyles: {
                 progress: {
                     color: '#FF3333'
